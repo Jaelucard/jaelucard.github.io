@@ -145,6 +145,9 @@ img{ max-width: 100%; display: block; }
 .hero{
   min-height: 100svh;
   display: grid; place-items: center;
+  /* definite track so the poster's min(900px, 100%) resolves against the
+     viewport, not the poster's content width (which overflows on phones) */
+  grid-template-columns: 100%;
   padding: 120px var(--pad) 72px;
   position: relative;
   background:
@@ -176,7 +179,9 @@ img{ max-width: 100%; display: block; }
 
 .cells{
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* minmax(0,1fr) so a wide value (HANGZHOU) can't push its column
+     past the poster frame on narrow screens */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border-top: 1px solid var(--line-dark);
 }
 .cell{
@@ -191,13 +196,29 @@ img{ max-width: 100%; display: block; }
   font-weight: 900; font-stretch: 120%; font-size: clamp(26px, 4vw, 40px);
   line-height: 1; text-transform: uppercase;
 }
+/* the ∞ glyph sits at x-height, so scale it up to match the caps/figures;
+   line-height compensates so the cell stays the same height as its siblings */
+.cell-value-inf{ font-size: clamp(34px, 5.2vw, 52px); line-height: .77; }
+
+/* when the poster frame is narrow, scale the stat strip with it */
+@container (max-width: 620px){
+  /* labels may wrap to 2 lines; 1fr label row keeps the values
+     bottom-aligned across all three cells */
+  .cell{ padding: 14px 8px 12px; grid-template-rows: 1fr auto; align-items: end; }
+  .cell-label{ letter-spacing: .18em; text-indent: .18em; }
+  .cell-value{ font-size: clamp(12px, 3.9cqw, 26px); }
+  .cell-value-inf{ font-size: clamp(17px, 5.5cqw, 34px); }
+}
 
 .poster-desc{
   border-top: 1px solid var(--line-dark);
   padding: 22px clamp(24px, 6vw, 64px) 28px;
+  /* keep the hairline full-width but cap the text measure at ~62ch */
+  padding-inline: max(clamp(24px, 6vw, 64px), calc((100% - 62ch) / 2));
   font-size: 14.5px;
   line-height: 1.75;
   color: rgba(20,18,18,.78);
+  text-wrap: balance;
 }
 
 .hero-scroll{
@@ -467,29 +488,29 @@ img{ max-width: 100%; display: block; }
 <!-- ============ HERO — the "HUN" poster, but it's you ============ -->
 <header class="hero" id="top">
   <div class="poster reveal">
-    <p class="eyebrow poster-eyebrow">[Entrepreneur | AI Engineer]</p>
+    <p class="eyebrow poster-eyebrow">Entrepreneur | AI Engineer</p>
 
     <h1 class="poster-title display">JARROD</h1>
 
     <div class="cells" aria-label="Quick stats">
       <div class="cell">
         <span class="cell-label">Seasons</span>
-        <span class="cell-value">[23]</span>
+        <span class="cell-value">23</span>
       </div>
       <div class="cell">
         <span class="cell-label">Current Circuit</span>
-        <span class="cell-value">[Hangzhou]</span>
+        <span class="cell-value">Hangzhou</span>
       </div>
       <div class="cell">
         <span class="cell-label">All-Nighters</span>
-        <span class="cell-value">[∞]</span>
+        <span class="cell-value cell-value-inf">∞</span>
       </div>
     </div>
 
     <p class="poster-desc">
-      [Computer Science and Design student at SUTD. 
-      I design systems, research new AI Architectures, 
-      and build products that make people's lives better.]
+      Computer Science and Design student at SUTD.
+      I design systems, research new AI architectures,
+      and build products that make people's lives better.
     </p>
   </div>
 
