@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[Your Name] — Portfolio</title>
+
+<!-- ================================================================
+  GP PORTFOLIO — DESIGN FRAMEWORK (no content yet)
+  Inspired by Scuderia Ferrari race-weekend social graphics.
+
+  DESIGN TOKENS
+  ─ Color
+      --rosso        #E8112D   primary red (borders, titles, contact band)
+      --rosso-deep   #B50E22   hover / pressed red
+      --paper        #F5F2EC   warm white page background (FP1 poster bg)
+      --white        #FFFFFF   card surfaces
+      --carbon       #141212   dark "Quali Day" section + body text
+  ─ Type
+      Display  : Archivo, weight 900, font-stretch 125% (≈ Ferrari Sans wide caps)
+      Body     : Archivo, weight 400–500, normal width
+      Eyebrow  : Archivo, weight 650, UPPERCASE, letter-spacing .32em
+      Utility  : IBM Plex Mono (micro-metadata, telemetry flavour)
+  ─ Motifs
+      1. "Poster frame": 1px hairline rounded frame; the giant display
+         text intentionally OVERFLOWS it (like the HUN poster).
+      2. "Cell strip": stat boxes divided by hairlines (LAPS/ROUND/TURNS),
+         reused for hero stats, project card meta, and skills.
+
+  HOW TO FILL IN CONTENT
+      Search for text in [SQUARE BRACKETS] and replace with your own.
+      Duplicate any .gp-card to add projects; duplicate .row for experience.
+================================================================ -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ============ RESET & TOKENS ============ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root{
+  --rosso: #E8112D;
+  --rosso-deep: #B50E22;
+  --paper: #F5F2EC;
+  --white: #FFFFFF;
+  --carbon: #141212;
+
+  --line-dark: rgba(20,18,18,.28);
+  --line-soft: rgba(20,18,18,.14);
+  --line-light: rgba(255,255,255,.32);
+
+  --radius-lg: 22px;
+  --radius-md: 14px;
+
+  --font-sans: "Archivo","Helvetica Neue",Arial,sans-serif;
+  --font-mono: "IBM Plex Mono",ui-monospace,monospace;
+
+  --wrap: 1180px;
+  --pad: clamp(20px, 4vw, 48px);
+}
+
+html { scroll-behavior: smooth; }
+
+body{
+  font-family: var(--font-sans);
+  font-weight: 400;
+  background: var(--paper);
+  color: var(--carbon);
+  border-top: 4px solid var(--rosso);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection{ background: var(--rosso); color: var(--white); }
+
+a{ color: inherit; text-decoration: none; }
+img{ max-width: 100%; display: block; }
+
+:focus-visible{
+  outline: 2px solid var(--rosso);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.wrap{ max-width: var(--wrap); margin: 0 auto; padding-inline: var(--pad); }
+
+/* ============ TYPE ROLES ============ */
+.display{
+  font-weight: 900;
+  font-stretch: 125%;
+  text-transform: uppercase;
+  line-height: .92;
+  letter-spacing: -0.015em;
+}
+
+.eyebrow{
+  font-size: 11px;
+  font-weight: 650;
+  font-stretch: 105%;
+  text-transform: uppercase;
+  letter-spacing: .32em;
+}
+
+.mono{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+/* ============ NAV ============ */
+.nav{
+  position: fixed; inset: 0 0 auto 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px;
+  padding: 14px var(--pad);
+  transition: background .3s, box-shadow .3s;
+}
+.nav.scrolled{
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 var(--line-soft);
+}
+.nav-brand{ font-size: 13px; font-weight: 800; font-stretch: 120%;
+  text-transform: uppercase; letter-spacing: .22em; }
+.nav-brand em{ font-style: normal; color: var(--rosso); }
+.nav-links{ display: flex; align-items: center; gap: clamp(14px, 2.5vw, 30px); list-style: none; }
+.nav-links a{
+  font-size: 11px; font-weight: 650; text-transform: uppercase;
+  letter-spacing: .18em; padding: 6px 2px;
+  border-bottom: 1px solid transparent;
+  transition: color .2s, border-color .2s;
+}
+.nav-links a:hover{ color: var(--rosso); border-color: var(--rosso); }
+.nav-cta{
+  border: 1px solid var(--carbon); border-radius: 999px;
+  padding: 8px 18px !important;
+  transition: background .2s, color .2s, border-color .2s;
+}
+.nav-cta:hover{ background: var(--rosso); border-color: var(--rosso) !important; color: var(--white) !important; }
+
+/* ============ HERO — POSTER FRAME ============ */
+.hero{
+  min-height: 100svh;
+  display: grid; place-items: center;
+  padding: 120px var(--pad) 72px;
+  position: relative;
+  background:
+    radial-gradient(120% 70% at 50% -10%, rgba(232,17,45,.05), transparent 60%),
+    var(--paper);
+}
+
+.poster{
+  position: relative;
+  container-type: inline-size;
+  width: min(900px, 100%);
+  border: 1px solid var(--line-dark);
+  border-radius: var(--radius-lg);
+  padding: clamp(28px, 5vw, 52px) 0 0;
+  text-align: center;
+}
+.poster-eyebrow{ padding-inline: 24px; text-indent: .32em; }
+
+/* hero title: scales with the frame width so it always fits inside it.
+   Measured: "JARROD" at wght 900 / wdth 125 is 5.47em wide, so
+   15.5cqw makes it span ~85% of the frame with even margins either side.
+   If you change the text, recompute: font-size = 85 / (text width in em). */
+.poster-title{
+  font-size: clamp(44px, 12.5vw, 140px); /* fallback for older browsers */
+  font-size: 15.5cqw;
+  margin: clamp(16px, 3vw, 30px) auto;
+  color: var(--carbon);
+}
+
+.cells{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--line-dark);
+}
+.cell{
+  padding: 18px 12px 16px;
+  border-right: 1px solid var(--line-dark);
+  display: grid; gap: 4px; justify-items: center;
+}
+.cell:last-child{ border-right: 0; }
+.cell-label{ font-size: 10px; font-weight: 650; letter-spacing: .3em;
+  text-transform: uppercase; text-indent: .3em; opacity: .75; }
+.cell-value{
+  font-weight: 900; font-stretch: 120%; font-size: clamp(26px, 4vw, 40px);
+  line-height: 1; text-transform: uppercase;
+}
+
+.poster-desc{
+  border-top: 1px solid var(--line-dark);
+  padding: 22px clamp(24px, 6vw, 64px) 28px;
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: rgba(20,18,18,.78);
+}
+
+.hero-scroll{
+  position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
+  color: rgba(20,18,18,.55);
+  transition: color .2s;
+}
+.hero-scroll:hover{ color: var(--rosso); }
+
+/* ============ TICKER ============ */
+.ticker{
+  background: var(--rosso); color: var(--white);
+  overflow: hidden; white-space: nowrap;
+  border-block: 1px solid var(--rosso-deep);
+}
+.ticker-track{
+  display: inline-flex; gap: 0;
+  padding: 10px 0;
+  animation: ticker 42s linear infinite;
+}
+.ticker span{
+  font-size: 11px; font-weight: 650; letter-spacing: .3em;
+  text-transform: uppercase; padding-inline: 28px;
+}
+.ticker span::after{ content: "·"; margin-left: 56px; opacity: .7; }
+@keyframes ticker{ to{ transform: translateX(-50%); } }
+
+/* ============ SECTION HEADERS ============ */
+.section{ padding: clamp(72px, 10vw, 128px) 0; }
+.section-head{
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line-dark);
+  padding-bottom: 14px; margin-bottom: 12px;
+}
+.section-index{ color: rgba(20,18,18,.5); }
+.section-title{
+  font-size: clamp(46px, 8vw, 104px);
+  margin: 10px 0 clamp(36px, 5vw, 56px);
+}
+.section-title.red{ color: var(--rosso); }
+
+/* ============ PROJECTS — GP CARDS ============ */
+.gp-grid{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: clamp(20px, 3vw, 34px);
+}
+
+.gp-card{
+  background: var(--white);
+  border: 1px solid var(--rosso);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  transition: transform .35s cubic-bezier(.2,.7,.2,1), box-shadow .35s;
+}
+.gp-card:hover{
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px -22px rgba(181,14,34,.45);
+}
+
+.gp-head{
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center; gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--rosso);
+}
+.gp-meta{ display: grid; line-height: 1.5; }
+.gp-meta span{ font-size: 9px; font-weight: 650; letter-spacing: .28em;
+  text-transform: uppercase; color: var(--rosso); }
+.gp-meta strong{ font-size: 12px; font-weight: 800; font-stretch: 115%;
+  letter-spacing: .1em; text-transform: uppercase; }
+.gp-meta.right{ text-align: right; }
+.gp-title{
+  color: var(--rosso);
+  font-size: clamp(17px, 2vw, 22px);
+  text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 34ch;
+}
+
+.gp-media{
+  aspect-ratio: 4 / 3;
+  margin: 16px;
+  border-radius: 10px;
+  background:
+    linear-gradient(160deg, #E9E4DB 0%, #DDD6CA 55%, #CFC7B9 100%);
+  display: grid; place-items: center;
+  position: relative;
+  color: rgba(20,18,18,.55);
+}
+/* telemetry crosshair ticks in the media corners */
+.gp-media::before, .gp-media::after{
+  content: ""; position: absolute; width: 14px; height: 14px;
+  border-color: rgba(20,18,18,.4); border-style: solid;
+}
+.gp-media::before{ top: 10px; left: 10px; border-width: 1px 0 0 1px; }
+.gp-media::after{ bottom: 10px; right: 10px; border-width: 0 1px 1px 0; }
+
+.gp-cells{
+  margin-top: auto;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--rosso);
+}
+.gp-cells .cell{ border-right-color: var(--rosso); padding: 12px 8px 11px; }
+.gp-cells .cell-label{ color: var(--rosso); opacity: 1; font-size: 9px; }
+.gp-cells .cell-value{ font-size: 13px; font-stretch: 110%; letter-spacing: .02em; }
+.gp-cells a.cell{ transition: background .2s, color .2s; }
+.gp-cells a.cell:hover{ background: var(--rosso); color: var(--white); }
+.gp-cells a.cell:hover .cell-label{ color: var(--white); }
+
+/* ghost card — duplicate .gp-card and delete this one when adding projects */
+.gp-card.ghost{
+  border: 1px dashed var(--line-dark);
+  background: transparent;
+  min-height: 320px;
+  display: grid; place-items: center;
+  color: rgba(20,18,18,.5);
+}
+.gp-card.ghost:hover{ box-shadow: none; transform: none; border-color: var(--rosso); color: var(--rosso); }
+
+/* ============ QUALI — DARK ABOUT / SKILLS ============ */
+.quali{ background: var(--carbon); color: var(--white); }
+.quali .section-head{ border-color: var(--line-light); }
+.quali .section-index{ color: rgba(255,255,255,.5); }
+
+.quali-poster{
+  border: 1px solid var(--line-light);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  padding: clamp(26px, 4vw, 40px) 0;
+  margin-bottom: clamp(40px, 6vw, 64px);
+  overflow: visible;
+}
+.quali-poster .eyebrow{ text-indent: .32em; opacity: .85; }
+.quali-title{
+  font-size: clamp(56px, 11vw, 148px);
+  width: 110%; margin: 18px 0 18px -5%;
+}
+.quali-title em{ font-style: normal; color: var(--rosso); }
+
+.quali-cols{
+  display: grid; grid-template-columns: 1fr 1.2fr;
+  gap: clamp(28px, 5vw, 64px);
+}
+.quali-cols h3{ margin-bottom: 14px; color: rgba(255,255,255,.85); }
+.quali-cols p{
+  color: rgba(255,255,255,.72); font-size: 14.5px; line-height: 1.8;
+}
+.quali-cols p + p{ margin-top: 12px; }
+
+.skill-group{ border-top: 1px solid var(--line-light); padding: 16px 0 20px; }
+.skill-group:last-child{ border-bottom: 1px solid var(--line-light); }
+.skill-group h4{ font-size: 10px; font-weight: 650; letter-spacing: .3em;
+  text-transform: uppercase; color: var(--rosso); margin-bottom: 12px; }
+.chips{ display: flex; flex-wrap: wrap; gap: 8px; }
+.chip{
+  border: 1px solid var(--line-light);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 11px; font-weight: 600; letter-spacing: .12em;
+  text-transform: uppercase;
+  transition: border-color .2s, background .2s;
+}
+.chip:hover{ border-color: var(--rosso); background: rgba(232,17,45,.12); }
+
+/* ============ CLASSIFICATION — EXPERIENCE ============ */
+.rows{ border-top: 1px solid var(--line-dark); }
+.row{
+  display: grid;
+  grid-template-columns: 84px 1.4fr 1fr auto;
+  align-items: center; gap: clamp(12px, 2vw, 28px);
+  padding: 22px 4px;
+  border-bottom: 1px solid var(--line-dark);
+  transition: background .2s, padding-left .3s;
+}
+.row:hover{ background: var(--white); padding-left: 14px; }
+.row-pos{
+  font-weight: 900; font-stretch: 120%; font-size: 26px;
+  color: var(--rosso); text-transform: uppercase; line-height: 1;
+}
+.row-entry strong{ display: block; font-weight: 800; font-stretch: 110%;
+  font-size: 14px; letter-spacing: .06em; text-transform: uppercase; }
+.row-entry span{ font-size: 12.5px; color: rgba(20,18,18,.65); }
+.row-note{ font-size: 13px; color: rgba(20,18,18,.7); }
+.row-time{ color: rgba(20,18,18,.6); }
+
+/* ============ CONTACT — PIT WALL ============ */
+.contact{ background: var(--rosso); color: var(--white); text-align: center; }
+.contact .eyebrow{ text-indent: .32em; opacity: .9; }
+.contact-title{
+  font-size: clamp(52px, 11vw, 150px);
+  margin: 18px auto 28px;
+}
+.contact-btn{
+  display: inline-block;
+  background: var(--white); color: var(--rosso);
+  border-radius: 999px;
+  padding: 14px 34px;
+  font-size: 12px; font-weight: 800; letter-spacing: .2em;
+  text-transform: uppercase;
+  transition: transform .25s, box-shadow .25s;
+}
+.contact-btn:hover{ transform: translateY(-2px);
+  box-shadow: 0 14px 30px -14px rgba(0,0,0,.45); }
+.contact-mail{ display: block; margin-top: 20px; color: rgba(255,255,255,.85); }
+
+/* ============ FOOTER ============ */
+.footer{
+  background: var(--paper);
+  border-top: 1px solid var(--line-dark);
+  padding: 28px 0 34px;
+}
+.footer-grid{
+  display: flex; flex-wrap: wrap; gap: 16px 32px;
+  align-items: center; justify-content: space-between;
+}
+.footer .mono{ color: rgba(20,18,18,.55); }
+.footer-links{ display: flex; gap: 20px; list-style: none; }
+.footer-links a{ font-size: 11px; font-weight: 650; letter-spacing: .18em;
+  text-transform: uppercase; }
+.footer-links a:hover{ color: var(--rosso); }
+
+/* ============ REVEALS & MOTION ============ */
+.reveal{ opacity: 0; transform: translateY(26px);
+  transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+.reveal.in{ opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce){
+  html{ scroll-behavior: auto; }
+  *, *::before, *::after{ animation: none !important; transition: none !important; }
+  .reveal{ opacity: 1; transform: none; }
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 860px){
+  .gp-grid{ grid-template-columns: 1fr; }
+  .quali-cols{ grid-template-columns: 1fr; }
+  .row{ grid-template-columns: 56px 1fr; grid-auto-rows: auto; row-gap: 6px; }
+  .row-pos{ font-size: 20px; grid-row: span 2; align-self: start; }
+  .row-time{ grid-column: 2; }
+  .row-note{ grid-column: 2; }
+}
+@media (max-width: 640px){
+  .nav-links a:not(.nav-cta){ display: none; }
+  .gp-cells{ grid-template-columns: repeat(2, 1fr); }
+  .gp-cells .cell:nth-child(2){ border-right: 0; }
+  .gp-cells .cell:nth-child(-n+2){ border-bottom: 1px solid var(--rosso); }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav class="nav" id="nav" aria-label="Primary">
+  <a class="nav-brand" href="#top">JAR<em>ROD</em></a>
+  <ul class="nav-links">
+    <li><a href="#projects">Projects</a></li>
+    <li><a href="#skills">Skills</a></li>
+    <li><a href="#experience">Experience</a></li>
+    <li><a class="nav-cta" href="#contact">Contact</a></li>
+  </ul>
+</nav>
+
+<!-- ============ HERO — the "HUN" poster, but it's you ============ -->
+<header class="hero" id="top">
+  <div class="poster reveal">
+    <p class="eyebrow poster-eyebrow">[Discipline · e.g. Software Engineer]</p>
+
+    <h1 class="poster-title display">JARROD</h1>
+
+    <div class="cells" aria-label="Quick stats">
+      <div class="cell">
+        <span class="cell-label">Projects</span>
+        <span class="cell-value">[00]</span>
+      </div>
+      <div class="cell">
+        <span class="cell-label">Years</span>
+        <span class="cell-value">[00]</span>
+      </div>
+      <div class="cell">
+        <span class="cell-label">[Stat]</span>
+        <span class="cell-value">[00]</span>
+      </div>
+    </div>
+
+    <p class="poster-desc">
+      [Two to three lines about yourself — who you are, what you build, and
+      what you care about. Mirror the cadence of the race preview: confident,
+      short, centred.]
+    </p>
+  </div>
+
+  <a class="hero-scroll mono" href="#projects">Scroll — lights out ↓</a>
+</header>
+
+<!-- ============ TICKER ============ -->
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track">
+    <span>Jarrod</span><span>Portfolio</span><span>[Discipline]</span><span>[City]</span>
+    <span>Jarrod</span><span>Portfolio</span><span>[Discipline]</span><span>[City]</span>
+  </div>
+</div>
+
+<!-- ============ PROJECTS — Grand Prix cards ============ -->
+<section class="section" id="projects">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Selected Work</p>
+      <p class="mono section-index">SEC · 01</p>
+    </div>
+    <h2 class="section-title display red">Projects</h2>
+
+    <div class="gp-grid">
+
+      <!-- PROJECT CARD — duplicate this block per project -->
+      <article class="gp-card reveal">
+        <header class="gp-head">
+          <div class="gp-meta"><span>Round</span><strong>01</strong></div>
+          <h3 class="gp-title display">[Project Name]</h3>
+          <div class="gp-meta right"><span>Type</span><strong>[Web]</strong></div>
+        </header>
+        <div class="gp-media">
+          <span class="mono">[ project image · 4:3 ]</span>
+        </div>
+        <footer class="gp-cells">
+          <div class="cell"><span class="cell-label">Role</span><span class="cell-value">[Role]</span></div>
+          <div class="cell"><span class="cell-label">Stack</span><span class="cell-value">[Stack]</span></div>
+          <div class="cell"><span class="cell-label">Year</span><span class="cell-value">[20XX]</span></div>
+          <a class="cell" href="#"><span class="cell-label">Link</span><span class="cell-value">Visit ↗</span></a>
+        </footer>
+      </article>
+
+      <article class="gp-card reveal">
+        <header class="gp-head">
+          <div class="gp-meta"><span>Round</span><strong>02</strong></div>
+          <h3 class="gp-title display">[Project Name]</h3>
+          <div class="gp-meta right"><span>Type</span><strong>[Hardware]</strong></div>
+        </header>
+        <div class="gp-media">
+          <span class="mono">[ project image · 4:3 ]</span>
+        </div>
+        <footer class="gp-cells">
+          <div class="cell"><span class="cell-label">Role</span><span class="cell-value">[Role]</span></div>
+          <div class="cell"><span class="cell-label">Stack</span><span class="cell-value">[Stack]</span></div>
+          <div class="cell"><span class="cell-label">Year</span><span class="cell-value">[20XX]</span></div>
+          <a class="cell" href="#"><span class="cell-label">Link</span><span class="cell-value">Visit ↗</span></a>
+        </footer>
+      </article>
+
+      <article class="gp-card reveal">
+        <header class="gp-head">
+          <div class="gp-meta"><span>Round</span><strong>03</strong></div>
+          <h3 class="gp-title display">[Project Name]</h3>
+          <div class="gp-meta right"><span>Type</span><strong>[Systems]</strong></div>
+        </header>
+        <div class="gp-media">
+          <span class="mono">[ project image · 4:3 ]</span>
+        </div>
+        <footer class="gp-cells">
+          <div class="cell"><span class="cell-label">Role</span><span class="cell-value">[Role]</span></div>
+          <div class="cell"><span class="cell-label">Stack</span><span class="cell-value">[Stack]</span></div>
+          <div class="cell"><span class="cell-label">Year</span><span class="cell-value">[20XX]</span></div>
+          <a class="cell" href="#"><span class="cell-label">Link</span><span class="cell-value">Visit ↗</span></a>
+        </footer>
+      </article>
+
+      <!-- Ghost slot: replace with a real card, or delete -->
+      <article class="gp-card ghost reveal">
+        <span class="mono">[ + next round ]</span>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ QUALI — dark About + Skills band ============ -->
+<section class="section quali" id="skills">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Driver Profile</p>
+      <p class="mono section-index">SEC · 02</p>
+    </div>
+
+    <!-- the "QUALI DAY" poster as a section marquee -->
+    <div class="quali-poster reveal">
+      <p class="eyebrow">[University · Programme]</p>
+      <h2 class="quali-title display">About <em>&amp;</em> Skills</h2>
+      <p class="eyebrow">[City, Country]</p>
+    </div>
+
+    <div class="quali-cols">
+      <div class="reveal">
+        <h3 class="eyebrow">Profile</h3>
+        <p>[A paragraph about your background — what you study, what kind of
+        problems pull you in, what you have shipped so far.]</p>
+        <p>[A second paragraph if needed — interests outside the code,
+        what you are looking for next.]</p>
+      </div>
+
+      <div class="reveal">
+        <div class="skill-group">
+          <h4>Languages</h4>
+          <div class="chips">
+            <span class="chip">[Skill]</span><span class="chip">[Skill]</span>
+            <span class="chip">[Skill]</span><span class="chip">[Skill]</span>
+          </div>
+        </div>
+        <div class="skill-group">
+          <h4>Frameworks &amp; Tools</h4>
+          <div class="chips">
+            <span class="chip">[Skill]</span><span class="chip">[Skill]</span>
+            <span class="chip">[Skill]</span><span class="chip">[Skill]</span>
+            <span class="chip">[Skill]</span>
+          </div>
+        </div>
+        <div class="skill-group">
+          <h4>[Category]</h4>
+          <div class="chips">
+            <span class="chip">[Skill]</span><span class="chip">[Skill]</span>
+            <span class="chip">[Skill]</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CLASSIFICATION — experience as a timing sheet ============ -->
+<section class="section" id="experience">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Classification</p>
+      <p class="mono section-index">SEC · 03</p>
+    </div>
+    <h2 class="section-title display">Experience</h2>
+
+    <div class="rows">
+      <!-- ROW — duplicate per entry (jobs, internships, awards, leadership) -->
+      <div class="row reveal">
+        <div class="row-pos display">P1</div>
+        <div class="row-entry">
+          <strong>[Role or Achievement]</strong>
+          <span>[Organisation / Course / Event]</span>
+        </div>
+        <div class="row-note">[One line on what you did or won]</div>
+        <div class="row-time mono">[2025 — Now]</div>
+      </div>
+
+      <div class="row reveal">
+        <div class="row-pos display">P2</div>
+        <div class="row-entry">
+          <strong>[Role or Achievement]</strong>
+          <span>[Organisation / Course / Event]</span>
+        </div>
+        <div class="row-note">[One line on what you did or won]</div>
+        <div class="row-time mono">[2024]</div>
+      </div>
+
+      <div class="row reveal">
+        <div class="row-pos display">P3</div>
+        <div class="row-entry">
+          <strong>[Role or Achievement]</strong>
+          <span>[Organisation / Course / Event]</span>
+        </div>
+        <div class="row-note">[One line on what you did or won]</div>
+        <div class="row-time mono">[2023]</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CONTACT — pit wall ============ -->
+<section class="section contact" id="contact">
+  <div class="wrap">
+    <p class="eyebrow">Box, box</p>
+    <h2 class="contact-title display reveal">[Let's Talk]</h2>
+    <a class="contact-btn" href="mailto:[you@email.com]">Send a message</a>
+    <a class="contact-mail mono" href="mailto:[you@email.com]">[you@email.com]</a>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <div class="wrap footer-grid">
+    <span class="nav-brand">JAR<em>ROD</em></span>
+    <ul class="footer-links">
+      <li><a href="#">[GitHub]</a></li>
+      <li><a href="#">[LinkedIn]</a></li>
+      <li><a href="#">[Resume]</a></li>
+    </ul>
+    <span class="mono">[00.0000° N · 000.0000° E] — EST. <span id="year"></span></span>
+  </div>
+</footer>
+
+<script>
+// current year
+document.getElementById('year').textContent = new Date().getFullYear();
+
+// nav background after scroll
+const nav = document.getElementById('nav');
+addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', scrollY > 24);
+}, { passive: true });
+
+// scroll reveals (skipped when reduced motion is on)
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const targets = document.querySelectorAll('.reveal');
+if (reduced || !('IntersectionObserver' in window)) {
+  targets.forEach(el => el.classList.add('in'));
+} else {
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.15 });
+  targets.forEach(el => io.observe(el));
+}
+</script>
+
+</body>
+</html>
