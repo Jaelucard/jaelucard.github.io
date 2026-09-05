@@ -329,11 +329,12 @@ img{ max-width: 100%; display: block; }
 }
 .gp-media::before{ top: 10px; left: 10px; border-width: 1px 0 0 1px; }
 .gp-media::after{ bottom: 10px; right: 10px; border-width: 0 1px 1px 0; }
-/* project screenshot: fills the 4:3 box, letterboxed rather than cropped so a
-   wide dashboard capture keeps every panel readable */
+/* project screenshot: an in-flow grid item, so place-items centres it in the
+   4:3 box; capped below the box on both axes so the gradient stays visible as
+   a frame and the image sits inside the corner ticks, never cropped */
 .gp-media img{
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
+  width: auto; height: auto;
+  max-width: 88%; max-height: 88%;
   object-fit: contain;
   border-radius: inherit;
 }
@@ -343,7 +344,8 @@ img{ max-width: 100%; display: block; }
   display: grid; grid-template-columns: repeat(4, 1fr);
   border-top: 1px solid var(--rosso);
 }
-.gp-cells .cell{ border-right-color: var(--rosso); padding: 12px 8px 11px; }
+.gp-cells .cell{ border-right-color: var(--rosso); padding: 12px 8px 11px;
+  text-align: center; }   /* a wrapped value centres as one block, not per line */
 .gp-cells .cell-label{ color: var(--rosso); opacity: 1; font-size: 9px; }
 .gp-cells .cell-value{ font-size: 13px; font-stretch: 110%; letter-spacing: .02em; }
 .gp-cells a.cell{ transition: background .2s, color .2s; }
