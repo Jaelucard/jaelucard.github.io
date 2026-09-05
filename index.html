@@ -325,9 +325,18 @@ img{ max-width: 100%; display: block; }
 .gp-media::before, .gp-media::after{
   content: ""; position: absolute; width: 14px; height: 14px;
   border-color: rgba(20,18,18,.4); border-style: solid;
+  z-index: 1;   /* keep the ticks above a project screenshot */
 }
 .gp-media::before{ top: 10px; left: 10px; border-width: 1px 0 0 1px; }
 .gp-media::after{ bottom: 10px; right: 10px; border-width: 0 1px 1px 0; }
+/* project screenshot: fills the 4:3 box, letterboxed rather than cropped so a
+   wide dashboard capture keeps every panel readable */
+.gp-media img{
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: contain;
+  border-radius: inherit;
+}
 
 .gp-cells{
   margin-top: auto;
@@ -549,17 +558,18 @@ img{ max-width: 100%; display: block; }
       <article class="gp-card reveal">
         <header class="gp-head">
           <div class="gp-meta"><span>Round</span><strong>01</strong></div>
-          <h3 class="gp-title display">[Project Name]</h3>
-          <div class="gp-meta right"><span>Type</span><strong>[Web]</strong></div>
+          <h3 class="gp-title display">F1 Dashboard</h3>
+          <div class="gp-meta right"><span>Type</span><strong>Web</strong></div>
         </header>
         <div class="gp-media">
-          <span class="mono">[ project image · 4:3 ]</span>
+          <img src="assets/projects/f1-dashboard.png" width="2000" height="1128" loading="lazy"
+               alt="F1 Dashboard: live timing leaderboard, flag panel and track map for a Monza session">
         </div>
         <footer class="gp-cells">
-          <div class="cell"><span class="cell-label">Role</span><span class="cell-value">[Role]</span></div>
-          <div class="cell"><span class="cell-label">Stack</span><span class="cell-value">[Stack]</span></div>
-          <div class="cell"><span class="cell-label">Year</span><span class="cell-value">[20XX]</span></div>
-          <a class="cell" href="#"><span class="cell-label">Link</span><span class="cell-value">Visit ↗</span></a>
+          <div class="cell"><span class="cell-label">Role</span><span class="cell-value">Full-Stack Developer</span></div>
+          <div class="cell"><span class="cell-label">Stack</span><span class="cell-value">React · FastAPI</span></div>
+          <div class="cell"><span class="cell-label">Year</span><span class="cell-value">2026</span></div>
+          <a class="cell" href="https://github.com/Jaelucard/F1-Dashboard" target="_blank" rel="noopener noreferrer"><span class="cell-label">Link</span><span class="cell-value">Visit ↗</span></a>
         </footer>
       </article>
 
