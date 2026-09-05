@@ -38,6 +38,12 @@
       "accessCount": 16,
       "lastAccessed": 1786475282377,
       "type": "file"
+    },
+    {
+      "path": "index.html",
+      "accessCount": 1,
+      "lastAccessed": 1788631841960,
+      "type": "file"
     }
   ],
   "userDirectives": []
