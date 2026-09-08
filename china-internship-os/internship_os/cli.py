@@ -589,3 +589,91 @@ def constraints(ctx: typer.Context) -> None:
     out(f"{len(warnings)} warning(s)")
     for w in warnings:
         out(f"  - {w}")
+
+
+# ======================================================================================
+# Checkpoint 4: timeline, digest, contacts
+# ======================================================================================
+
+from internship_os.digest import build_digest  # noqa: E402
+from internship_os.models import Contact  # noqa: E402
+from internship_os.schemas import ContactChannel  # noqa: E402
+from internship_os.timeline import build_timeline, render as render_timeline  # noqa: E402
+
+contact_app = typer.Typer(help="Contact commands.", no_args_is_help=True)
+app.add_typer(contact_app, name="contact")
+
+
+@app.command()
+def timeline(ctx: typer.Context, job: Optional[int] = typer.Option(None, "--job", help="Use this job's agreed start date.")) -> None:
+    """Backward-planned dates from the intended (or agreed) start."""
+    cfg: AppConfig = ctx.obj
+    target = None
+    if job is not None:
+        session = get_session()
+        target = get_job_or_exit(session, job)
+    steps = build_timeline(cfg.user_facts, cfg.constraints, target, today_value())
+    for line in render_timeline(steps, today_value()):
+        out(line)
+
+
+@app.command()
+def digest(ctx: typer.Context) -> None:
+    """Today's digest: contract deadline, warnings, counts, due actions, recommendations."""
+    cfg: AppConfig = ctx.obj
+    session = get_session()
+    for line in build_digest(session, cfg, today_value()):
+        out(line)
+
+
+@contact_app.command("add")
+def contact_add(
+    ctx: typer.Context,
+    company: int = typer.Option(..., "--company"),
+    name: str = typer.Option(..., "--name"),
+    role: Optional[str] = typer.Option(None, "--role"),
+    channel: str = typer.Option(..., "--channel", help="wechat|email|linkedin|boss|phone|in_person|other"),
+    notes: Optional[str] = typer.Option(None, "--notes"),
+) -> None:
+    """Add a contact at a company."""
+    session = get_session()
+    if session.get(Company, company) is None:
+        err(f"company {company} does not exist")
+        raise typer.Exit(code=1)
+    channel = _choice(channel, ContactChannel, "--channel")
+    contact = Contact(company_id=company, name=name, role=role, channel=channel, notes=notes)
+    session.add(contact)
+    session.commit()
+    out(f"contact {contact.id} added: {name} ({role or '-'}, {channel}) at company {company}")
+
+
+@contact_app.command("list")
+def contact_list(ctx: typer.Context, company: Optional[int] = typer.Option(None, "--company")) -> None:
+    """List contacts, optionally for one company."""
+    session = get_session()
+    query = select(Contact).order_by(Contact.company_id, Contact.id)
+    if company is not None:
+        query = query.where(Contact.company_id == company)
+    table = Table(title="Contacts")
+    for col in ("id", "company", "name", "role", "channel", "last_contact", "next_followup", "notes"):
+        table.add_column(col)
+    for c in session.scalars(query):
+        table.add_row(str(c.id), f"{c.company.display_name} ({c.company_id})", c.name, c.role or "-", c.channel,
+                      str(c.last_contact or "-"), str(c.next_followup or "-"), c.notes or "")
+    console.print(table)
+
+
+@contact_app.command("touch")
+def contact_touch(ctx: typer.Context, contact_id: int, next_followup: str = typer.Option(..., "--next", help="Next follow-up YYYY-MM-DD.")) -> None:
+    """Record contact today and set the next follow-up date."""
+    session = get_session()
+    contact = session.get(Contact, contact_id)
+    if contact is None:
+        err(f"contact {contact_id} does not exist")
+        raise typer.Exit(code=1)
+    when = _parse_date(next_followup, "--next")
+    old = (contact.last_contact, contact.next_followup)
+    contact.last_contact = today_value()
+    contact.next_followup = when
+    session.commit()
+    out(f"contact {contact.id} last_contact: {old[0]} -> {contact.last_contact}; next_followup: {old[1]} -> {contact.next_followup}")
