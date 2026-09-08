@@ -17,3 +17,17 @@ Ideas and deviations recorded during Phase 1. Nothing here is implemented in Pha
 - ARCHITECTURE_RECOMMENDATION.md gives companies a `blacklist_status` column; the Phase 1 prompt
   drops it (blacklist checking is outside the tool per HOST_ONBOARDING_ROUTE). Revisit if SUTD
   provides a way to check companies.
+
+## Recorded during Checkpoint 3
+
+- READY_TO_APPLY gate interpretation: the prompt gates on `programme_overall`, but AT_RISK ranks
+  worse than UNKNOWN in the overall ordering, so a job with an AT_RISK duration and an UNKNOWN
+  host would have overall AT_RISK and slip through. The gate therefore checks dimensions: any
+  UNKNOWN or INCOMPATIBLE dimension refuses the transition; AT_RISK alone proceeds with a
+  warning. This matches the architecture document and the definition-of-done for an unknown host.
+- `ios recompute` reruns eligibility but does not move a job's pipeline status when a later
+  recompute finds INELIGIBLE (for example a deadline that has since passed). The tier becomes
+  HOLD and the reason is shown; the terminal-status effect applies at confirmation only.
+  Consider applying the terminal effect on recompute too.
+- `internship_os/pipeline.py` was added beyond the specified layout to hold the orchestration
+  (confirmation finalisation, recompute, transitions) so the CLI and Streamlit page share it.

@@ -150,3 +150,63 @@ def capture_fixture(session, config: _AppConfig, fake_llm, today):
         return capture(load_jd(name), url, source, session=session, config=config, today=today, **kwargs)
 
     return _capture
+
+
+# --------------------------------------------------------------------------------------
+# Confirmed-job factory for the deterministic modules (Checkpoint 3 onward)
+# --------------------------------------------------------------------------------------
+
+from internship_os.capture import refresh_display_fields  # noqa: E402
+from internship_os.models import Company, Job, utcnow  # noqa: E402
+from internship_os.pipeline import run_checks  # noqa: E402
+
+
+@pytest.fixture
+def make_confirmed_job(session, config, today):
+    """Build a Job whose extraction is fully confirmed, optionally overriding extracted values.
+
+    ``run=True`` runs eligibility, programme and tiering with the pinned date.
+    """
+
+    def _make(
+        name: str = "hangzhou_ai_app",
+        *,
+        company: bool = True,
+        yes_status: str = "unknown",
+        host_type: str = "unknown",
+        run: bool = True,
+        source: str = "shixiseng",
+        **field_values,
+    ) -> Job:
+        data = json.loads(load_extracted_json(name))
+        for fld in data.values():
+            fld["confirmed"] = True
+        for key, value in field_values.items():
+            data[key]["value"] = value
+            data[key]["source_span"] = None
+        extracted = ExtractedJob.model_validate(data)
+        job = Job(
+            source_channel=source,
+            raw_text=load_jd(name),
+            extracted=extracted.model_dump(mode="json"),
+            confirmed_at=utcnow(),
+            next_action="assess fit",
+            next_action_date=today,
+        )
+        refresh_display_fields(job, extracted)
+        if company:
+            job.company = Company(
+                name_zh=extracted.company_name_zh.value,
+                name_en=extracted.company_name_en.value,
+                city_zh=job.city_zh,
+                yes_status=yes_status,
+                host_type=host_type,
+            )
+        session.add(job)
+        session.commit()
+        if run:
+            run_checks(job, config, today)
+            session.commit()
+        return job
+
+    return _make
