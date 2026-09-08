@@ -1,0 +1,163 @@
+{
+  "company_name_zh": {
+    "value": "苏州云栈软件有限公司",
+    "confirmed": false,
+    "source_span": "苏州云栈软件有限公司"
+  },
+  "company_name_en": {
+    "value": null,
+    "confirmed": false,
+    "source_span": null
+  },
+  "title_zh": {
+    "value": "后端开发实习生",
+    "confirmed": false,
+    "source_span": "后端开发实习生"
+  },
+  "title_en": {
+    "value": "Backend Development Intern",
+    "confirmed": false,
+    "source_span": "后端开发实习生"
+  },
+  "city_zh": {
+    "value": "苏州",
+    "confirmed": false,
+    "source_span": "工作地点：苏州市 工业园区"
+  },
+  "district": {
+    "value": "工业园区",
+    "confirmed": false,
+    "source_span": "工作地点：苏州市 工业园区"
+  },
+  "internship_type": {
+    "value": "unknown",
+    "confirmed": false,
+    "source_span": null
+  },
+  "graduation_cohort_text": {
+    "value": "毕业时间不限",
+    "confirmed": false,
+    "source_span": "本科在读，毕业时间不限"
+  },
+  "cohort_years": {
+    "value": [],
+    "confirmed": false,
+    "source_span": null
+  },
+  "cohort_unrestricted": {
+    "value": true,
+    "confirmed": false,
+    "source_span": "毕业时间不限"
+  },
+  "degree_required": {
+    "value": "bachelor",
+    "confirmed": false,
+    "source_span": "本科在读"
+  },
+  "degree_preferred": {
+    "value": "none_stated",
+    "confirmed": false,
+    "source_span": null
+  },
+  "major_requirement": {
+    "value": "计算机相关专业优先",
+    "confirmed": false,
+    "source_span": "计算机相关专业优先"
+  },
+  "days_per_week_min": {
+    "value": 3,
+    "confirmed": false,
+    "source_span": "每周至少3天"
+  },
+  "duration_min_months": {
+    "value": 3,
+    "confirmed": false,
+    "source_span": "实习期固定3个月"
+  },
+  "duration_max_months": {
+    "value": 3,
+    "confirmed": false,
+    "source_span": "实习期固定3个月"
+  },
+  "start_date_text": {
+    "value": "可尽快到岗",
+    "confirmed": false,
+    "source_span": "可尽快到岗"
+  },
+  "start_date": {
+    "value": null,
+    "confirmed": false,
+    "source_span": null
+  },
+  "deadline": {
+    "value": null,
+    "confirmed": false,
+    "source_span": null
+  },
+  "salary_text": {
+    "value": "200-260元/天",
+    "confirmed": false,
+    "source_span": "薪资：200-260元/天"
+  },
+  "required_skills": {
+    "value": [
+      "Go或Java",
+      "HTTP、RESTful API",
+      "常见数据结构",
+      "MySQL",
+      "Redis"
+    ],
+    "confirmed": false,
+    "source_span": "2. 熟悉Go或Java中的一种，了解HTTP、RESTful API与常见数据结构；\n3. 了解MySQL、Redis的基本使用；"
+  },
+  "preferred_skills": {
+    "value": [],
+    "confirmed": false,
+    "source_span": null
+  },
+  "language_requirement": {
+    "value": null,
+    "confirmed": false,
+    "source_span": null
+  },
+  "chinese_required_level": {
+    "value": "none_stated",
+    "confirmed": false,
+    "source_span": null
+  },
+  "nationality_or_work_auth_restriction": {
+    "value": null,
+    "confirmed": false,
+    "source_span": null
+  },
+  "role_closed": {
+    "value": false,
+    "confirmed": false,
+    "source_span": null
+  },
+  "application_method": {
+    "value": "邮件投递 hr@yunzhan-example.com",
+    "confirmed": false,
+    "source_span": "投递方式：邮件投递 hr@yunzhan-example.com"
+  },
+  "referral_info": {
+    "value": null,
+    "confirmed": false,
+    "source_span": null
+  },
+  "responsibilities_summary": {
+    "value": "参与SaaS平台后端服务的开发，使用Go或Java编写业务接口。参与MySQL与Redis相关的数据模型设计与性能优化。编写单元测试与接口文档，配合测试同学完成上线。",
+    "confirmed": false,
+    "source_span": "岗位职责：\n1. 参与SaaS平台后端服务的开发，使用Go或Java编写业务接口；\n2. 参与MySQL与Redis相关的数据模型设计与性能优化；\n3. 编写单元测试与接口文档，配合测试同学完成上线。"
+  },
+  "track_guess": {
+    "value": "SWE",
+    "confirmed": false,
+    "source_span": "后端开发实习生"
+  },
+  "research_signals": {
+    "value": [],
+    "confirmed": false,
+    "source_span": null
+  }
+}

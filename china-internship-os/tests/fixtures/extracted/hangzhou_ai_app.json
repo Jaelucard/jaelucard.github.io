@@ -1,0 +1,169 @@
+{
+  "company_name_zh": {
+    "value": "杭州星河智能科技有限公司",
+    "confirmed": false,
+    "source_span": "杭州星河智能科技有限公司"
+  },
+  "company_name_en": {
+    "value": null,
+    "confirmed": false,
+    "source_span": null
+  },
+  "title_zh": {
+    "value": "AI应用开发实习生",
+    "confirmed": false,
+    "source_span": "AI应用开发实习生（日常实习）"
+  },
+  "title_en": {
+    "value": "AI Application Development Intern",
+    "confirmed": false,
+    "source_span": "AI应用开发实习生（日常实习）"
+  },
+  "city_zh": {
+    "value": "杭州",
+    "confirmed": false,
+    "source_span": "工作地点：杭州市 西湖区"
+  },
+  "district": {
+    "value": "西湖区",
+    "confirmed": false,
+    "source_span": "工作地点：杭州市 西湖区"
+  },
+  "internship_type": {
+    "value": "日常实习",
+    "confirmed": false,
+    "source_span": "AI应用开发实习生（日常实习）"
+  },
+  "graduation_cohort_text": {
+    "value": "2027届/2028届本科及以上在校生",
+    "confirmed": false,
+    "source_span": "2027届/2028届本科及以上在校生，计算机、软件工程等相关专业"
+  },
+  "cohort_years": {
+    "value": [
+      2027,
+      2028
+    ],
+    "confirmed": false,
+    "source_span": "2027届/2028届本科及以上在校生"
+  },
+  "cohort_unrestricted": {
+    "value": false,
+    "confirmed": false,
+    "source_span": null
+  },
+  "degree_required": {
+    "value": "bachelor",
+    "confirmed": false,
+    "source_span": "2027届/2028届本科及以上在校生"
+  },
+  "degree_preferred": {
+    "value": "none_stated",
+    "confirmed": false,
+    "source_span": null
+  },
+  "major_requirement": {
+    "value": "计算机、软件工程等相关专业",
+    "confirmed": false,
+    "source_span": "计算机、软件工程等相关专业"
+  },
+  "days_per_week_min": {
+    "value": 4,
+    "confirmed": false,
+    "source_span": "每周4天以上"
+  },
+  "duration_min_months": {
+    "value": 4,
+    "confirmed": false,
+    "source_span": "实习4至6个月"
+  },
+  "duration_max_months": {
+    "value": 6,
+    "confirmed": false,
+    "source_span": "实习4至6个月"
+  },
+  "start_date_text": {
+    "value": "2027年3月起可入职",
+    "confirmed": false,
+    "source_span": "2027年3月起可入职"
+  },
+  "start_date": {
+    "value": "2027-03-01",
+    "confirmed": false,
+    "source_span": "2027年3月起可入职"
+  },
+  "deadline": {
+    "value": null,
+    "confirmed": false,
+    "source_span": null
+  },
+  "salary_text": {
+    "value": "300-400元/天",
+    "confirmed": false,
+    "source_span": "薪资：300-400元/天"
+  },
+  "required_skills": {
+    "value": [
+      "Python",
+      "LLM应用开发（LangChain/LlamaIndex等）",
+      "FastAPI",
+      "RAG检索链路与Prompt工程",
+      "单元测试"
+    ],
+    "confirmed": false,
+    "source_span": "熟悉Python，了解LLM应用开发（LangChain/LlamaIndex等）"
+  },
+  "preferred_skills": {
+    "value": [
+      "RAG或Agent项目经验",
+      "PyTorch"
+    ],
+    "confirmed": false,
+    "source_span": "加分项：有RAG或Agent项目经验，熟悉PyTorch。"
+  },
+  "language_requirement": {
+    "value": null,
+    "confirmed": false,
+    "source_span": null
+  },
+  "chinese_required_level": {
+    "value": "none_stated",
+    "confirmed": false,
+    "source_span": null
+  },
+  "nationality_or_work_auth_restriction": {
+    "value": null,
+    "confirmed": false,
+    "source_span": null
+  },
+  "role_closed": {
+    "value": false,
+    "confirmed": false,
+    "source_span": null
+  },
+  "application_method": {
+    "value": "通过实习僧投递，或发送简历至 hr@xinghe-example.com",
+    "confirmed": false,
+    "source_span": "投递方式：通过实习僧投递，或发送简历至 hr@xinghe-example.com"
+  },
+  "referral_info": {
+    "value": null,
+    "confirmed": false,
+    "source_span": null
+  },
+  "responsibilities_summary": {
+    "value": "参与基于大语言模型的企业知识问答产品开发，负责RAG检索链路与Prompt工程。使用Python与FastAPI开发后端服务和内部工具，编写单元测试并参与代码评审。与算法同学协作完成模型评测与效果分析。参与需求讨论，推动功能从原型到上线。",
+    "confirmed": false,
+    "source_span": "岗位职责：\n1. 参与基于大语言模型的企业知识问答产品开发，负责RAG检索链路与Prompt工程；\n2. 使用Python与FastAPI开发后端服务和内部工具，编写单元测试并参与代码评审；\n3. 与算法同学协作完成模型评测与效果分析，输出评测报告；\n4. 参与需求讨论，推动功能从原型到上线。"
+  },
+  "track_guess": {
+    "value": "AI",
+    "confirmed": false,
+    "source_span": "AI应用开发实习生（日常实习）"
+  },
+  "research_signals": {
+    "value": [],
+    "confirmed": false,
+    "source_span": null
+  }
+}
