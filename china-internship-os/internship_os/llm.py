@@ -33,6 +33,7 @@ OLLAMA_MODEL_ENV = "OLLAMA_MODEL"
 ANTHROPIC_KEY_ENV = "ANTHROPIC_API_KEY"
 MAX_OUTPUT_TOKENS = 4096
 RESUME_VARIABLE = "resume_text"
+HOSTED_MODEL_PREFIXES = ("claude", "anthropic/", "gpt-", "o1", "o3", "o4", "openai/", "gemini", "google/")
 
 
 class LLMError(Exception):
@@ -169,11 +170,11 @@ def ollama_model_name(config: AppConfig) -> str:
     if env_model:
         return env_model
     configured = config.user_facts.llm.model
-    # A model name that is clearly an Anthropic model is not intended for Ollama.
-    if configured.lower().startswith("claude"):
+    # A hosted-API model name is not intended for Ollama.
+    if configured.lower().startswith(HOSTED_MODEL_PREFIXES):
         raise LLMConfigError(
-            f"{OLLAMA_MODEL_ENV} is not set and user_facts.llm.model ({configured}) is an "
-            "Anthropic model name. Set OLLAMA_MODEL in .env to the Ollama model to use."
+            f"{OLLAMA_MODEL_ENV} is not set and user_facts.llm.model ({configured}) is a hosted "
+            "API model name. Set OLLAMA_MODEL in .env to the Ollama model to use."
         )
     return configured
 

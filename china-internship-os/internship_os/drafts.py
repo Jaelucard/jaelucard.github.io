@@ -136,13 +136,40 @@ def mandarin_problem(text: str, user_facts: UserFacts) -> str | None:
         return None
     if _NATIVE_ZH.search(text) or _NATIVE_EN.search(text):
         return "claims native Mandarin"
-    if user_facts.mandarin_claim_zh in text or user_facts.mandarin_claim_en in text:
+    # Remove the verbatim configured claim, then scan what remains: anything that still reads
+    # as a proficiency claim is an addition beyond the allowed wording.
+    remainder = text.replace(user_facts.mandarin_claim_zh, "").replace(user_facts.mandarin_claim_en, "")
+    remainder_lowered = remainder.casefold()
+    if not any(marker in remainder_lowered for marker in MANDARIN_MARKERS):
         return None
     # Mentions of Chinese that are not about proficiency (e.g. the Chinese market) are allowed;
     # anything that reads as a proficiency claim must use the verbatim configured wording.
-    proficiency = ("proficien", "fluent", "speak", "流利", "熟练", "精通", "水平", "能力", "工作语言", "会说")
-    if any(p in lowered for p in proficiency):
+    if any(p in remainder_lowered for p in PROFICIENCY_MARKERS):
         return "Mandarin proficiency must use mandarin_claim_zh or mandarin_claim_en verbatim"
+    return None
+
+
+PROFICIENCY_MARKERS = ("proficien", "fluent", "speak", "流利", "熟练", "精通", "水平", "能力", "工作语言", "会说")
+# A nonclaim may not carry facts: no digits, no achievement verbs, no programme vocabulary.
+_CLAIM_VERBS = re.compile(
+    r"\b(built|developed|designed|led|trained|maintained|placed|won|achieved|improved|implemented|"
+    r"deployed|optimi[sz]ed|shipped|published)\b|开发了|设计了|训练了|负责过|获得|带领|实现了|发表",
+    re.IGNORECASE,
+)
+_PROGRAMME_WORDS = re.compile(
+    r"visa|permit|stipend|sponsor|business china|\bLOC\b|\bYES\b|months?|weeks?|days?|签证|许可|津贴|"
+    r"补贴|个月|周|天|通商中国|实习计划",
+    re.IGNORECASE,
+)
+
+
+def nonclaim_problem(text: str, *, programme_context: bool) -> str | None:
+    if re.search(r"\d", text):
+        return "nonclaim contains a number; facts must be user_claim or programme_fact with sources"
+    if _CLAIM_VERBS.search(text):
+        return "nonclaim reads as an achievement claim; cite evidence as user_claim"
+    if programme_context and _PROGRAMME_WORDS.search(text):
+        return "nonclaim introduces programme vocabulary; cite an allowed constraint as programme_fact"
     return None
 
 
@@ -184,6 +211,11 @@ def validate_statements(
             bad = [r for r in st.source_refs if r not in allowed]
             if bad:
                 report.rejected.append(Rejection(text, f"constraint ids not allowed here: {', '.join(bad)}"))
+                continue
+        else:
+            problem = nonclaim_problem(text, programme_context=allowed_constraint_ids is not None)
+            if problem:
+                report.rejected.append(Rejection(text, problem))
                 continue
         report.kept.append(Statement(text=text, source_refs=list(st.source_refs), kind=st.kind))
     return report

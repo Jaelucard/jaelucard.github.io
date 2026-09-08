@@ -120,6 +120,17 @@ def fixture_for_prompt(prompt: str) -> str:
     return load_extracted_json("hangzhou_ai_app")
 
 
+@pytest.fixture(autouse=True)
+def _no_real_llm_providers(monkeypatch: pytest.MonkeyPatch):
+    """Every test: a real provider call is a failure, whether or not fake_llm is requested."""
+
+    def _blocked(*_a, **_k):
+        raise AssertionError("test attempted to call a real LLM provider")
+
+    monkeypatch.setattr(llm, "_anthropic_call", _blocked)
+    monkeypatch.setattr(llm, "_ollama_call", _blocked)
+
+
 @pytest.fixture
 def fake_llm(monkeypatch: pytest.MonkeyPatch):
     """Canned provider keyed by prompt name. Other prompts raise unless a test overrides."""
@@ -134,9 +145,6 @@ def fake_llm(monkeypatch: pytest.MonkeyPatch):
         return handler(prompt) if callable(handler) else str(handler)
 
     llm.set_fake_provider(provider)
-    # Belt and braces: any attempt to reach a real provider fails loudly.
-    monkeypatch.setattr(llm, "_anthropic_call", lambda *a, **k: (_ for _ in ()).throw(AssertionError("network")))
-    monkeypatch.setattr(llm, "_ollama_call", lambda *a, **k: (_ for _ in ()).throw(AssertionError("network")))
     yield responses
     llm.set_fake_provider(None)
 

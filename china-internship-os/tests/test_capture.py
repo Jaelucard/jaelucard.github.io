@@ -124,8 +124,10 @@ def test_url_capture_fails_gracefully_without_network(monkeypatch, session, conf
         return httpx.Response(403, request=request, text="forbidden")
 
     monkeypatch.setattr(capture_mod.httpx, "get", fake_get)
-    with pytest.raises(CaptureNeedsPaste, match="HTTP 403"):
+    with pytest.raises(CaptureNeedsPaste) as excinfo:
         capture(None, "https://www.zhipin.com/job/1", "boss", session=session, config=config, today=today)
+    assert excinfo.value.reason == "the page refused the request (HTTP 403)"
+    assert "--paste" in str(excinfo.value)
     assert calls and calls[0][1]["follow_redirects"] is False
     assert calls[0][1]["timeout"] == 10.0
 
@@ -135,11 +137,22 @@ def test_url_capture_fails_gracefully_without_network(monkeypatch, session, conf
         return httpx.Response(200, request=request, text=body)
 
     monkeypatch.setattr(capture_mod.httpx, "get", login_wall)
-    with pytest.raises(CaptureNeedsPaste, match="paste"):
+    with pytest.raises(CaptureNeedsPaste) as excinfo:
         capture(None, "https://example.com/j", "boss", session=session, config=config, today=today)
+    assert excinfo.value.reason == "the page appears to require login"
 
-    with pytest.raises(CaptureNeedsPaste, match="http"):
+    with pytest.raises(CaptureNeedsPaste) as excinfo:
         capture(None, "ftp://example.com/j", "boss", session=session, config=config, today=today)
+    assert excinfo.value.reason == "the URL must start with http:// or https://"
+
+    def redirect_off_scheme(url, **kwargs):
+        request = httpx.Request("GET", url)
+        return httpx.Response(302, request=request, headers={"location": "ftp://internal/x"})
+
+    monkeypatch.setattr(capture_mod.httpx, "get", redirect_off_scheme)
+    with pytest.raises(CaptureNeedsPaste) as excinfo:
+        capture(None, "https://example.com/j", "boss", session=session, config=config, today=today)
+    assert excinfo.value.reason == "a redirect left http/https"
     assert session.scalar(select(func.count()).select_from(Job)) == 0
 
 
@@ -224,3 +237,35 @@ def test_confirmation_to_ineligible_emits_status_change(make_confirmed_job, sess
     kinds = [e.kind for e in job.events]
     assert "status_change" in kinds and kinds.index("status_change") < kinds.index("confirmed")
     assert dedup_keys(["Acme 有限公司"], [None, None], "杭州") == {"acme|<no-title>|杭州"}
+
+
+def test_confirmation_survives_checklist_failure(capture_fixture, session, engine, config, today, fake_llm):
+    job = capture_fixture("hangzhou_ai_app")
+    confirmed, overrides = apply_confirmation(ExtractedJob.model_validate(job.extracted), lambda *a: "a")
+    company = create_company_from_extraction(session, confirmed)
+    # No quality_checklist response is registered, so the checklist call fails.
+    result = finalize_confirmation(session, job, confirmed, company, overrides, config, today=today)
+    assert result.checklist_error and "quality_checklist" in result.checklist_error
+    assert job.quality == "unknown" and job.quality_checklist == []
+    with engine.connect() as conn:
+        row = conn.exec_driver_sql("select confirmed_at, eligibility, company_id from jobs").one()
+    assert row[0] is not None and row[1] == "LIKELY_ELIGIBLE" and row[2] == company.id
+
+
+def test_ollama_model_fallback_rejects_hosted_model_names(config, monkeypatch):
+    from internship_os import llm
+    from internship_os.config import AppConfig
+
+    monkeypatch.delenv("OLLAMA_MODEL", raising=False)
+    for name in ("claude-sonnet-4-6", "gpt-4o", "gemini-2.5-pro"):
+        facts = config.user_facts.model_copy(deep=True)
+        facts.llm.model = name
+        cfg = AppConfig(root=config.root, user_facts=facts, constraints=config.constraints, evidence=config.evidence, cities=config.cities)
+        with pytest.raises(llm.LLMConfigError, match="OLLAMA_MODEL"):
+            llm.ollama_model_name(cfg)
+    facts = config.user_facts.model_copy(deep=True)
+    facts.llm.model = "qwen2.5:7b"
+    cfg = AppConfig(root=config.root, user_facts=facts, constraints=config.constraints, evidence=config.evidence, cities=config.cities)
+    assert llm.ollama_model_name(cfg) == "qwen2.5:7b"
+    monkeypatch.setenv("OLLAMA_MODEL", "llama3")
+    assert llm.ollama_model_name(cfg) == "llama3"
