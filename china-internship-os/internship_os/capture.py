@@ -140,6 +140,8 @@ def fetch_url_text(url: str) -> str:
     response: httpx.Response | None = None
     try:
         for _ in range(MAX_REDIRECTS + 1):
+            if not current.lower().startswith(("http://", "https://")):
+                raise CaptureNeedsPaste("a redirect left http/https")
             response = httpx.get(
                 current, headers=headers, timeout=FETCH_TIMEOUT_SECONDS, follow_redirects=False
             )

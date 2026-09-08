@@ -256,3 +256,18 @@ def test_interview_prep_requires_in_process(session, confirmed_job, config, fake
     assert [r.text for r in result.rejected] == ["EV_BOGUS"]
     assert (result.directory / "interview-prep.md").read_text(encoding="utf-8").count("EV_BOGUS") == 0
     assert pack_dir(confirmed_job, config.root) == result.directory
+
+
+def test_mandarin_claim_cannot_be_extended_and_nonclaims_carry_no_facts(config):
+    from internship_os.drafts import mandarin_problem, nonclaim_problem
+
+    claim = config.user_facts.mandarin_claim_en
+    assert mandarin_problem(f"I have {claim}.", config.user_facts) is None
+    assert mandarin_problem(f"I have {claim} and I am fully fluent in Mandarin technical discussion.", config.user_facts)
+    assert mandarin_problem("我" + config.user_facts.mandarin_claim_zh + "，且中文水平接近母语。", config.user_facts)
+    assert nonclaim_problem("Thank you for your time.", programme_context=False) is None
+    assert nonclaim_problem("I built three production services.", programme_context=False)
+    assert nonclaim_problem("Happy to connect you with my school.", programme_context=True) is None
+    assert nonclaim_problem("The visa takes about two weeks.", programme_context=True)
+    report = validate_statements([Statement(text="I led 5 engineers.", kind="nonclaim")], config)
+    assert report.kept == [] and "number" in report.rejected[0].reason

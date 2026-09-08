@@ -168,6 +168,8 @@ def finalize_confirmation(
                 detail={"from": previous_status, "to": job.status, "reason": "eligibility at confirmation"},
             )
         )
+    # The confirmation is durable before the optional LLM checklist runs.
+    session.commit()
     checklist_error = attempt_quality_checklist(job, config)
     job.quality = Quality.unknown.value if job.quality is None else job.quality
 

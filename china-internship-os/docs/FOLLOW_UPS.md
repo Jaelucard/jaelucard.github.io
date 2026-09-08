@@ -46,3 +46,16 @@ Ideas and deviations recorded during Phase 1. Nothing here is implemented in Pha
 - Skill matching treats a JD skill as covered when any evidence tag matches by exact,
   token, substring (3+ chars) or difflib ratio 0.85. Chinese-only JD skills rarely match the
   English evidence tags, so REQUIRED_SKILL_GAPS fires often; consider Chinese aliases on tags.
+
+## Recorded after the Phase 1 review
+
+- `nonclaim` statements are now rejected deterministically when they contain a digit, an
+  achievement verb, or (in the YES explanation) programme vocabulary. This is a heuristic guard
+  on a model-supplied `kind`, not semantic fact-checking; tune the word lists if legitimate
+  greetings get refused.
+- Mandarin statements are checked after removing the verbatim configured claim, so extra
+  proficiency wording appended to the claim is refused.
+- The Ollama fallback rejects `user_facts.llm.model` names with hosted-vendor prefixes
+  (claude, gpt-, o1/o3/o4, gemini, anthropic/, openai/, google/). Extend the list as needed.
+- Confirmation is committed before the optional quality checklist call so an interrupted
+  LLM call cannot discard a confirmed job.
