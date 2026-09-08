@@ -349,12 +349,10 @@ def _choice(value: str, enum: Any, flag: str) -> str:
         raise typer.Exit(code=2)
 
 
-@job_app.command("show")
-def job_show(ctx: typer.Context, job_id: int) -> None:
-    """Show everything known about one job."""
-    cfg: AppConfig = ctx.obj
-    session = get_session()
-    job = get_job_or_exit(session, job_id)
+def job_show_lines(job: Job, cfg: AppConfig) -> list[str]:
+    """The ``ios job show`` text for one job (also used by the Streamlit page)."""
+    lines: list[str] = []
+    out = lines.append
     company = job.company
     out(f"Job {job.id}")
     out(f"  company:      {company.display_name if company else '(not linked)'}"
@@ -386,8 +384,19 @@ def job_show(ctx: typer.Context, job_id: int) -> None:
         extracted = ExtractedJob.model_validate(job.extracted)
         for name in ExtractedJob.field_names():
             fld = extracted.get(name)
-            if fld.value not in (None, [], "") :
+            if fld.value not in (None, [], ""):
                 out(f"    {name}: {display_value(fld.value)}")
+    return lines
+
+
+@job_app.command("show")
+def job_show(ctx: typer.Context, job_id: int) -> None:
+    """Show everything known about one job."""
+    cfg: AppConfig = ctx.obj
+    session = get_session()
+    job = get_job_or_exit(session, job_id)
+    for line in job_show_lines(job, cfg):
+        out(line)
 
 
 @job_app.command("list")
@@ -677,3 +686,94 @@ def contact_touch(ctx: typer.Context, contact_id: int, next_followup: str = type
     contact.next_followup = when
     session.commit()
     out(f"contact {contact.id} last_contact: {old[0]} -> {contact.last_contact}; next_followup: {old[1]} -> {contact.next_followup}")
+
+
+# ======================================================================================
+# Checkpoint 5: application material
+# ======================================================================================
+
+from internship_os.drafts import (  # noqa: E402
+    DraftError,
+    generate_bullets,
+    generate_interview_prep,
+    generate_messages,
+    write_pack,
+)
+
+
+def _draft_job(session: Session, job_id: int) -> Job:
+    job = get_job_or_exit(session, job_id)
+    if job.confirmed_at is None:
+        err(f"job {job.id} is not confirmed; run 'ios confirm {job.id}' first")
+        raise typer.Exit(code=1)
+    return job
+
+
+@job_app.command("pack")
+def job_pack(ctx: typer.Context, job_id: int) -> None:
+    """Write job.md, fit.md and checklist.md under packs/. No LLM."""
+    cfg: AppConfig = ctx.obj
+    session = get_session()
+    job = _draft_job(session, job_id)
+    try:
+        result = write_pack(job, cfg, today_value())
+    except DraftError as exc:
+        err(str(exc))
+        raise typer.Exit(code=1)
+    for name, content in result.files.items():
+        out(f"===== {result.directory / name} =====")
+        out(content)
+    out(f"wrote {', '.join(result.files)} to {result.directory}")
+
+
+@job_app.command("messages")
+def job_messages(ctx: typer.Context, job_id: int) -> None:
+    """Draft recruiter, referral and YES-explanation messages (zh/en) into messages.md."""
+    cfg: AppConfig = ctx.obj
+    session = get_session()
+    job = _draft_job(session, job_id)
+    try:
+        result = generate_messages(job, cfg, today_value())
+    except (DraftError, LLMError) as exc:
+        err(str(exc))
+        raise typer.Exit(code=1)
+    out(result.content)
+    for r in result.rejected:
+        err(r.line())
+    for key, reason in result.failures.items():
+        err(f"section {key} not generated: {reason}")
+    out(f"wrote messages.md to {result.directory} ({len(result.sections)}/6 sections)")
+
+
+@job_app.command("bullets")
+def job_bullets(ctx: typer.Context, job_id: int) -> None:
+    """Draft 4-6 tailored resume bullets, each ending in a valid evidence id, into bullets.md."""
+    cfg: AppConfig = ctx.obj
+    session = get_session()
+    job = _draft_job(session, job_id)
+    try:
+        result = generate_bullets(job, cfg)
+    except (DraftError, LLMError) as exc:
+        err(str(exc))
+        raise typer.Exit(code=1)
+    out(result.content)
+    for r in result.rejected:
+        err(f"dropped bullet: {r.text} ({r.reason})")
+    out(f"wrote bullets.md to {result.directory} ({len(result.kept)} kept, {len(result.rejected)} dropped)")
+
+
+@job_app.command("interview-prep")
+def job_interview_prep(ctx: typer.Context, job_id: int) -> None:
+    """Draft interview-prep.md. Only for jobs in IN_PROCESS."""
+    cfg: AppConfig = ctx.obj
+    session = get_session()
+    job = _draft_job(session, job_id)
+    try:
+        result = generate_interview_prep(job, cfg)
+    except (DraftError, LLMError) as exc:
+        err(str(exc))
+        raise typer.Exit(code=1)
+    out(result.content)
+    for r in result.rejected:
+        err(f"dropped evidence reference: {r.text} ({r.reason})")
+    out(f"wrote interview-prep.md to {result.directory}")

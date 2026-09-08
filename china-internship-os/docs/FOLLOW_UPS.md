@@ -31,3 +31,18 @@ Ideas and deviations recorded during Phase 1. Nothing here is implemented in Pha
   Consider applying the terminal effect on recompute too.
 - `internship_os/pipeline.py` was added beyond the specified layout to hold the orchestration
   (confirmation finalisation, recompute, transitions) so the CLI and Streamlit page share it.
+
+## Recorded during Checkpoint 5
+
+- Messages are rendered one statement per line with the provenance comment after each line.
+  A joined-paragraph rendering (Chinese without line breaks) may read more naturally; the
+  provenance comments would then need to sit at the end of the paragraph.
+- Recruiter/referral drafts and the YES explanation are two LLM calls. If the YES call fails
+  the four recruiter/referral sections are still written and the YES sections say NOT GENERATED.
+- `tests/test_safety.py` holds the static safety test instead of a module-specific test file,
+  since it spans every module.
+- The Streamlit capture form calls the extraction LLM directly; a duplicate shows the candidate
+  job and offers a single "create as separate job" button, with attach/cancel left to the CLI.
+- Skill matching treats a JD skill as covered when any evidence tag matches by exact,
+  token, substring (3+ chars) or difflib ratio 0.85. Chinese-only JD skills rarely match the
+  English evidence tags, so REQUIRED_SKILL_GAPS fires often; consider Chinese aliases on tags.

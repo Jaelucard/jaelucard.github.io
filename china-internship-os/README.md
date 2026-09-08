@@ -43,6 +43,27 @@ non-zero with `file / key / problem` lines if anything is invalid.
 - `tests/` — pytest suite. Tests use a temporary SQLite database and never call an LLM or the network.
 - `packs/` — generated application material per job (gitignored).
 
+## Commands
+
+Every command validates `config/` first and prints one line per state change (object, old, new).
+
+| Command | What it does | Example output (fixtures) |
+|---|---|---|
+| `ios init` | create tables; copy user_facts from example if absent | `Initialised database: sqlite:///.../db.sqlite` |
+| `ios capture --text-file tests/fixtures/jds/hangzhou_ai_app.txt --source shixiseng` | LLM extraction, every field `confirmed: false` | `Captured job 1: AI应用开发实习生 (status DISCOVERED, next: confirm extraction)` |
+| `ios capture --paste --source boss` / `--url URL` | paste from stdin, or one GET of a public URL (paste fallback) | same |
+| `ios confirm 1` | field-by-field confirmation, company link, eligibility, programme, tiering, quality checklist | `eligibility: LIKELY_ELIGIBLE \| programme: UNKNOWN \| tier: T3` |
+| `ios job show 1` / `ios job list [--tier T1] [--status X] [--track AI] [--city 杭州]` | details / sorted table | |
+| `ios job fit 1 strong` / `ios job quality 1 strong` | manual ratings, tier rerun | `job 1 quality: unknown -> strong; tier: T2 -> T1` |
+| `ios company set 1 --yes-status willing` then `ios recompute` | host status; deterministic recompute, no LLM | `job 1: programme_overall: UNKNOWN -> LIKELY` |
+| `ios job status 1 READY_TO_APPLY --next "submit on 实习僧" --due 2026-09-16` | transition; refused into PROGRAMME_CHECK_REQUIRED while any programme dimension is UNKNOWN or INCOMPATIBLE | `job 1 status: SHORTLISTED -> READY_TO_APPLY` |
+| `ios job approve-sutd 1` / `ios job dates 1 --start 2027-03-01 --months 5` / `ios job note 1 "..."` | manual programme state (survives recompute) | `DURATION_AND_DATES CONFIRMED` |
+| `ios job pack 1` | job.md, fit.md, checklist.md under `packs/` (no LLM) | strengths end with `[EV_...]` |
+| `ios job messages 1` / `ios job bullets 1` / `ios job interview-prep 1` | LLM drafts with provenance validation; unsourced claims and invalid bullets are dropped and reported | `Refused unsourced claim: ...` |
+| `ios contact add --company 1 --name "..." --role HR --channel wechat` / `list` / `touch 1 --next 2026-09-20` | contacts | |
+| `ios timeline [--job 1]` / `ios digest` / `ios constraints` | backward-planned dates; daily digest; constraint table and warnings | `CONTRACT MUST BE SIGNED BY 2027-01-10 (123 days). Placeholders in use: Z_VISA_EMBASSY_LEAD_TIME, ENTRY_PERMIT_LEAD_TIME, LOC_LEAD_TIME` |
+| `streamlit run app.py` | read-mostly dashboard: programme status, jobs, next actions, capture form | |
+
 ## Tests
 
 ```bash
