@@ -192,6 +192,7 @@ def extract_job(text: str, config: AppConfig) -> ExtractedJob:
 
 _WS = re.compile(r"\s+")
 COMPANY_SUFFIXES = ("有限公司", "公司", "科技")
+NO_TITLE_KEY = "<no-title>"
 
 
 def normalise_text(value: str | None) -> str:
@@ -220,9 +221,14 @@ def dedup_keys(
     company_names: Iterable[str | None], titles: Iterable[str | None], city: str | None
 ) -> set[str]:
     companies = {normalise_company(n) for n in company_names if n}
+    companies.discard("")
     names = {normalise_title(t) for t in titles if t}
+    names.discard("")
+    if not names:
+        # No title at all: fall back to a company + city key so the user is still asked.
+        names = {NO_TITLE_KEY}
     city_key = normalise_city(city)
-    return {f"{c}|{t}|{city_key}" for c in companies for t in names if c and t}
+    return {f"{c}|{t}|{city_key}" for c in companies for t in names}
 
 
 def keys_for_extracted(extracted: ExtractedJob) -> set[str]:

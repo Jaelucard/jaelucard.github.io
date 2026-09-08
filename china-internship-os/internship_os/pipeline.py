@@ -157,8 +157,17 @@ def finalize_confirmation(
         company.city_zh = job.city_zh
     session.flush()
 
+    previous_status = job.status
     run_checks(job, config, when)
     apply_eligibility_effect(job, when)
+    if job.status != previous_status:
+        session.add(
+            JobEvent(
+                job_id=job.id,
+                kind=EventKind.status_change.value,
+                detail={"from": previous_status, "to": job.status, "reason": "eligibility at confirmation"},
+            )
+        )
     checklist_error = attempt_quality_checklist(job, config)
     job.quality = Quality.unknown.value if job.quality is None else job.quality
 

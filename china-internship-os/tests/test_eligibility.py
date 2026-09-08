@@ -134,3 +134,11 @@ def test_skill_matching_is_deterministic(config):
     assert "EV_SUTD_COURSEWORK" in skill_matches("network-security", config.evidence)
     assert skill_matches("Rust", config.evidence) == []
     assert skill_matches("C", config.evidence) == ["EV_SUTD_COURSEWORK"]
+
+
+def test_unparseable_user_cohort_is_uncertain_not_ineligible(make_confirmed_job, config, today):
+    facts = config.user_facts.model_copy(deep=True, update={"graduation_cohort": "final year"})
+    job = make_confirmed_job("hangzhou_ai_app")
+    status, reasons = run_eligibility(job, facts, today, evidence=config.evidence)
+    assert status == "UNCERTAIN"
+    assert "USER_COHORT_UNPARSEABLE" in codes(reasons) and "GRADUATION_COHORT_INELIGIBLE" not in codes(reasons)

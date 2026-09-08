@@ -1,6 +1,6 @@
 from datetime import date
 
-from internship_os.tiering import compute_tier, sort_jobs
+from internship_os.tiering import compute_tier, run_tiering, sort_jobs
 
 
 def test_ineligible_is_hold():
@@ -48,8 +48,12 @@ def test_ai_title_does_not_change_tier(make_confirmed_job, config):
     fancy = make_confirmed_job("suzhou_backend", yes_status="willing", title_zh="AI大模型全栈实习生", title_en="AI Engineer Intern")
     for job in (plain, fancy):
         job.eligibility, job.fit, job.quality = "ELIGIBLE", "ok", "ok"
-        job.tier = compute_tier(job.eligibility, job.programme_overall, config.cities.classify(job.city_zh), job.fit, job.quality)
+        job.tier = run_tiering(job, config)
     assert plain.tier == fancy.tier == "T3"
+    for job in (plain, fancy):
+        job.fit = "strong"
+        job.tier = run_tiering(job, config)
+    assert plain.tier == fancy.tier == "T2"
 
 
 def test_research_role_master_required_is_hold_regardless_of_title(make_confirmed_job):

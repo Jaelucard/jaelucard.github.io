@@ -25,7 +25,7 @@ from internship_os import llm
 from internship_os.config import AppConfig
 from internship_os.eligibility import skill_matches
 from internship_os.models import Job
-from internship_os.programme import constraint_warnings
+from internship_os.programme import constraint_warnings, programme_interval
 from internship_os.schemas import ConstraintStatus, ExtractedJob, JobStatus, UserFacts
 from internship_os.timeline import build_timeline, render as render_timeline, top_line
 
@@ -271,8 +271,6 @@ def _user_facts_json(config: AppConfig) -> str:
         "user_facts.exchange.institution": uf.exchange.institution,
         "user_facts.exchange.city": uf.exchange.city,
         "user_facts.internship.intended_start": uf.internship.intended_start.isoformat(),
-        "user_facts.internship.min_months": uf.internship.min_months,
-        "user_facts.internship.max_months": uf.internship.max_months,
     }
     return json.dumps(subset, ensure_ascii=False, indent=1)
 
@@ -434,10 +432,12 @@ def generate_messages(job: Job, config: AppConfig, today: date | None = None) ->
     sections: dict[str, str] = {}
     failures: dict[str, str] = {}
 
+    lo, hi = programme_interval(config.constraints)
     variables = {
         **_job_variables(job, extracted),
         "evidence_json": _evidence_json(config),
         "user_facts_json": _user_facts_json(config),
+        "programme_duration_months": f"{lo} to {hi} months (SUTD_MIN_DURATION, YES_MAX_DURATION)",
         "mandarin_claim_zh": config.user_facts.mandarin_claim_zh,
         "mandarin_claim_en": config.user_facts.mandarin_claim_en,
         "limit_zh": LIMIT_ZH_CHARS,
