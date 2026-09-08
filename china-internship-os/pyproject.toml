@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "china-internship-os"
+version = "0.1.0"
+description = "Local tool for sourcing and tracking a YES-scheme technical internship in China. Nothing is ever sent or submitted by this tool."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "SQLAlchemy>=2.0,<3",
+  "pydantic>=2.6,<3",
+  "PyYAML>=6.0,<7",
+  "typer>=0.12,<1",
+  "rich>=13.7,<15",
+  "streamlit>=1.35,<2",
+  "anthropic>=0.30,<1",
+  "httpx>=0.27,<1",
+  "trafilatura>=1.9,<3",
+  "python-dotenv>=1.0,<2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0,<9"]
+
+[project.scripts]
+ios = "internship_os.cli:app"
+
+[tool.setuptools]
+packages = ["internship_os"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

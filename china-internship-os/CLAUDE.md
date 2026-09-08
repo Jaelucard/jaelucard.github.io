@@ -1,0 +1,22 @@
+# China Internship OS - working rules
+
+- Phase 0 design docs live in docs/phase0/. ARCHITECTURE_RECOMMENDATION.md is the design authority; the Phase 1 prompt overrides it where they differ.
+- Do not edit docs/phase0/ during Phase 1.
+- Programme rules live only in config/programme_constraints.yaml. Never hard-code a programme rule, programme duration, or programme lead-time value.
+- Personal planning buffers may live in user_facts.yaml.
+- LLM output is unconfirmed until the user confirms it. Eligibility, programme and tiering read confirmed extracted fields only.
+- capture.py must force every newly extracted field to confirmed: false regardless of model output.
+- Every generated factual claim about the user cites a skill_evidence id or user_facts key. Invalid or unsourced factual statements are dropped and reported.
+- EV_MINDEF_DB: no digits, ever.
+- Never claim native Mandarin. Use mandarin_claim_zh / mandarin_claim_en verbatim.
+- Nothing is submitted or sent by this tool.
+- No scraping of login-walled sites.
+- Single user-supplied URL GET only, with paste fallback.
+- Never delete jobs or companies; use terminal statuses.
+- config/user_facts.yaml, db.sqlite, db.sqlite-*, .env and packs/ are gitignored.
+- Manual programme state such as SUTD approval and agreed employer dates must survive recompute.
+- ios recompute is deterministic and never calls an LLM.
+- Edit surgically.
+- Run pytest -q before every checkpoint commit.
+- Do not delete or weaken tests to make them pass.
+- Out of scope until told otherwise: collectors, bookmarklet, OCR, job_sources, analytics, autofill, source diffing, browser automation, automatic submission, any JS frontend.

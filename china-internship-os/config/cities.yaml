@@ -1,0 +1,15 @@
+primary:
+  - {zh: 杭州, en: Hangzhou, province: 浙江}
+  - {zh: 上海, en: Shanghai, province: 上海}
+
+secondary:
+  - {zh: 苏州, en: Suzhou, province: 江苏}
+  - {zh: 南京, en: Nanjing, province: 江苏}
+
+expanded:
+  - {zh: 宁波, en: Ningbo, province: 浙江}
+  - {zh: 无锡, en: Wuxi, province: 江苏}
+  - {zh: 嘉兴, en: Jiaxing, province: 浙江}
+
+region_name_zh: 长三角
+region_name_en: Yangtze River Delta

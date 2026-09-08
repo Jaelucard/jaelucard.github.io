@@ -1,0 +1,14 @@
+# personal data stays local
+config/user_facts.yaml
+db.sqlite
+db.sqlite-*
+.env
+packs/
+
+# environment and tooling
+.venv/
+__pycache__/
+.pytest_cache/
+.DS_Store
+*.egg-info/
+build/
