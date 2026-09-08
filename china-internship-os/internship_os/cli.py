@@ -15,6 +15,7 @@ from typing import Any, Optional
 import typer
 from rich.console import Console
 from rich.table import Table
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from internship_os import __version__
@@ -33,7 +34,7 @@ from internship_os.db import database_url, get_engine, get_session, init_db
 from internship_os.llm import LLMError
 from internship_os.models import Company, Job
 from internship_os.pipeline import finalize_confirmation
-from internship_os.schemas import Extracted, ExtractedJob, SourceChannel
+from internship_os.schemas import Extracted, ExtractedJob, SourceChannel, normalise_city
 
 app = typer.Typer(
     help=(
@@ -300,8 +301,291 @@ def _report_confirmation(result: Any) -> None:
     job = result.job
     out(f"Confirmed job {job.id}: {job.display_title} @ {result.company.display_name}")
     out(f"  eligibility: {job.eligibility} | programme: {job.programme_overall} | tier: {job.tier}")
-    out(f"  status: {job.status} | next: {job.next_action} ({job.next_action_date})")
+    out(f"  status: {job.status} | next: {job.next_action or '-'} ({job.next_action_date or '-'})")
     for note in result.notes:
         out(f"  {note}")
     if result.checklist_error:
         out(f"  quality checklist not generated: {result.checklist_error}")
+
+
+# ======================================================================================
+# Checkpoint 3: job / company sub-commands, recompute, constraints
+# ======================================================================================
+
+from internship_os.pipeline import (  # noqa: E402
+    TransitionError,
+    add_note,
+    approve_sutd as approve_sutd_core,
+    recompute_all,
+    set_agreed_dates,
+    set_fit,
+    set_quality,
+    transition,
+    update_company,
+)
+from internship_os.programme import constraint_warnings  # noqa: E402
+from internship_os.schemas import Fit, HostType, JobStatus, Quality, Tier, Track, YesStatus  # noqa: E402
+from internship_os.tiering import city_class_for, sort_jobs  # noqa: E402
+
+job_app = typer.Typer(help="Job commands.", no_args_is_help=True)
+company_app = typer.Typer(help="Company commands.", no_args_is_help=True)
+app.add_typer(job_app, name="job")
+app.add_typer(company_app, name="company")
+
+
+def _parse_date(raw: str, flag: str) -> date:
+    try:
+        return date.fromisoformat(raw)
+    except ValueError:
+        err(f"{flag} must be a date in YYYY-MM-DD form, got {raw!r}")
+        raise typer.Exit(code=2)
+
+
+def _choice(value: str, enum: Any, flag: str) -> str:
+    try:
+        return enum(value).value
+    except ValueError:
+        err(f"{flag} must be one of: {', '.join(m.value for m in enum)}")
+        raise typer.Exit(code=2)
+
+
+@job_app.command("show")
+def job_show(ctx: typer.Context, job_id: int) -> None:
+    """Show everything known about one job."""
+    cfg: AppConfig = ctx.obj
+    session = get_session()
+    job = get_job_or_exit(session, job_id)
+    company = job.company
+    out(f"Job {job.id}")
+    out(f"  company:      {company.display_name if company else '(not linked)'}"
+        + (f" [id {company.id}, host_type {company.host_type}, yes_status {company.yes_status}]" if company else ""))
+    out(f"  title:        {job.title_zh or ''} / {job.title_en or ''}")
+    out(f"  source:       {job.source_channel} {job.source_url or ''}")
+    out(f"  pipeline:     {job.status} | next: {job.next_action or '-'} ({job.next_action_date or '-'})")
+    out(f"  confirmed_at: {job.confirmed_at.isoformat() if job.confirmed_at else 'not confirmed'}")
+    out(f"  city:         {job.city_zh or '-'} (class {city_class_for(job, cfg)}) | track {job.track}")
+    out(f"  deadline:     {job.deadline or '-'} | JD start {job.start_date or '-'} | duration_months {job.duration_months or '-'}")
+    if job.agreed_start_date or job.agreed_duration_months:
+        out(f"  agreed:       start {job.agreed_start_date} for {job.agreed_duration_months} months")
+    if job.sutd_approved_at:
+        out(f"  sutd_approved_at: {job.sutd_approved_at.isoformat()}")
+    out(f"  eligibility:  {job.eligibility}")
+    for reason in job.eligibility_reasons or []:
+        out(f"    - {reason['code']} [{reason['field']}]: {reason['detail']}")
+    out(f"  programme:    {job.programme_overall}")
+    for name, d in (job.programme or {}).items():
+        out(f"    - {name}: {d['status']}" + (f" ({d['note']})" if d.get('note') else ""))
+    out(f"  fit: {job.fit} | quality: {job.quality} | tier: {job.tier} | referral: {job.referral}")
+    if job.quality_checklist:
+        present = [s["signal"] for s in job.quality_checklist if s.get("present") is True]
+        absent = [s["signal"] for s in job.quality_checklist if s.get("present") is False]
+        out(f"  quality checklist present: {', '.join(present) or '-'}")
+        out(f"  quality checklist absent:  {', '.join(absent) or '-'}")
+    if job.extracted:
+        out("  confirmed extraction:" if job.confirmed_at else "  extraction (UNCONFIRMED):")
+        extracted = ExtractedJob.model_validate(job.extracted)
+        for name in ExtractedJob.field_names():
+            fld = extracted.get(name)
+            if fld.value not in (None, [], "") :
+                out(f"    {name}: {display_value(fld.value)}")
+
+
+@job_app.command("list")
+def job_list(
+    ctx: typer.Context,
+    tier: Optional[str] = typer.Option(None, "--tier"),
+    status: Optional[str] = typer.Option(None, "--status"),
+    track: Optional[str] = typer.Option(None, "--track"),
+    city: Optional[str] = typer.Option(None, "--city"),
+) -> None:
+    """List jobs, sorted by tier then the within-tier rules."""
+    cfg: AppConfig = ctx.obj
+    session = get_session()
+    jobs = list(session.scalars(select(Job)))
+    if tier:
+        jobs = [j for j in jobs if j.tier == _choice(tier, Tier, "--tier")]
+    if status:
+        jobs = [j for j in jobs if j.status == _choice(status, JobStatus, "--status")]
+    if track:
+        jobs = [j for j in jobs if j.track == _choice(track, Track, "--track")]
+    if city:
+        wanted = cfg.cities.find(city)
+        jobs = [
+            j for j in jobs
+            if (wanted is not None and wanted.matches(j.city_zh)) or normalise_city(j.city_zh) == normalise_city(city)
+        ]
+    table = Table(title=f"{len(jobs)} job(s)")
+    for col in ("id", "tier", "company", "title", "city", "track", "status", "elig", "programme", "deadline", "next"):
+        table.add_column(col)
+    for j in sort_jobs(jobs, cfg.user_facts):
+        table.add_row(
+            str(j.id), j.tier, j.company.display_name if j.company else "-", j.display_title,
+            j.city_zh or "-", j.track, j.status, j.eligibility, j.programme_overall,
+            str(j.deadline or "-"), f"{j.next_action or '-'} ({j.next_action_date or '-'})",
+        )
+    console.print(table)
+
+
+@job_app.command("fit")
+def job_fit(ctx: typer.Context, job_id: int, value: str) -> None:
+    """Set fit (strong|ok|weak) and rerun tiering."""
+    cfg: AppConfig = ctx.obj
+    session = get_session()
+    job = get_job_or_exit(session, job_id)
+    if value not in ("strong", "ok", "weak"):
+        err("fit must be strong, ok or weak")
+        raise typer.Exit(code=2)
+    old_fit = job.fit
+    old_tier, new_tier = set_fit(session, job, value, cfg)
+    out(f"job {job.id} fit: {old_fit} -> {job.fit}; tier: {old_tier} -> {new_tier}")
+
+
+@job_app.command("quality")
+def job_quality(ctx: typer.Context, job_id: int, value: str) -> None:
+    """Set quality (strong|ok|weak|unknown) and rerun tiering."""
+    cfg: AppConfig = ctx.obj
+    session = get_session()
+    job = get_job_or_exit(session, job_id)
+    value = _choice(value, Quality, "quality")
+    old_quality = job.quality
+    old_tier, new_tier = set_quality(session, job, value, cfg)
+    out(f"job {job.id} quality: {old_quality} -> {job.quality}; tier: {old_tier} -> {new_tier}")
+
+
+@job_app.command("status")
+def job_status(
+    ctx: typer.Context,
+    job_id: int,
+    state: str,
+    next_action: Optional[str] = typer.Option(None, "--next", help="Next action (required for non-terminal states)."),
+    due: Optional[str] = typer.Option(None, "--due", help="Next action date YYYY-MM-DD."),
+    stage: Optional[str] = typer.Option(None, "--stage", help="Free-text stage, stored in the event."),
+    note: Optional[str] = typer.Option(None, "--note"),
+) -> None:
+    """Move a job to a pipeline state. READY_TO_APPLY is gated on programme status."""
+    cfg: AppConfig = ctx.obj
+    session = get_session()
+    job = get_job_or_exit(session, job_id)
+    state = _choice(state, JobStatus, "state")
+    due_date = _parse_date(due, "--due") if due else None
+    try:
+        result = transition(
+            session, job, state, next_action=next_action, due=due_date, stage=stage, note=note,
+            config=cfg, today=today_value(),
+        )
+    except TransitionError as exc:
+        err(str(exc))
+        raise typer.Exit(code=2)
+    if result.refused:
+        out(f"job {job.id} status: {result.previous} -> {result.final} (refused {result.requested}: "
+            f"programme_overall is {job.programme_overall}); next: {job.next_action} ({job.next_action_date})")
+        raise typer.Exit(code=1)
+    for warning in result.warnings:
+        err(f"warning: {warning}")
+    out(f"job {job.id} status: {result.previous} -> {result.final}"
+        + (f"; next: {job.next_action} ({job.next_action_date})" if job.next_action else ""))
+
+
+@job_app.command("approve-sutd")
+def job_approve_sutd(ctx: typer.Context, job_id: int) -> None:
+    """Record explicit SUTD approval of this host and recompute programme and tier."""
+    cfg: AppConfig = ctx.obj
+    session = get_session()
+    job = get_job_or_exit(session, job_id)
+    before = (job.programme_overall, job.tier)
+    approve_sutd_core(session, job, cfg, today_value())
+    out(f"job {job.id} sutd_approved_at: null -> {job.sutd_approved_at.isoformat()}; "
+        f"programme: {before[0]} -> {job.programme_overall}; tier: {before[1]} -> {job.tier}")
+
+
+@job_app.command("dates")
+def job_dates(
+    ctx: typer.Context,
+    job_id: int,
+    start: str = typer.Option(..., "--start", help="Employer-agreed start date YYYY-MM-DD."),
+    months: int = typer.Option(..., "--months", help="Employer-agreed duration in months."),
+) -> None:
+    """Record employer-agreed start and duration. Does not touch the JD-extracted start date."""
+    cfg: AppConfig = ctx.obj
+    session = get_session()
+    job = get_job_or_exit(session, job_id)
+    start_date = _parse_date(start, "--start")
+    old = (job.agreed_start_date, job.agreed_duration_months, job.programme_overall, job.tier)
+    set_agreed_dates(session, job, start_date, months, cfg, today_value())
+    dd = job.programme["DURATION_AND_DATES"]
+    out(f"job {job.id} agreed dates: {old[0]}/{old[1]} -> {start_date}/{months}; "
+        f"DURATION_AND_DATES {dd['status']}; programme: {old[2]} -> {job.programme_overall}; tier: {old[3]} -> {job.tier}")
+    if dd.get("note"):
+        out(f"  {dd['note']}")
+
+
+@job_app.command("note")
+def job_note(ctx: typer.Context, job_id: int, text: str) -> None:
+    """Add a note event to a job."""
+    session = get_session()
+    job = get_job_or_exit(session, job_id)
+    event = add_note(session, job, text)
+    out(f"job {job.id} note event {event.id} added")
+
+
+@company_app.command("set")
+def company_set(
+    ctx: typer.Context,
+    company_id: int,
+    host_type: Optional[str] = typer.Option(None, "--host-type", help="startup|subsidiary|large|mnc|unknown"),
+    yes_status: Optional[str] = typer.Option(None, "--yes-status", help="unknown|listed_on_yes|willing|unwilling|confirmed"),
+    note: Optional[str] = typer.Option(None, "--note"),
+) -> None:
+    """Update a company's host type, YES status or notes. Run 'ios recompute' afterwards."""
+    session = get_session()
+    company = session.get(Company, company_id)
+    if company is None:
+        err(f"company {company_id} does not exist")
+        raise typer.Exit(code=1)
+    if host_type is not None:
+        host_type = _choice(host_type, HostType, "--host-type")
+    if yes_status is not None:
+        yes_status = _choice(yes_status, YesStatus, "--yes-status")
+    if host_type is None and yes_status is None and note is None:
+        err("nothing to set; use --host-type, --yes-status or --note")
+        raise typer.Exit(code=2)
+    changes = update_company(session, company, host_type=host_type, yes_status=yes_status, note=note)
+    for field_name, old, new in changes:
+        out(f"company {company.id} {field_name}: {old!r} -> {new!r}")
+    if yes_status is not None or host_type is not None:
+        out("run 'ios recompute' to refresh programme status and tiers of linked jobs")
+
+
+@app.command()
+def recompute(ctx: typer.Context) -> None:
+    """Rerun eligibility, programme and tiering for every non-terminal confirmed job. No LLM."""
+    cfg: AppConfig = ctx.obj
+    session = get_session()
+    changes = recompute_all(session, cfg, today_value())
+    for job, before, after in changes:
+        diff = [f"{k}: {before[k]} -> {after[k]}" for k in before if before[k] != after[k]]
+        out(f"job {job.id}: " + ("; ".join(diff) if diff else "no change"))
+    out(f"recomputed {len(changes)} job(s)")
+
+
+@app.command()
+def constraints(ctx: typer.Context) -> None:
+    """Show programme constraints and warnings."""
+    cfg: AppConfig = ctx.obj
+    table = Table(title="Programme constraints")
+    for col in ("id", "status", "date_verified", "next_verification", "value"):
+        table.add_column(col)
+    for c in cfg.constraints:
+        value = ""
+        if c.value_months is not None:
+            value = f"{c.value_months} months"
+        elif c.value_days is not None:
+            value = f"{c.value_days} days"
+        elif c.placeholder_days is not None:
+            value = f"placeholder {c.placeholder_days} days"
+        table.add_row(c.constraint_id, c.status.value, str(c.date_verified or "-"), str(c.next_verification_date or "-"), value)
+    console.print(table)
+    warnings = constraint_warnings(cfg.constraints, today_value())
+    out(f"{len(warnings)} warning(s)")
+    for w in warnings:
+        out(f"  - {w}")
