@@ -210,6 +210,12 @@ def duration_and_dates(job: Job, constraints: ProgrammeConstraints, user_facts: 
     except UnconfirmedField as exc:
         return dim(ProgrammeStatus.UNKNOWN, f"unconfirmed: {', '.join(exc.fields)}")
 
+    if start is not None and start < intended:
+        return dim(
+            ProgrammeStatus.AT_RISK,
+            f"JD start {start.isoformat()} is before the intended start {intended.isoformat()}; "
+            "the start may be negotiable.",
+        )
     if dmin is None and dmax is None:
         return dim(
             ProgrammeStatus.UNKNOWN,
@@ -230,12 +236,6 @@ def duration_and_dates(job: Job, constraints: ProgrammeConstraints, user_facts: 
             ProgrammeStatus.AT_RISK,
             f"JD duration {jd_text} months exceeds the YES maximum of {hi} months "
             f"({YES_MAX}={hi}); the minimum may be negotiable with the employer.",
-        )
-    if start is not None and start < intended:
-        return dim(
-            ProgrammeStatus.AT_RISK,
-            f"JD start {start.isoformat()} is before the intended start {intended.isoformat()}; "
-            "the start may be negotiable.",
         )
     return dim(
         ProgrammeStatus.LIKELY,

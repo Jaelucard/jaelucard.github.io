@@ -275,7 +275,7 @@ class UserFacts(StrictModel):
     citizenship: str = Field(min_length=1)
     university: str = Field(min_length=1)
     programme: str = Field(min_length=1)
-    graduation_cohort: str = Field(min_length=1, description="e.g. 2028届")
+    graduation_cohort: str = Field(pattern=r"\d{4}", description="e.g. 2028届; must contain the year")
     expected_graduation: str = Field(pattern=r"^\d{4}-\d{2}$")
     mandarin_level: str = Field(min_length=1)
     mandarin_claim_zh: str = Field(min_length=1)

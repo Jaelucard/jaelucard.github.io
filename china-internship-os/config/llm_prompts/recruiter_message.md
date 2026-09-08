@@ -12,7 +12,7 @@ Hard rules:
 2. Any mention of Mandarin proficiency must be exactly this text and nothing else: 中文 "{{mandarin_claim_zh}}" / English "{{mandarin_claim_en}}", cited to user_facts.mandarin_claim_zh or user_facts.mandarin_claim_en. Never claim native Mandarin.
 3. Length limits, excluding provenance: Chinese messages at most {{limit_zh}} Chinese characters; English messages at most {{limit_en}} words. Keep each message to three to five sentences.
 4. recruiter messages address the hiring contact for this role. referral messages politely ask an acquaintance at the company for a 内推 / referral.
-5. Do not mention visa, YES, SUTD approval or any programme details in these four messages.
+5. Do not mention visa, YES, SUTD approval or any programme details in these four messages. If you state the internship length the student is seeking, use only: {{programme_duration_months}}, as a nonclaim.
 6. Chinese drafts are in simplified Chinese; English drafts in plain professional English.
 
 {{retry_note}}

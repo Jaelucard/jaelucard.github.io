@@ -166,6 +166,8 @@ def test_recompute_preserves_manual_fields(session, make_confirmed_job, config, 
     approved_at = job.sutd_approved_at
     recompute_job(job, config, today)
     changes = recompute_all(session, config, today)
+    session.expire_all()
+    job = session.get(type(job), job.id)
     assert job.sutd_approved_at == approved_at
     assert job.agreed_start_date == date(2027, 3, 1) and job.agreed_duration_months == 6
     assert job.fit == "strong" and job.quality == "strong"
@@ -201,3 +203,14 @@ def test_ready_to_apply_refused_when_any_dimension_unknown_even_if_overall_at_ri
                         config=config, today=today)
     assert not result.refused and job.status == "READY_TO_APPLY"
     assert any("DURATION_AND_DATES" in w for w in result.warnings)
+
+
+def test_early_start_is_at_risk_even_without_duration(make_confirmed_job, config, today):
+    job = make_confirmed_job("hangzhou_ai_app", yes_status="willing", duration_min_months=None,
+                             duration_max_months=None, start_date="2027-01-15")
+    dims, _ = dims_of(job, config, today)
+    assert dims["DURATION_AND_DATES"]["status"] == "AT_RISK"
+    job2 = make_confirmed_job("hangzhou_ai_app", yes_status="willing", duration_min_months=None,
+                              duration_max_months=None, start_date=None)
+    dims2, _ = dims_of(job2, config, today)
+    assert dims2["DURATION_AND_DATES"]["status"] == "UNKNOWN"

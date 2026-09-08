@@ -211,3 +211,16 @@ def test_confirm_cli_accept_all(capture_fixture, engine, project_root):
     assert row[0] is not None and row[1] == "苏州" and row[2] is not None
     result = runner.invoke(app, ["confirm", str(job.id)], input="a\n")
     assert "already confirmed" in result.output
+
+
+def test_confirmation_to_ineligible_emits_status_change(make_confirmed_job, session, config, today):
+    from internship_os.capture import dedup_keys
+    from internship_os.pipeline import apply_eligibility_effect, finalize_confirmation
+
+    job = make_confirmed_job("shanghai_llm_algorithm", run=False)
+    confirmed = ExtractedJob.model_validate(job.extracted)
+    finalize_confirmation(session, job, confirmed, job.company, [], config, today=today)
+    assert job.status == "INELIGIBLE" and job.tier == "HOLD"
+    kinds = [e.kind for e in job.events]
+    assert "status_change" in kinds and kinds.index("status_change") < kinds.index("confirmed")
+    assert dedup_keys(["Acme 有限公司"], [None, None], "杭州") == {"acme|<no-title>|杭州"}

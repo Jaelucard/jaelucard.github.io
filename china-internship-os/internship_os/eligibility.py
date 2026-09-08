@@ -61,7 +61,12 @@ HARD_FAIL_CODES = frozenset(
     }
 )
 UNCERTAIN_CODES = frozenset(
-    {"RESTRICTION_TEXT_PRESENT_REVIEW", "CHINESE_LEVEL_REVIEW", "COHORT_TEXT_UNPARSEABLE"}
+    {
+        "RESTRICTION_TEXT_PRESENT_REVIEW",
+        "CHINESE_LEVEL_REVIEW",
+        "COHORT_TEXT_UNPARSEABLE",
+        "USER_COHORT_UNPARSEABLE",
+    }
 )
 
 # Clearly exclusionary nationality wording. Silence never matches anything here.
@@ -182,7 +187,15 @@ def run_eligibility(
 
     cohort_years: list[int] = v["cohort_years"] or []
     user_year = user_facts.cohort_year
-    if not v["cohort_unrestricted"] and cohort_years and user_year not in cohort_years:
+    if cohort_years and not v["cohort_unrestricted"] and user_year is None:
+        reasons.append(
+            Reason(
+                "USER_COHORT_UNPARSEABLE",
+                "graduation_cohort",
+                f"user_facts.graduation_cohort {user_facts.graduation_cohort!r} has no four-digit year",
+            )
+        )
+    elif not v["cohort_unrestricted"] and cohort_years and user_year not in cohort_years:
         reasons.append(
             Reason(
                 "GRADUATION_COHORT_INELIGIBLE",
