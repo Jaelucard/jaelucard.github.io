@@ -1,0 +1,39 @@
+name: Jarrod Low
+citizenship: Singapore
+university: SUTD
+programme: Computer Science and Design
+graduation_cohort: 2028届
+expected_graduation: 2028-05
+mandarin_level: professional_working_non_native
+mandarin_claim_zh: 中文可作为工作语言（非母语）
+mandarin_claim_en: professional working proficiency in Mandarin (non-native)
+languages: [en, zh, ko]
+github: jaelucard
+linkedin: https://www.linkedin.com/in/jarrod-low/
+
+exchange:
+  institution: Zhejiang University
+  city: 杭州
+  visa_type: X2
+  end_date: 2027-01-15
+
+internship:
+  intended_start: 2027-03-01
+  min_months: 4
+  max_months: 6
+  host_type_preference: [startup, subsidiary, large, mnc, unknown]
+  track_preference: [AI, SWE, other]
+  offer_deadline_personal: 2026-12-11
+
+timeline:
+  buffer_days_travel: 3
+  buffer_days_admin: 5
+
+z_visa_plan: return_to_singapore
+z_visa_issued: false
+prior_yes_participation: false
+
+llm:
+  provider: anthropic
+  model: claude-sonnet-4-6
+  allow_resume_upload_to_api: false

@@ -1,0 +1,160 @@
+- constraint_id: YES_MAX_DURATION
+  statement: A YES internship in China may run for up to 6 months.
+  status: VERIFIED
+  source: https://yes.businesschina.org.sg/
+  source_type: implementing_agency
+  date_verified: 2026-09-07
+  applies_to: all
+  confidence: high
+  notes: Also stated on about-us page and businesschina.org.sg articles.
+  requires_action: null
+  next_verification_date: 2027-01-01
+  value_months: 6
+
+- constraint_id: SUTD_MIN_DURATION
+  statement: SUTD baseline requirement is one 4-month internship; the GII internship runs concurrently with it.
+  status: USER_CONFIRMED
+  source: SUTD, relayed by user 2026-09-07
+  source_type: school
+  date_verified: 2026-09-07
+  applies_to: user
+  confidence: medium
+  notes: Attach written confirmation if available.
+  requires_action: null
+  next_verification_date: 2026-12-01
+  value_months: 4
+
+- constraint_id: YES_ELIGIBILITY_CITIZEN_STUDENT
+  statement: Eligible Singaporean youths are Singapore citizens studying full-time at an autonomous university or polytechnic, or graduated not more than one calendar year before the visa application.
+  status: VERIFIED
+  source: https://yes.businesschina.org.sg/for-companies/
+  source_type: implementing_agency
+  date_verified: 2026-09-07
+  applies_to: user
+  confidence: high
+  notes: null
+  requires_action: null
+  next_verification_date: 2027-01-01
+
+- constraint_id: YES_NO_PRIOR_PARTICIPATION
+  statement: YES excludes youths who have participated in the scheme previously. The user's Oct-Dec 2025 DGIT internship at MolarData was a ZJU-hosted programme element and does not count.
+  status: USER_CONFIRMED
+  source: SUTD and Business China, relayed by user 2026-09-07
+  source_type: school_and_agency
+  date_verified: 2026-09-07
+  applies_to: user
+  confidence: medium
+  notes: Rule itself is VERIFIED on the YES FAQ; the exemption of the DGIT stint is user-relayed.
+  requires_action: attach written confirmation if one exists
+  next_verification_date: 2026-12-01
+
+- constraint_id: HOST_ONBOARDING_ROUTE
+  statement: SUTD and Business China onboard the host company between themselves. The user must obtain an offer from a company not on their blacklist and return to SUTD for instructions. Blacklist checking is handled between the user and SUTD outside this tool.
+  status: USER_CONFIRMED
+  source: SUTD, relayed by user 2026-09-07
+  source_type: school
+  date_verified: 2026-09-07
+  applies_to: all
+  confidence: medium
+  notes: null
+  requires_action: null
+  next_verification_date: 2026-12-01
+
+- constraint_id: HOST_OBLIGATIONS
+  statement: Host provides an appropriate stipend (amount decided by host), a conducive working environment, a designated supervisor or reporting officer with periodic reviews, and feedback to Business China after the stint. Intern bears airfare, insurance and accommodation; medical exam cost is at host discretion.
+  status: VERIFIED
+  source: https://yes.businesschina.org.sg/for-companies/
+  source_type: implementing_agency
+  date_verified: 2026-09-07
+  applies_to: host
+  confidence: high
+  notes: null
+  requires_action: null
+  next_verification_date: 2027-01-01
+
+- constraint_id: Z_VISA_PROCESS_CHAIN
+  statement: Host issues internship contract; school applies for Letter of Confirmation (LOC) from Business China; with the LOC the host applies for an entry permit at the work-permit authority and sends it to the intern; intern applies for the Z visa at the Chinese Embassy in Singapore; on arrival the intern completes a medical check-up; for internships of 90 days or more the intern applies for the Work Permit for Foreigners within 15 days; then applies for a Residence Permit at the local Exit and Entry Administration.
+  status: VERIFIED
+  source: https://yes.businesschina.org.sg/
+  source_type: implementing_agency
+  date_verified: 2026-09-07
+  applies_to: all
+  confidence: high
+  notes: The YES FAQ page still says "internship visa, details to follow"; the process page is more recent and specific and is treated as current.
+  requires_action: null
+  next_verification_date: 2027-01-01
+
+- constraint_id: Z_VISA_ROUTE_USER
+  statement: The user will exit China at the end of the exchange, obtain the Z visa in Singapore, and re-enter to start the internship.
+  status: USER_CONFIRMED
+  source: user plan 2026-09-07
+  source_type: user
+  date_verified: 2026-09-07
+  applies_to: user
+  confidence: medium
+  notes: In-country conversion from X2 is not relied upon.
+  requires_action: null
+  next_verification_date: 2026-12-01
+
+- constraint_id: LOC_LEAD_TIME
+  statement: Typical duration from LOC application to LOC issued, for Zhejiang and Shanghai hosts.
+  status: REQUIRES_CONFIRMATION
+  source: null
+  source_type: null
+  date_verified: null
+  applies_to: all
+  confidence: null
+  notes: Asked Business China 2026-09-08. Placeholder used by the timeline module until answered.
+  requires_action: await reply from YES@businesschina.org.sg
+  next_verification_date: 2026-09-22
+  placeholder_days: 14
+
+- constraint_id: ENTRY_PERMIT_LEAD_TIME
+  statement: Typical duration from host entry-permit application to permit received by intern, for Zhejiang and Shanghai hosts.
+  status: REQUIRES_CONFIRMATION
+  source: null
+  source_type: null
+  date_verified: null
+  applies_to: all
+  confidence: null
+  notes: Varies by provincial or municipal authority. Asked Business China 2026-09-08.
+  requires_action: await reply
+  next_verification_date: 2026-09-22
+  placeholder_days: 21
+
+- constraint_id: Z_VISA_EMBASSY_LEAD_TIME
+  statement: Processing time for a Z visa at the Chinese Visa Application Service Center in Singapore.
+  status: UNVERIFIED
+  source: null
+  source_type: null
+  date_verified: null
+  applies_to: user
+  confidence: null
+  notes: Check the CVASC Singapore website; standard service is commonly a few working days. Placeholder used until checked.
+  requires_action: check CVASC site
+  next_verification_date: 2026-10-01
+  placeholder_days: 7
+
+- constraint_id: HOST_TYPE_PREFERENCE
+  statement: SUTD prefers a startup or a subsidiary of a larger company as host; large companies are permitted as fallback.
+  status: USER_CONFIRMED
+  source: SUTD, relayed by user 2026-09-07
+  source_type: school
+  date_verified: 2026-09-07
+  applies_to: user
+  confidence: medium
+  notes: Preference, not a rule. Used as a sort key, never a gate.
+  requires_action: null
+  next_verification_date: 2026-12-01
+
+- constraint_id: FUNDING_OPTIONS
+  statement: Singaporean interns may apply for Global Ready Talent (Enterprise Singapore) or iPREP (IMDA); those who cannot may apply for Business China stipend matching of up to S$1,000, case by case.
+  status: VERIFIED
+  source: https://yes.businesschina.org.sg/for-companies/
+  source_type: implementing_agency
+  date_verified: 2026-09-07
+  applies_to: user
+  confidence: medium
+  notes: Each programme has its own eligibility and deadlines, not checked.
+  requires_action: check GRT and iPREP pages
+  next_verification_date: 2026-10-15

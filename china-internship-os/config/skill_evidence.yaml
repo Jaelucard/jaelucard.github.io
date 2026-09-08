@@ -1,0 +1,70 @@
+- id: EV_MOLARDATA_CV
+  title: Computer Vision Intern, MolarData, Hangzhou
+  type: internship
+  period: 2025-10 to 2025-12
+  skills: [python, computer_vision, rag, model_training, llm_applications]
+  claims:
+    - Worked on visual computing and trained AI models for RAG-based recognition and decision-making.
+  sources: [user statement]
+  restrictions: Do not state metrics or outcomes not present in claims.
+
+- id: EV_KAGGLE_GENAI_DETECTION
+  title: Kaggle GenAI text detection competition (course project, team of 5)
+  type: competition
+  period: 2025
+  skills: [python, scikit_learn, lightgbm, spacy, classical_ml, adversarial_validation, feature_engineering]
+  claims:
+    - Team placed 1st on the private leaderboard and 4th on the public leaderboard.
+    - "Approach used classical ML only: scikit-learn, LightGBM, spaCy stylometric features, adversarial validation."
+  sources: [user statement]
+  restrictions: Do not describe it as deep learning or LLM work.
+
+- id: EV_LLM_EVALUATOR
+  title: LLM Evaluator, metamorphic testing tool for LLMs
+  type: project
+  period: 2026
+  skills: [python, llm_evaluation, metamorphic_testing, testing, api_integration, developer_tooling]
+  claims:
+    - Designed and built a metamorphic-testing tool for evaluating LLM behaviour.
+  sources: [user statement, GitHub jaelucard]
+  restrictions: Fill in phase status from the user before claiming completeness.
+
+- id: EV_F1_DASHBOARD
+  title: Live F1 timing dashboard
+  type: project
+  period: 2026-08 onward
+  skills: [python, realtime_data, websockets_or_streaming, data_visualisation, frontend, api_integration]
+  claims:
+    - Built a live timing dashboard with track map, leaderboard and team radio using OpenF1 live data.
+  sources: [user statement, GitHub jaelucard]
+  restrictions: null
+
+- id: EV_MINDEF_DB
+  title: Database Management Assistant, MINDEF Singapore
+  type: employment
+  period: 2022-03 to 2024-02
+  skills: [databases, excel_vba, data_management, process_automation]
+  claims:
+    - Maintained a service-injury database and built an Excel VBA workflow to support it.
+  sources: [user statement]
+  restrictions: No figures, counts, or statistics of any kind may appear. Classified under the SAF Act.
+
+- id: EV_SUTD_COURSEWORK
+  title: SUTD Computer Science and Design coursework
+  type: coursework
+  period: 2024 onward
+  skills: [c, python, data_structures_algorithms, networking, network_security, systems_design, software_engineering]
+  claims:
+    - Coursework in C, Python, algorithms, networking, network security (50.005), and systems design.
+  sources: [user statement]
+  restrictions: Do not cite grades.
+
+- id: EV_LANGUAGES
+  title: Languages
+  type: user_fact
+  period: null
+  skills: [english, mandarin, korean]
+  claims:
+    - Speaks English, Mandarin (professional working proficiency, non-native) and Korean.
+  sources: [user_facts.yaml]
+  restrictions: Never claim native Mandarin.
