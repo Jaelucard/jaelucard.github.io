@@ -74,3 +74,79 @@ def engine(project_root: Path):
 def session(engine) -> Session:
     with Session(engine, expire_on_commit=False) as s:
         yield s
+
+
+# --------------------------------------------------------------------------------------
+# Fake LLM. No test may contact Anthropic, Ollama or the network.
+# --------------------------------------------------------------------------------------
+
+import json  # noqa: E402
+import re  # noqa: E402
+
+from internship_os import llm  # noqa: E402
+from internship_os.config import AppConfig as _AppConfig  # noqa: E402
+from internship_os.schemas import ExtractedJob  # noqa: E402
+
+FIXTURE_NAMES = ("hangzhou_ai_app", "shanghai_llm_algorithm", "suzhou_backend")
+_JD_BLOCK = re.compile(r"<jd>\n(.*?)\n</jd>", re.DOTALL)
+
+
+def load_jd(name: str) -> str:
+    return (FIXTURES_DIR / "jds" / f"{name}.txt").read_text(encoding="utf-8")
+
+
+def load_extracted_json(name: str) -> str:
+    return (FIXTURES_DIR / "extracted" / f"{name}.json").read_text(encoding="utf-8")
+
+
+def load_extracted(name: str, *, confirmed: bool = False) -> ExtractedJob:
+    data = json.loads(load_extracted_json(name))
+    if confirmed:
+        for field in data.values():
+            field["confirmed"] = True
+    return ExtractedJob.model_validate(data)
+
+
+def fixture_for_prompt(prompt: str) -> str:
+    """Pick the canned extraction whose JD text is inside the rendered prompt's <jd> block."""
+    match = _JD_BLOCK.search(prompt)
+    jd_text = match.group(1) if match else prompt
+    for name in FIXTURE_NAMES:
+        if load_jd(name).strip() == jd_text.strip():
+            return load_extracted_json(name)
+    for key, name in (("苏州", "suzhou_backend"), ("上海", "shanghai_llm_algorithm")):
+        if key in jd_text:
+            return load_extracted_json(name)
+    return load_extracted_json("hangzhou_ai_app")
+
+
+@pytest.fixture
+def fake_llm(monkeypatch: pytest.MonkeyPatch):
+    """Canned provider keyed by prompt name. Other prompts raise unless a test overrides."""
+    responses: dict[str, object] = {}
+
+    def provider(prompt_name: str, prompt: str) -> str:
+        handler = responses.get(prompt_name)
+        if handler is None:
+            if prompt_name == "extract_job":
+                return fixture_for_prompt(prompt)
+            raise AssertionError(f"no fake response registered for prompt {prompt_name}")
+        return handler(prompt) if callable(handler) else str(handler)
+
+    llm.set_fake_provider(provider)
+    # Belt and braces: any attempt to reach a real provider fails loudly.
+    monkeypatch.setattr(llm, "_anthropic_call", lambda *a, **k: (_ for _ in ()).throw(AssertionError("network")))
+    monkeypatch.setattr(llm, "_ollama_call", lambda *a, **k: (_ for _ in ()).throw(AssertionError("network")))
+    yield responses
+    llm.set_fake_provider(None)
+
+
+@pytest.fixture
+def capture_fixture(session, config: _AppConfig, fake_llm, today):
+    """Capture one of the three JD fixtures through the real capture path with the fake LLM."""
+    from internship_os.capture import capture
+
+    def _capture(name: str, source: str = "shixiseng", url: str | None = None, **kwargs):
+        return capture(load_jd(name), url, source, session=session, config=config, today=today, **kwargs)
+
+    return _capture

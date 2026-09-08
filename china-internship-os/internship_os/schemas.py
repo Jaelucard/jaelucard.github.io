@@ -463,3 +463,197 @@ class CitiesConfig(StrictModel):
         return None
 
 
+
+
+# --------------------------------------------------------------------------------------
+# Extraction schema (Checkpoint 2). Every field is wrapped in ``Extracted`` and starts
+# ``confirmed: false``. capture.py forces that regardless of what the model returned.
+# --------------------------------------------------------------------------------------
+
+from typing import Generic, TypeVar  # noqa: E402
+
+T = TypeVar("T")
+
+
+class InternshipType(StrEnum):
+    daily = "日常实习"
+    summer = "暑期实习"
+    winter = "寒假实习"
+    campus = "校招实习"
+    conversion = "转正实习"
+    retention = "留用实习"
+    international = "留学生实习"
+    long_term = "长期实习"
+    short_term = "短期实习"
+    unknown = "unknown"
+
+
+class Degree(StrEnum):
+    none_stated = "none_stated"
+    bachelor = "bachelor"
+    master = "master"
+    phd = "phd"
+
+
+class ChineseLevel(StrEnum):
+    none_stated = "none_stated"
+    basic = "basic"
+    working = "working"
+    fluent = "fluent"
+    native = "native"
+
+
+class ResearchSignal(StrEnum):
+    master_required = "master_required"
+    phd_preferred = "phd_preferred"
+    publications = "publications"
+    cuda = "cuda"
+    large_scale_training = "large_scale_training"
+    deep_math_ml = "deep_math_ml"
+
+
+class Extracted(BaseModel, Generic[T]):
+    """One extracted field: value, whether the user confirmed it, and the verbatim JD span."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    value: T | None = None
+    confirmed: bool = False
+    source_span: str | None = None
+
+
+class UnconfirmedField(Exception):
+    """A deterministic module asked for a field the user has not confirmed."""
+
+    def __init__(self, fields: list[str]):
+        self.fields = fields
+        super().__init__("unconfirmed extracted field(s): " + ", ".join(fields))
+
+
+# Fields whose ``None`` means "absent" and which therefore carry a sentinel with no span.
+_SENTINEL_DEFAULTS: dict[str, Any] = {
+    "internship_type": InternshipType.unknown,
+    "cohort_years": [],
+    "cohort_unrestricted": False,
+    "degree_required": Degree.none_stated,
+    "degree_preferred": Degree.none_stated,
+    "required_skills": [],
+    "preferred_skills": [],
+    "chinese_required_level": ChineseLevel.none_stated,
+    "role_closed": False,
+    "track_guess": Track.unknown,
+    "research_signals": [],
+}
+
+
+class ExtractedJob(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    company_name_zh: Extracted[str]
+    company_name_en: Extracted[str]
+    title_zh: Extracted[str]
+    title_en: Extracted[str]
+    city_zh: Extracted[str]
+    district: Extracted[str]
+    internship_type: Extracted[InternshipType]
+    graduation_cohort_text: Extracted[str]
+    cohort_years: Extracted[list[int]]
+    cohort_unrestricted: Extracted[bool]
+    degree_required: Extracted[Degree]
+    degree_preferred: Extracted[Degree]
+    major_requirement: Extracted[str]
+    days_per_week_min: Extracted[int]
+    duration_min_months: Extracted[int]
+    duration_max_months: Extracted[int]
+    start_date_text: Extracted[str]
+    start_date: Extracted[date]
+    deadline: Extracted[date]
+    salary_text: Extracted[str]
+    required_skills: Extracted[list[str]]
+    preferred_skills: Extracted[list[str]]
+    language_requirement: Extracted[str]
+    chinese_required_level: Extracted[ChineseLevel]
+    nationality_or_work_auth_restriction: Extracted[str]
+    role_closed: Extracted[bool]
+    application_method: Extracted[str]
+    referral_info: Extracted[str]
+    responsibilities_summary: Extracted[str]
+    track_guess: Extracted[Track]
+    research_signals: Extracted[list[ResearchSignal]]
+
+    @model_validator(mode="after")
+    def _fill_sentinels(self) -> "ExtractedJob":
+        for name, sentinel in _SENTINEL_DEFAULTS.items():
+            field: Extracted[Any] = getattr(self, name)
+            if field.value is None:
+                field.value = sentinel
+                field.source_span = None
+        return self
+
+    # -- helpers used by capture, confirmation and the deterministic modules ------------
+
+    @classmethod
+    def field_names(cls) -> list[str]:
+        return list(cls.model_fields)
+
+    @classmethod
+    def inner_type(cls, name: str) -> Any:
+        """The ``T`` in ``Extracted[T]`` for ``name``."""
+        annotation = cls.model_fields[name].annotation
+        return annotation.__pydantic_generic_metadata__["args"][0]  # type: ignore[union-attr]
+
+    def get(self, name: str) -> Extracted[Any]:
+        return getattr(self, name)
+
+    def unconfirmed_fields(self) -> list[str]:
+        return [n for n in self.field_names() if not self.get(n).confirmed]
+
+    @property
+    def all_confirmed(self) -> bool:
+        return not self.unconfirmed_fields()
+
+    def confirmed_value(self, name: str) -> Any:
+        """Value of ``name`` only if the user confirmed it; raises otherwise."""
+        field = self.get(name)
+        if not field.confirmed:
+            raise UnconfirmedField([name])
+        return field.value
+
+    def require_confirmed(self, names: list[str]) -> None:
+        missing = [n for n in names if not self.get(n).confirmed]
+        if missing:
+            raise UnconfirmedField(missing)
+
+
+EXTRACTED_KEYS = frozenset({"value", "confirmed", "source_span"})
+
+
+def force_unconfirmed(data: Any) -> Any:
+    """Recursively set ``confirmed: false`` on every extracted-field dict in ``data``."""
+    if isinstance(data, dict):
+        out = {k: force_unconfirmed(v) for k, v in data.items()}
+        if EXTRACTED_KEYS <= set(out):
+            out["confirmed"] = False
+        return out
+    if isinstance(data, list):
+        return [force_unconfirmed(v) for v in data]
+    return data
+
+
+# --------------------------------------------------------------------------------------
+# Quality checklist schema (Checkpoint 3)
+# --------------------------------------------------------------------------------------
+
+
+class QualitySignal(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    signal: str
+    present: bool | None
+    note: str | None = None
+
+
+class QualityChecklist(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    signals: list[QualitySignal]
