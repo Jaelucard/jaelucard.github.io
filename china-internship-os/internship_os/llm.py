@@ -151,11 +151,14 @@ def _anthropic_call(prompt: str, model: str, root: Path) -> ProviderResult:
     import anthropic  # imported lazily so tests never need the SDK configured
 
     client = anthropic.Anthropic(api_key=api_key)
-    response = client.messages.create(
-        model=model,
-        max_tokens=MAX_OUTPUT_TOKENS,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    try:
+        response = client.messages.create(
+            model=model,
+            max_tokens=MAX_OUTPUT_TOKENS,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except anthropic.APIError as exc:
+        raise LLMError(f"Anthropic API call failed ({type(exc).__name__}): {exc}") from exc
     text = "".join(getattr(block, "text", "") for block in response.content)
     if getattr(response, "stop_reason", None) == "max_tokens":
         raise LLMResponseError(
