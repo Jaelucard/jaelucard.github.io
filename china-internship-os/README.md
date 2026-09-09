@@ -10,11 +10,11 @@ you to review and send yourself.
 
 ## Setup
 
-Requires Python 3.12.
+Requires Python 3.12 or 3.13.
 
 ```bash
 cd china-internship-os
-python3.12 -m venv .venv           # Windows: py -3.12 -m venv .venv
+python3 -m venv .venv              # any Python 3.12 or 3.13; Windows: py -3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 cp .env.example .env               # Windows: copy .env.example .env  (then fill in ANTHROPIC_API_KEY)
