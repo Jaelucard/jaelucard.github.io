@@ -1,4 +1,3 @@
-from datetime import date
 
 from internship_os.eligibility import run_eligibility, skill_matches
 

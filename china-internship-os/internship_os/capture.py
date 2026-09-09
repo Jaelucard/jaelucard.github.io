@@ -19,7 +19,8 @@ import re
 from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
-from typing import Any, Callable, Iterable, get_args, get_origin
+from typing import Any, get_args, get_origin
+from collections.abc import Callable, Iterable
 
 import httpx
 import trafilatura

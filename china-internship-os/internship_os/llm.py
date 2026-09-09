@@ -17,7 +17,8 @@ import re
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Iterator
+from typing import Any
+from collections.abc import Callable, Iterator
 
 import httpx
 from dotenv import load_dotenv
@@ -31,7 +32,7 @@ log = logging.getLogger("internship_os.llm")
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL_ENV = "OLLAMA_MODEL"
 ANTHROPIC_KEY_ENV = "ANTHROPIC_API_KEY"
-MAX_OUTPUT_TOKENS = 4096
+MAX_OUTPUT_TOKENS = 16000
 RESUME_VARIABLE = "resume_text"
 HOSTED_MODEL_PREFIXES = ("claude", "anthropic/", "gpt-", "o1", "o3", "o4", "openai/", "gemini", "google/")
 
@@ -156,6 +157,12 @@ def _anthropic_call(prompt: str, model: str, root: Path) -> ProviderResult:
         messages=[{"role": "user", "content": prompt}],
     )
     text = "".join(getattr(block, "text", "") for block in response.content)
+    if getattr(response, "stop_reason", None) == "max_tokens":
+        raise LLMResponseError(
+            f"the model reply was cut off at {MAX_OUTPUT_TOKENS} output tokens; shorten the input"
+        )
+    if getattr(response, "stop_reason", None) == "refusal":
+        raise LLMResponseError("the model declined this request (stop_reason=refusal)")
     usage = getattr(response, "usage", None)
     return ProviderResult(
         text=text,

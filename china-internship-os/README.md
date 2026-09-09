@@ -14,12 +14,16 @@ Requires Python 3.12.
 
 ```bash
 cd china-internship-os
-python3.12 -m venv .venv
+python3.12 -m venv .venv           # Windows: py -3.12 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-cp .env.example .env               # fill in ANTHROPIC_API_KEY or OLLAMA_MODEL
+cp .env.example .env               # Windows: copy .env.example .env  (then fill in ANTHROPIC_API_KEY)
 ios init
 ```
+
+Run every `ios` command from this directory (it looks for `config/` and `db.sqlite` in the current
+directory unless `IOS_ROOT` is set). On Windows, `ios capture --paste` ends input with Ctrl-Z then
+Enter on an empty line; on macOS/Linux with Ctrl-D.
 
 `ios init` creates `db.sqlite` in the current directory and, if `config/user_facts.yaml` is absent,
 copies `config/user_facts.example.yaml` to it. An existing `user_facts.yaml` is never overwritten.

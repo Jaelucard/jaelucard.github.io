@@ -11,7 +11,7 @@ Jobs and companies are never deleted; closed or rejected items receive terminal 
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, UTC
 from enum import StrEnum
 from typing import Any
 
@@ -54,7 +54,7 @@ from internship_os.schemas import (
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class UTCDateTime(TypeDecorator[datetime]):
@@ -68,12 +68,12 @@ class UTCDateTime(TypeDecorator[datetime]):
             return None
         if value.tzinfo is None:
             raise ValueError("naive datetime rejected; use a timezone-aware UTC datetime")
-        return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value.astimezone(UTC).replace(tzinfo=None)
 
     def process_result_value(self, value: datetime | None, dialect: Any) -> datetime | None:
         if value is None:
             return None
-        return value.replace(tzinfo=timezone.utc)
+        return value.replace(tzinfo=UTC)
 
 
 class InvariantError(ValueError):
@@ -143,8 +143,8 @@ class Company(Base):
         UTCDateTime, nullable=False, default=utcnow, onupdate=utcnow
     )
 
-    jobs: Mapped[list["Job"]] = relationship(back_populates="company")
-    contacts: Mapped[list["Contact"]] = relationship(back_populates="company")
+    jobs: Mapped[list[Job]] = relationship(back_populates="company")
+    contacts: Mapped[list[Contact]] = relationship(back_populates="company")
 
     def __init__(self, **kwargs: Any):
         kwargs.setdefault("host_type", HostType.unknown.value)
@@ -208,7 +208,7 @@ class Job(Base):
     )
 
     company: Mapped[Company | None] = relationship(back_populates="jobs")
-    events: Mapped[list["JobEvent"]] = relationship(
+    events: Mapped[list[JobEvent]] = relationship(
         back_populates="job", order_by="JobEvent.at", cascade="all"
     )
 
@@ -289,7 +289,7 @@ class JobEvent(Base):
     contact_id: Mapped[int | None] = mapped_column(ForeignKey("contacts.id"))
 
     job: Mapped[Job] = relationship(back_populates="events")
-    contact: Mapped["Contact | None"] = relationship()
+    contact: Mapped[Contact | None] = relationship()
 
     @validates("kind")
     def _v_kind(self, _key: str, value: Any) -> str:
