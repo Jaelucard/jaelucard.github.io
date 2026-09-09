@@ -169,6 +169,7 @@ if submitted:
     else:
         try:
             job = capture_mod.capture(text, None, source, session=session, config=cfg, today=today)
+            st.session_state.pop("pending_duplicate", None)
             st.success(f"Captured job {job.id}.")
             st.code(f"ios confirm {job.id}", language=None)
         except capture_mod.DuplicateCaptureNeedsDecision as dup:

@@ -24,6 +24,7 @@ from internship_os.capture import (
     CaptureError,
     CaptureNeedsPaste,
     DuplicateCaptureNeedsDecision,
+    Override,
     apply_confirmation,
     attach_to_existing,
     capture as capture_core,
@@ -39,7 +40,7 @@ from internship_os.schemas import Extracted, ExtractedJob, SourceChannel, normal
 
 def _force_utf8_streams() -> None:
     """Chinese output must survive Windows consoles and redirected output."""
-    for stream in (sys.stdin, sys.stdout, sys.stderr):
+    for stream in (sys.stdout, sys.stderr):
         reconfigure = getattr(stream, "reconfigure", None)
         if reconfigure is not None and (getattr(stream, "encoding", "") or "").lower().replace("-", "") != "utf8":
             try:
@@ -137,6 +138,22 @@ PASTE_FINISH_HINT = (
 )
 
 
+def read_jd_file(path: Path) -> str:
+    """Read a JD saved as UTF-8 (with or without BOM); fall back to GB18030 for files saved as ANSI on a Chinese Windows."""
+    data = path.read_bytes()
+    try:
+        return data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        pass
+    try:
+        text = data.decode("gb18030")
+    except UnicodeDecodeError:
+        err(f"{path} is neither UTF-8 nor GB18030; re-save it as UTF-8")
+        raise typer.Exit(code=1) from None
+    err(f"note: {path} was not UTF-8; decoded it as GB18030")
+    return text
+
+
 @app.command()
 def capture(
     ctx: typer.Context,
@@ -162,7 +179,7 @@ def capture(
         if not text_file.exists():
             err(f"file not found: {text_file}")
             raise typer.Exit(code=1)
-        text = text_file.read_text(encoding="utf-8")
+        text = read_jd_file(text_file)
     elif paste:
         err(PASTE_FINISH_HINT)
         text = sys.stdin.read()
@@ -278,7 +295,22 @@ def confirm(ctx: typer.Context, job_id: int) -> None:
         return console.input(f"{name} [{display_value(fld.value)}]: ", markup=False)
 
     confirmed, overrides = apply_confirmation(extracted, decide)
-    company = _choose_company(session, confirmed)
+    if not (confirmed.company_name_zh.value or confirmed.company_name_en.value):
+        out("No company name was confirmed. Enter the company name (Chinese or English), or leave blank to abort:")
+        name = console.input("Company name: ", markup=False).strip()
+        if not name:
+            err("aborted: a company name is required; run ios confirm again")
+            raise typer.Exit(code=1)
+        target = "company_name_zh" if any("\u4e00" <= ch <= "\u9fff" for ch in name) else "company_name_en"
+        fld = confirmed.get(target)
+        overrides.append(Override(target, fld.value, name))
+        fld.value = name
+        fld.source_span = None
+    try:
+        company = _choose_company(session, confirmed)
+    except CaptureError as exc:
+        err(str(exc))
+        raise typer.Exit(code=1) from None
     result = finalize_confirmation(
         session, job, confirmed, company, overrides, cfg, today=today_value()
     )
@@ -483,9 +515,9 @@ def job_status(
     job_id: int,
     state: str,
     next_action: Optional[str] = typer.Option(None, "--next", help="Next action (required for non-terminal states)."),
-    due: Optional[str] = typer.Option(None, "--due", help="Next action date YYYY-MM-DD."),
+    due: Optional[str] = typer.Option(None, "--due", help="Next action date YYYY-MM-DD (required for non-terminal states)."),
     stage: Optional[str] = typer.Option(None, "--stage", help="Free-text stage, stored in the event."),
-    note: Optional[str] = typer.Option(None, "--note"),
+    note: Optional[str] = typer.Option(None, "--note", help="Note stored in the event (required when moving to INELIGIBLE)."),
 ) -> None:
     """Move a job to a pipeline state. READY_TO_APPLY is gated on programme status."""
     cfg: AppConfig = ctx.obj

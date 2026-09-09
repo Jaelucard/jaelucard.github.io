@@ -459,7 +459,7 @@ def apply_confirmation(
         error: str | None = None
         while True:
             raw = decide(name, field, error)
-            if raw == ACCEPT:
+            if raw.strip() == ACCEPT:
                 field.confirmed = True
                 break
             if raw.strip() == ACCEPT_ALL:

@@ -49,7 +49,7 @@ Worked example. JD:
 要求：2027届本科及以上；熟悉Go或Java；每周至少3天，实习不少于3个月。
 薪资：250元/天
 
-Correct output (abbreviated to the fields that are set; every other field has value null, confirmed false, source_span null, and sentinel fields carry their sentinel):
+Correct output. This example omits some keys for brevity, but YOUR output must contain all 31 keys of the schema, each as a {value, confirmed, source_span} object; unstated fields have value null (or their sentinel), confirmed false and source_span null:
 
 {"company_name_zh": {"value": "上海某某科技有限公司", "confirmed": false, "source_span": "上海某某科技有限公司"},
  "title_zh": {"value": "后端开发实习生", "confirmed": false, "source_span": "后端开发实习生"},

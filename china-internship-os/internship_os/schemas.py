@@ -238,16 +238,16 @@ class ExchangeFacts(StrictModel):
     institution: str
     city: str
     visa_type: str
-    end_date: date
+    end_date: _lax(date)
 
 
 class InternshipFacts(StrictModel):
-    intended_start: date
+    intended_start: _lax(date)
     min_months: int = Field(ge=1)
     max_months: int = Field(ge=1)
     host_type_preference: list[_lax(HostType)] = Field(min_length=1)
     track_preference: list[_lax(Track)] = Field(min_length=1)
-    offer_deadline_personal: date
+    offer_deadline_personal: _lax(date)
 
     @model_validator(mode="after")
     def _months_ordered(self) -> InternshipFacts:
@@ -309,12 +309,12 @@ class ProgrammeConstraint(StrictModel):
     status: _lax(ConstraintStatus)
     source: str | None
     source_type: str | None
-    date_verified: date | None
+    date_verified: _lax(date | None)
     applies_to: str = Field(min_length=1)
     confidence: str | None
     notes: str | None
     requires_action: str | None
-    next_verification_date: date | None
+    next_verification_date: _lax(date | None)
     value_months: int | None = Field(default=None, ge=0)
     placeholder_days: int | None = Field(default=None, ge=0)
     value_days: int | None = Field(default=None, ge=0)
@@ -549,37 +549,37 @@ _SENTINEL_DEFAULTS: dict[str, Any] = {
 class ExtractedJob(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    company_name_zh: Extracted[str]
-    company_name_en: Extracted[str]
-    title_zh: Extracted[str]
-    title_en: Extracted[str]
-    city_zh: Extracted[str]
-    district: Extracted[str]
-    internship_type: Extracted[InternshipType]
-    graduation_cohort_text: Extracted[str]
-    cohort_years: Extracted[list[int]]
-    cohort_unrestricted: Extracted[bool]
-    degree_required: Extracted[Degree]
-    degree_preferred: Extracted[Degree]
-    major_requirement: Extracted[str]
-    days_per_week_min: Extracted[int]
-    duration_min_months: Extracted[int]
-    duration_max_months: Extracted[int]
-    start_date_text: Extracted[str]
-    start_date: Extracted[date]
-    deadline: Extracted[date]
-    salary_text: Extracted[str]
-    required_skills: Extracted[list[str]]
-    preferred_skills: Extracted[list[str]]
-    language_requirement: Extracted[str]
-    chinese_required_level: Extracted[ChineseLevel]
-    nationality_or_work_auth_restriction: Extracted[str]
-    role_closed: Extracted[bool]
-    application_method: Extracted[str]
-    referral_info: Extracted[str]
-    responsibilities_summary: Extracted[str]
-    track_guess: Extracted[Track]
-    research_signals: Extracted[list[ResearchSignal]]
+    company_name_zh: Extracted[str] = Field(default_factory=Extracted)
+    company_name_en: Extracted[str] = Field(default_factory=Extracted)
+    title_zh: Extracted[str] = Field(default_factory=Extracted)
+    title_en: Extracted[str] = Field(default_factory=Extracted)
+    city_zh: Extracted[str] = Field(default_factory=Extracted)
+    district: Extracted[str] = Field(default_factory=Extracted)
+    internship_type: Extracted[InternshipType] = Field(default_factory=Extracted)
+    graduation_cohort_text: Extracted[str] = Field(default_factory=Extracted)
+    cohort_years: Extracted[list[int]] = Field(default_factory=Extracted)
+    cohort_unrestricted: Extracted[bool] = Field(default_factory=Extracted)
+    degree_required: Extracted[Degree] = Field(default_factory=Extracted)
+    degree_preferred: Extracted[Degree] = Field(default_factory=Extracted)
+    major_requirement: Extracted[str] = Field(default_factory=Extracted)
+    days_per_week_min: Extracted[int] = Field(default_factory=Extracted)
+    duration_min_months: Extracted[int] = Field(default_factory=Extracted)
+    duration_max_months: Extracted[int] = Field(default_factory=Extracted)
+    start_date_text: Extracted[str] = Field(default_factory=Extracted)
+    start_date: Extracted[date] = Field(default_factory=Extracted)
+    deadline: Extracted[date] = Field(default_factory=Extracted)
+    salary_text: Extracted[str] = Field(default_factory=Extracted)
+    required_skills: Extracted[list[str]] = Field(default_factory=Extracted)
+    preferred_skills: Extracted[list[str]] = Field(default_factory=Extracted)
+    language_requirement: Extracted[str] = Field(default_factory=Extracted)
+    chinese_required_level: Extracted[ChineseLevel] = Field(default_factory=Extracted)
+    nationality_or_work_auth_restriction: Extracted[str] = Field(default_factory=Extracted)
+    role_closed: Extracted[bool] = Field(default_factory=Extracted)
+    application_method: Extracted[str] = Field(default_factory=Extracted)
+    referral_info: Extracted[str] = Field(default_factory=Extracted)
+    responsibilities_summary: Extracted[str] = Field(default_factory=Extracted)
+    track_guess: Extracted[Track] = Field(default_factory=Extracted)
+    research_signals: Extracted[list[ResearchSignal]] = Field(default_factory=Extracted)
 
     @model_validator(mode="after")
     def _fill_sentinels(self) -> ExtractedJob:

@@ -273,3 +273,61 @@ def test_ollama_model_fallback_rejects_hosted_model_names(config, monkeypatch):
     assert llm.ollama_model_name(cfg) == "qwen2.5:7b"
     monkeypatch.setenv("OLLAMA_MODEL", "llama3")
     assert llm.ollama_model_name(cfg) == "llama3"
+
+
+def test_first_run_hardening(project_root, session, capture_fixture, fake_llm, config, monkeypatch, today):
+    import json as _json
+
+    from internship_os import llm as llm_mod
+    from internship_os.cli import read_jd_file
+    from internship_os.config import load_config
+    from tests.conftest import ORIGINAL_ANTHROPIC_CALL
+
+    # GBK-saved JD files decode instead of crashing.
+    gbk = project_root / "gbk.txt"
+    gbk.write_bytes("杭州 实习 岗位职责".encode("gb18030"))
+    assert read_jd_file(gbk).startswith("杭州")
+    bom = project_root / "bom.txt"
+    bom.write_bytes("\ufeff杭州".encode("utf-8"))
+    assert read_jd_file(bom) == "杭州"
+
+    # A missing extraction key is harmless: it becomes an unconfirmed null/sentinel field.
+    data = _json.loads(load_extracted_json("hangzhou_ai_app"))
+    del data["district"]
+    del data["degree_required"]
+    fake_llm["extract_job"] = _json.dumps(data, ensure_ascii=False)
+    job = capture(load_jd("hangzhou_ai_app"), None, "boss", session=session, config=config, today=today)
+    extracted = ExtractedJob.model_validate(job.extracted)
+    assert extracted.district.value is None and extracted.degree_required.value == "none_stated"
+    assert not extracted.district.confirmed
+
+    # A stray space on Enter confirms rather than overriding with an empty string.
+    confirmed, overrides = apply_confirmation(
+        load_extracted("hangzhou_ai_app"), lambda name, f, e: " " if name == "company_name_zh" else "a"
+    )
+    assert confirmed.company_name_zh.value == "杭州星河智能科技有限公司" and overrides == []
+
+    # Quoted dates in user_facts.yaml are accepted.
+    uf = project_root / "config" / "user_facts.yaml"
+    uf.write_text(uf.read_text().replace("end_date: 2027-01-15", 'end_date: "2027-01-15"'))
+    with open(project_root / "n.log", "w") as fh:
+        assert load_config(project_root, notice_stream=fh).user_facts.exchange.end_date == date(2027, 1, 15)
+
+    # Anthropic SDK errors surface as LLMError, not a traceback.
+    import anthropic
+
+    class _Boom:
+        def __init__(self, **_k):
+            self.messages = self
+
+        def create(self, **_k):
+            raise anthropic.AuthenticationError(
+                "bad key",
+                response=httpx.Response(401, request=httpx.Request("POST", "https://api.anthropic.com")),
+                body=None,
+            )
+
+    monkeypatch.setattr(anthropic, "Anthropic", _Boom)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+    with pytest.raises(llm_mod.LLMError, match="AuthenticationError"):
+        ORIGINAL_ANTHROPIC_CALL("prompt", "claude-sonnet-4-6", project_root)

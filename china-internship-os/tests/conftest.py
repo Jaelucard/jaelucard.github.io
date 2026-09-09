@@ -120,6 +120,10 @@ def fixture_for_prompt(prompt: str) -> str:
     return load_extracted_json("hangzhou_ai_app")
 
 
+# Captured before any monkeypatch so a test can exercise the real SDK wrapper with a stubbed client.
+ORIGINAL_ANTHROPIC_CALL = llm._anthropic_call
+
+
 @pytest.fixture(autouse=True)
 def _no_real_llm_providers(monkeypatch: pytest.MonkeyPatch):
     """Every test: a real provider call is a failure, whether or not fake_llm is requested."""
