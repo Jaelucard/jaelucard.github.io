@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "china-internship-os"
 version = "0.1.0"
 description = "Local tool for sourcing and tracking a YES-scheme technical internship in China. Nothing is ever sent or submitted by this tool."
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12,<3.14"
 dependencies = [
   "SQLAlchemy>=2.0,<3",
   "pydantic>=2.6,<3",
