@@ -250,7 +250,7 @@ class InternshipFacts(StrictModel):
     offer_deadline_personal: date
 
     @model_validator(mode="after")
-    def _months_ordered(self) -> "InternshipFacts":
+    def _months_ordered(self) -> InternshipFacts:
         if self.min_months > self.max_months:
             raise ValueError("min_months must not exceed max_months")
         return self
@@ -326,7 +326,7 @@ class ProgrammeConstraint(StrictModel):
 
 class ProgrammeConstraints(RootModel[list[ProgrammeConstraint]]):
     @model_validator(mode="after")
-    def _unique_ids(self) -> "ProgrammeConstraints":
+    def _unique_ids(self) -> ProgrammeConstraints:
         seen: set[str] = set()
         for item in self.root:
             if item.constraint_id in seen:
@@ -376,7 +376,7 @@ class SkillEvidence(StrictModel):
 
 class SkillEvidenceSet(RootModel[list[SkillEvidence]]):
     @model_validator(mode="after")
-    def _unique_ids(self) -> "SkillEvidenceSet":
+    def _unique_ids(self) -> SkillEvidenceSet:
         seen: set[str] = set()
         for item in self.root:
             if item.id in seen:
@@ -582,7 +582,7 @@ class ExtractedJob(BaseModel):
     research_signals: Extracted[list[ResearchSignal]]
 
     @model_validator(mode="after")
-    def _fill_sentinels(self) -> "ExtractedJob":
+    def _fill_sentinels(self) -> ExtractedJob:
         for name, sentinel in _SENTINEL_DEFAULTS.items():
             field: Extracted[Any] = getattr(self, name)
             if field.value is None:

@@ -19,7 +19,7 @@ from internship_os.capture import (
     parse_override,
 )
 from internship_os.cli import app
-from internship_os.models import Company, Job, JobEvent
+from internship_os.models import Job
 from internship_os.pipeline import finalize_confirmation
 from internship_os.schemas import ExtractedJob, force_unconfirmed
 from tests.conftest import load_extracted, load_extracted_json, load_jd
@@ -224,11 +224,15 @@ def test_confirm_cli_accept_all(capture_fixture, engine, project_root):
     assert row[0] is not None and row[1] == "苏州" and row[2] is not None
     result = runner.invoke(app, ["confirm", str(job.id)], input="a\n")
     assert "already confirmed" in result.output
+    # Prompts show the current value literally; Rich must not eat [null]/[false] as markup.
+    result_step = runner.invoke(app, ["confirm", str(capture_fixture("hangzhou_ai_app").id)], input="\n\na\n")
+    assert "company_name_en [null]:" in result_step.output
+    assert "confirmed extraction" not in result_step.output
 
 
 def test_confirmation_to_ineligible_emits_status_change(make_confirmed_job, session, config, today):
     from internship_os.capture import dedup_keys
-    from internship_os.pipeline import apply_eligibility_effect, finalize_confirmation
+    from internship_os.pipeline import finalize_confirmation
 
     job = make_confirmed_job("shanghai_llm_algorithm", run=False)
     confirmed = ExtractedJob.model_validate(job.extracted)

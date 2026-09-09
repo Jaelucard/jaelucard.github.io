@@ -7,7 +7,7 @@ within-tier sort key applied after deadline and host type.
 from __future__ import annotations
 
 from datetime import date
-from typing import Iterable
+from collections.abc import Iterable
 
 from internship_os.config import AppConfig
 from internship_os.models import Job

@@ -15,6 +15,7 @@ from typing import Any, Optional
 import typer
 from rich.console import Console
 from rich.table import Table
+from rich.text import Text
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -35,6 +36,19 @@ from internship_os.llm import LLMError
 from internship_os.models import Company, Job
 from internship_os.pipeline import finalize_confirmation
 from internship_os.schemas import Extracted, ExtractedJob, SourceChannel, normalise_city
+
+def _force_utf8_streams() -> None:
+    """Chinese output must survive Windows consoles and redirected output."""
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None and (getattr(stream, "encoding", "") or "").lower().replace("-", "") != "utf8":
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):  # pragma: no cover - closed or exotic streams
+                pass
+
+
+_force_utf8_streams()
 
 app = typer.Typer(
     help=(
@@ -186,7 +200,7 @@ def _resolve_duplicate(
     out("2. create a separate new job")
     out("3. cancel")
     while True:
-        choice = console.input("Choose 1, 2 or 3: ").strip()
+        choice = console.input("Choose 1, 2 or 3: ", markup=False).strip()
         if choice in ("1", "2", "3"):
             break
         out("enter 1, 2 or 3")
@@ -197,7 +211,7 @@ def _resolve_duplicate(
         target = dup.candidate_ids[0]
         if len(dup.candidate_ids) > 1:
             while True:
-                raw = console.input(f"Attach to which job id {dup.candidate_ids}? ").strip()
+                raw = console.input(f"Attach to which job id {dup.candidate_ids}? ", markup=False).strip()
                 if raw.isdigit() and int(raw) in dup.candidate_ids:
                     target = int(raw)
                     break
@@ -234,7 +248,7 @@ def _extraction_table(extracted: ExtractedJob, *, span_width: int = 48) -> Table
         span = (fld.source_span or "").replace("\n", " ")
         if len(span) > span_width:
             span = span[: span_width - 1] + "…"
-        table.add_row(name, display_value(fld.value), span, "yes" if fld.confirmed else "no")
+        table.add_row(Text(name), Text(display_value(fld.value)), Text(span), Text("yes" if fld.confirmed else "no"))
     return table
 
 
@@ -261,7 +275,7 @@ def confirm(ctx: typer.Context, job_id: int) -> None:
     def decide(name: str, fld: Extracted[Any], error: str | None) -> str:
         if error:
             out(f"  invalid: {error}")
-        return console.input(f"{name} [{display_value(fld.value)}]: ")
+        return console.input(f"{name} [{display_value(fld.value)}]: ", markup=False)
 
     confirmed, overrides = apply_confirmation(extracted, decide)
     company = _choose_company(session, confirmed)
@@ -284,7 +298,7 @@ def _choose_company(session: Session, confirmed: ExtractedJob) -> Company:
             out(f"  {index}. {candidate.display_name} (id {candidate.id})")
         out("  0. create a new company")
         while True:
-            raw = console.input("Company choice: ").strip()
+            raw = console.input("Company choice: ", markup=False).strip()
             if raw.isdigit() and 0 <= int(raw) <= len(near):
                 break
             out(f"enter a number between 0 and {len(near)}")
@@ -324,7 +338,7 @@ from internship_os.pipeline import (  # noqa: E402
     update_company,
 )
 from internship_os.programme import constraint_warnings  # noqa: E402
-from internship_os.schemas import Fit, HostType, JobStatus, Quality, Tier, Track, YesStatus  # noqa: E402
+from internship_os.schemas import HostType, JobStatus, Quality, Tier, Track, YesStatus  # noqa: E402
 from internship_os.tiering import city_class_for, sort_jobs  # noqa: E402
 
 job_app = typer.Typer(help="Job commands.", no_args_is_help=True)
@@ -427,11 +441,13 @@ def job_list(
     for col in ("id", "tier", "company", "title", "city", "track", "status", "elig", "programme", "deadline", "next"):
         table.add_column(col)
     for j in sort_jobs(jobs, cfg.user_facts):
-        table.add_row(
-            str(j.id), j.tier, j.company.display_name if j.company else "-", j.display_title,
-            j.city_zh or "-", j.track, j.status, j.eligibility, j.programme_overall,
-            str(j.deadline or "-"), f"{j.next_action or '-'} ({j.next_action_date or '-'})",
-        )
+        table.add_row(*[
+            Text(str(v)) for v in (
+                j.id, j.tier, j.company.display_name if j.company else "-", j.display_title,
+                j.city_zh or "-", j.track, j.status, j.eligibility, j.programme_overall,
+                j.deadline or "-", f"{j.next_action or '-'} ({j.next_action_date or '-'})",
+            )
+        ])
     console.print(table)
 
 
@@ -592,7 +608,7 @@ def constraints(ctx: typer.Context) -> None:
             value = f"{c.value_days} days"
         elif c.placeholder_days is not None:
             value = f"placeholder {c.placeholder_days} days"
-        table.add_row(c.constraint_id, c.status.value, str(c.date_verified or "-"), str(c.next_verification_date or "-"), value)
+        table.add_row(*[Text(str(v)) for v in (c.constraint_id, c.status.value, c.date_verified or "-", c.next_verification_date or "-", value)])
     console.print(table)
     warnings = constraint_warnings(cfg.constraints, today_value())
     out(f"{len(warnings)} warning(s)")
@@ -667,8 +683,12 @@ def contact_list(ctx: typer.Context, company: Optional[int] = typer.Option(None,
     for col in ("id", "company", "name", "role", "channel", "last_contact", "next_followup", "notes"):
         table.add_column(col)
     for c in session.scalars(query):
-        table.add_row(str(c.id), f"{c.company.display_name} ({c.company_id})", c.name, c.role or "-", c.channel,
-                      str(c.last_contact or "-"), str(c.next_followup or "-"), c.notes or "")
+        table.add_row(*[
+            Text(str(v)) for v in (
+                c.id, f"{c.company.display_name} ({c.company_id})", c.name, c.role or "-", c.channel,
+                c.last_contact or "-", c.next_followup or "-", c.notes or "",
+            )
+        ])
     console.print(table)
 
 
