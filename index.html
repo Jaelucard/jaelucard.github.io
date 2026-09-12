@@ -4,9 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jarrod Low — Portfolio</title>
+<meta name="description" content="Jarrod Low, Computer Science and Design student at SUTD, on exchange in Hangzhou. Computer vision, LLM evaluation, and systems projects.">
+<link rel="canonical" href="https://jarrodlow.com/">
+<meta name="theme-color" content="#E8112D">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Jarrod Low · AI Engineer">
+<meta property="og:description" content="Computer vision, LLM evaluation, and systems projects from an SUTD Computer Science and Design student in Hangzhou.">
+<meta property="og:url" content="https://jarrodlow.com/">
+<meta property="og:image" content="https://jarrodlow.com/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
 
 <!-- ================================================================
-  GP PORTFOLIO — DESIGN FRAMEWORK (no content yet)
+  GP PORTFOLIO — DESIGN FRAMEWORK
   Inspired by Scuderia Ferrari race-weekend social graphics.
 
   DESIGN TOKENS
@@ -339,6 +349,23 @@ img{ max-width: 100%; display: block; }
   border-radius: inherit;
 }
 
+/* one-line project description under the media box */
+.gp-note{ padding: 0 18px 14px; font-size: 13px; line-height: 1.6; color: rgba(20,18,18,.72); }
+
+/* typographic cover for cards that have no screenshot yet */
+.gp-cover{
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  background: var(--carbon); color: var(--paper);
+  border-radius: inherit;
+}
+.gp-cover .display{
+  font-size: clamp(22px, 3vw, 38px); line-height: .95;
+  text-align: center; padding: 0 28px; text-wrap: balance;
+}
+.gp-cover .mono{ position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; color: rgba(245,242,236,.55); }
+.gp-media:has(.gp-cover)::before, .gp-media:has(.gp-cover)::after{ border-color: rgba(245,242,236,.45); }
+
 .gp-cells{
   margin-top: auto;
   display: grid; grid-template-columns: repeat(4, 1fr);
@@ -351,6 +378,12 @@ img{ max-width: 100%; display: block; }
 .gp-cells a.cell{ transition: background .2s, color .2s; }
 .gp-cells a.cell:hover{ background: var(--rosso); color: var(--white); }
 .gp-cells a.cell:hover .cell-label{ color: var(--white); }
+
+/* fastest lap: one card only, the project with a first-place result */
+.gp-card.fastest, .gp-card.fastest .gp-head, .gp-card.fastest .gp-cells, .gp-card.fastest .gp-cells .cell{ border-color: #8A2BE2; }
+.gp-card.fastest .gp-title, .gp-card.fastest .gp-meta span, .gp-card.fastest .gp-cells .cell-label{ color: #8A2BE2; }
+.gp-card.fastest .gp-cells a.cell:hover{ background: #8A2BE2; }
+.gp-card.fastest:hover{ box-shadow: 0 18px 40px -22px rgba(138,43,226,.45); }
 
 /* ghost card — duplicate .gp-card and delete this one when adding projects */
 .gp-card.ghost{
@@ -477,7 +510,6 @@ img{ max-width: 100%; display: block; }
 
 /* ============ RESPONSIVE ============ */
 @media (max-width: 860px){
-  .nav-links a:not(.nav-cta){ display: none; }
   .gp-grid{ grid-template-columns: 1fr; }
   .quali-cols{ grid-template-columns: 1fr; }
   .row{ grid-template-columns: 56px 1fr; grid-auto-rows: auto; row-gap: 6px; }
@@ -508,7 +540,7 @@ img{ max-width: 100%; display: block; }
 <!-- ============ HERO — the "HUN" poster, but it's you ============ -->
 <header class="hero" id="top">
   <div class="poster reveal">
-    <p class="eyebrow poster-eyebrow">Entrepreneur | AI Engineer</p>
+    <p class="eyebrow poster-eyebrow">AI Engineer · Systems Builder</p>
 
     <h1 class="poster-title display">JARROD</h1>
 
@@ -522,15 +554,15 @@ img{ max-width: 100%; display: block; }
         <span class="cell-value">Hangzhou</span>
       </div>
       <div class="cell">
-        <span class="cell-label">All-Nighters</span>
-        <span class="cell-value cell-value-inf">∞</span>
+        <span class="cell-label">Kaggle</span>
+        <span class="cell-value">P1</span>
       </div>
     </div>
 
     <p class="poster-desc">
       Computer Science and Design student at SUTD.
-      I design systems, research new AI architectures,
-      and build products that make people's lives better.
+      I train vision models, stress-test language models,
+      and build the systems around them.
     </p>
   </div>
 
@@ -541,7 +573,7 @@ img{ max-width: 100%; display: block; }
 <div class="ticker" aria-hidden="true">
   <div class="ticker-track">
     <span>Jarrod Low</span><span>Based in Hangzhou</span><span>Computer Science</span><span>SUTD</span>
-    <span>Jarrod Low</span><span>Studying in Singapore</span><span>Computer Science</span><span>SUTD</span>
+    <span>Jarrod Low</span><span>SUTD · ZJU</span><span>Computer Science</span><span>SUTD</span>
   </div>
 </div>
 
@@ -556,7 +588,6 @@ img{ max-width: 100%; display: block; }
 
     <div class="gp-grid">
 
-      <!-- PROJECT CARD — duplicate this block per project -->
       <article class="gp-card reveal">
         <header class="gp-head">
           <div class="gp-meta"><span>Round</span><strong>01</strong></div>
@@ -564,9 +595,10 @@ img{ max-width: 100%; display: block; }
           <div class="gp-meta right"><span>Type</span><strong>Web</strong></div>
         </header>
         <div class="gp-media">
-          <img src="assets/projects/f1-dashboard.png" width="2642" height="1472" loading="lazy"
+          <img src="assets/projects/f1-dashboard.webp" width="1200" height="669" loading="lazy"
                alt="F1 Dashboard: live timing leaderboard, flag panel and track map for a Monza session">
         </div>
+        <p class="gp-note">Live 2026 F1 timing on OpenF1 data. Track map, leaderboard with gaps, flag panel. FastAPI backend, React front end, WebSocket feed.</p>
         <footer class="gp-cells">
           <div class="cell"><span class="cell-label">Role</span><span class="cell-value">Full-Stack Developer</span></div>
           <div class="cell"><span class="cell-label">Stack</span><span class="cell-value">React · FastAPI</span></div>
@@ -575,41 +607,91 @@ img{ max-width: 100%; display: block; }
         </footer>
       </article>
 
-      <article class="gp-card reveal">
+      <article class="gp-card fastest reveal">
         <header class="gp-head">
           <div class="gp-meta"><span>Round</span><strong>02</strong></div>
-          <h3 class="gp-title display">[Project Name]</h3>
-          <div class="gp-meta right"><span>Type</span><strong>[Hardware]</strong></div>
+          <h3 class="gp-title display">GenAI Text Detection</h3>
+          <div class="gp-meta right"><span>Type</span><strong>ML</strong></div>
         </header>
         <div class="gp-media">
-          <span class="mono">[ project image · 4:3 ]</span>
+          <div class="gp-cover">
+            <span class="display">GenAI Text Detection</span>
+            <span class="mono">Round 02 · Kaggle · P1 Private</span>
+          </div>
         </div>
+        <p class="gp-note">Kaggle AI-generated text detection, team of five. 1st on the private leaderboard, 4th on the public. Classical ML only: scikit-learn, LightGBM, spaCy stylometry, adversarial validation.</p>
         <footer class="gp-cells">
-          <div class="cell"><span class="cell-label">Role</span><span class="cell-value">[Role]</span></div>
-          <div class="cell"><span class="cell-label">Stack</span><span class="cell-value">[Stack]</span></div>
-          <div class="cell"><span class="cell-label">Year</span><span class="cell-value">[20XX]</span></div>
-          <a class="cell" href="#"><span class="cell-label">Link</span><span class="cell-value">Visit ↗</span></a>
+          <div class="cell"><span class="cell-label">Role</span><span class="cell-value">ML · Team of 5</span></div>
+          <div class="cell"><span class="cell-label">Stack</span><span class="cell-value">scikit-learn · LightGBM</span></div>
+          <div class="cell"><span class="cell-label">Year</span><span class="cell-value">2026</span></div>
+          <a class="cell" href="https://github.com/Jaelucard" target="_blank" rel="noopener noreferrer"><span class="cell-label">Link</span><span class="cell-value">GitHub ↗</span></a>
         </footer>
       </article>
 
       <article class="gp-card reveal">
         <header class="gp-head">
           <div class="gp-meta"><span>Round</span><strong>03</strong></div>
-          <h3 class="gp-title display">[Project Name]</h3>
-          <div class="gp-meta right"><span>Type</span><strong>[Systems]</strong></div>
+          <h3 class="gp-title display">LLM Eval Lab</h3>
+          <div class="gp-meta right"><span>Type</span><strong>Tooling</strong></div>
         </header>
         <div class="gp-media">
-          <span class="mono">[ project image · 4:3 ]</span>
+          <div class="gp-cover">
+            <span class="display">LLM Eval Lab</span>
+            <span class="mono">Round 03 · Regression Testing</span>
+          </div>
         </div>
+        <p class="gp-note">Local-first LLM regression testing. Content-addressed benchmark suites, deterministic or LLM-as-judge scoring, statistical baseline comparison, SQLite run history, CLI and REST API with a CI exit-code contract, React dashboard.</p>
         <footer class="gp-cells">
-          <div class="cell"><span class="cell-label">Role</span><span class="cell-value">[Role]</span></div>
-          <div class="cell"><span class="cell-label">Stack</span><span class="cell-value">[Stack]</span></div>
-          <div class="cell"><span class="cell-label">Year</span><span class="cell-value">[20XX]</span></div>
-          <a class="cell" href="#"><span class="cell-label">Link</span><span class="cell-value">Visit ↗</span></a>
+          <div class="cell"><span class="cell-label">Role</span><span class="cell-value">Creator</span></div>
+          <div class="cell"><span class="cell-label">Stack</span><span class="cell-value">Python · FastAPI · React</span></div>
+          <div class="cell"><span class="cell-label">Year</span><span class="cell-value">2026</span></div>
+          <a class="cell" href="https://github.com/Jaelucard/llm-eval-lab" target="_blank" rel="noopener noreferrer"><span class="cell-label">Link</span><span class="cell-value">Visit ↗</span></a>
         </footer>
       </article>
 
-      <!-- Ghost slot: replace with a real card, or delete -->
+      <article class="gp-card reveal">
+        <header class="gp-head">
+          <div class="gp-meta"><span>Round</span><strong>04</strong></div>
+          <h3 class="gp-title display">TetriSH</h3>
+          <div class="gp-meta right"><span>Type</span><strong>Systems</strong></div>
+        </header>
+        <div class="gp-media">
+          <div class="gp-cover">
+            <span class="display">TetriSH</span>
+            <span class="mono">Round 04 · Battle Royale in C</span>
+          </div>
+        </div>
+        <p class="gp-note">Terminal Battle-Royale Tetris in C. Launcher shell, epoll game daemon, logger daemon, admin CLI, ncurses client and replay viewer, over a self-designed authenticated and encrypted session protocol.</p>
+        <footer class="gp-cells">
+          <div class="cell"><span class="cell-label">Role</span><span class="cell-value">Systems · Team of 3</span></div>
+          <div class="cell"><span class="cell-label">Stack</span><span class="cell-value">C · OpenSSL · epoll</span></div>
+          <div class="cell"><span class="cell-label">Year</span><span class="cell-value">2026</span></div>
+          <a class="cell" href="https://github.com/Jaelucard/tetrish" target="_blank" rel="noopener noreferrer"><span class="cell-label">Link</span><span class="cell-value">Visit ↗</span></a>
+        </footer>
+      </article>
+
+      <article class="gp-card reveal">
+        <header class="gp-head">
+          <div class="gp-meta"><span>Round</span><strong>05</strong></div>
+          <h3 class="gp-title display">Aura Wall</h3>
+          <div class="gp-meta right"><span>Type</span><strong>Hardware</strong></div>
+        </header>
+        <div class="gp-media">
+          <div class="gp-cover">
+            <span class="display">Aura Wall</span>
+            <span class="mono">Round 05 · Interactive Installation</span>
+          </div>
+        </div>
+        <p class="gp-note">Interactive LED installation. An ESP camera and computer vision track movement and paint a silhouette and mood across nine LED panels on custom 3D-printed mounts.</p>
+        <footer class="gp-cells">
+          <div class="cell"><span class="cell-label">Role</span><span class="cell-value">CV + Build</span></div>
+          <div class="cell"><span class="cell-label">Stack</span><span class="cell-value">ESP32-CAM · OpenCV</span></div>
+          <div class="cell"><span class="cell-label">Year</span><span class="cell-value">2025</span></div>
+          <a class="cell" href="https://github.com/Jaelucard" target="_blank" rel="noopener noreferrer"><span class="cell-label">Link</span><span class="cell-value">GitHub ↗</span></a>
+        </footer>
+      </article>
+
+      <!-- Ghost slot: keeps the grid even at five projects; replace with a card when the sixth is ready -->
       <article class="gp-card ghost reveal">
         <span class="mono">[ + next round ]</span>
       </article>
@@ -654,18 +736,34 @@ img{ max-width: 100%; display: block; }
 
       <div class="reveal">
         <div class="skill-group">
-          <h4>Languages</h4>
+          <h4>Spoken</h4>
           <div class="chips">
             <span class="chip">English</span><span class="chip">Chinese</span>
             <span class="chip">Korean</span>
           </div>
         </div>
         <div class="skill-group">
-          <h4>Frameworks &amp; Tools</h4>
+          <h4>Languages</h4>
+          <div class="chips">
+            <span class="chip">Python</span><span class="chip">C</span>
+            <span class="chip">TypeScript</span><span class="chip">Java</span>
+            <span class="chip">SQL</span><span class="chip">Lucid HDL</span>
+          </div>
+        </div>
+        <div class="skill-group">
+          <h4>ML</h4>
           <div class="chips">
             <span class="chip">PyTorch</span><span class="chip">scikit-learn</span>
-            <span class="chip">LightGBM</span><span class="chip">FastAPI</span>
-            <span class="chip">React</span>
+            <span class="chip">LightGBM</span><span class="chip">spaCy</span>
+            <span class="chip">Ollama</span>
+          </div>
+        </div>
+        <div class="skill-group">
+          <h4>Build</h4>
+          <div class="chips">
+            <span class="chip">FastAPI</span><span class="chip">React</span>
+            <span class="chip">Docker</span><span class="chip">Git</span>
+            <span class="chip">Linux</span>
           </div>
         </div>
         <div class="skill-group">
@@ -695,6 +793,16 @@ img{ max-width: 100%; display: block; }
       <div class="row reveal">
         <div class="row-pos display">P1</div>
         <div class="row-entry">
+          <strong>B.Eng Computer Science and Design</strong>
+          <span>SUTD, Singapore · exchange at Zhejiang University 2026–27</span>
+        </div>
+        <div class="row-note">Machine learning, software construction, operating systems, network security, computation structures.</div>
+        <div class="row-time mono">2023 — 2027</div>
+      </div>
+
+      <div class="row reveal">
+        <div class="row-pos display">P2</div>
+        <div class="row-entry">
           <strong>Computer Vision Intern</strong>
           <span>MolarData, Hangzhou</span>
         </div>
@@ -703,7 +811,7 @@ img{ max-width: 100%; display: block; }
       </div>
 
       <div class="row reveal">
-        <div class="row-pos display">P2</div>
+        <div class="row-pos display">P3</div>
         <div class="row-entry">
           <strong>Database Management Assistant</strong>
           <span>MINDEF, Singapore</span>
@@ -719,9 +827,10 @@ img{ max-width: 100%; display: block; }
 <section class="section contact" id="contact">
   <div class="wrap">
     <p class="eyebrow">Box, box</p>
-    <h2 class="contact-title display reveal">[Let's Talk]</h2>
-    <a class="contact-btn" href="mailto:[you@email.com]">Send a message</a>
-    <a class="contact-mail mono" href="mailto:[you@email.com]">[you@email.com]</a>
+    <h2 class="contact-title display reveal">Let's Talk</h2>
+    <a class="contact-btn" href="mailto:workjarrodlow@gmail.com">Send a message</a>
+    <a class="contact-mail mono" href="mailto:workjarrodlow@gmail.com">workjarrodlow@gmail.com</a>
+    <p class="contact-mail mono">Open to AI / ML engineering internships from Feb 2027 · Hangzhou · Shanghai</p>
   </div>
 </section>
 
@@ -730,8 +839,9 @@ img{ max-width: 100%; display: block; }
   <div class="wrap footer-grid">
     <span class="nav-brand">JAR<em>ROD</em></span>
     <ul class="footer-links">
-      <li><a href="https://github.com/Jaelucard">[GitHub]</a></li>
-      <li><a href="https://www.linkedin.com/in/jarrod-low/">[LinkedIn]</a></li>
+      <li><a href="https://github.com/Jaelucard" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/jarrod-low/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li>
+      <li><a href="mailto:workjarrodlow@gmail.com">Email</a></li>
     </ul>
     <span class="mono">30.3050° N · 120.0921° E — EST. <span id="year"></span></span>
   </div>
