@@ -121,7 +121,7 @@ def fixture_for_prompt(prompt: str) -> str:
 
 
 # Captured before any monkeypatch so a test can exercise the real SDK wrapper with a stubbed client.
-ORIGINAL_ANTHROPIC_CALL = llm._anthropic_call
+ORIGINAL_CLAUDE_CODE_CALL = llm._claude_code_call
 
 
 @pytest.fixture(autouse=True)
@@ -131,7 +131,7 @@ def _no_real_llm_providers(monkeypatch: pytest.MonkeyPatch):
     def _blocked(*_a, **_k):
         raise AssertionError("test attempted to call a real LLM provider")
 
-    monkeypatch.setattr(llm, "_anthropic_call", _blocked)
+    monkeypatch.setattr(llm, "_claude_code_call", _blocked)
     monkeypatch.setattr(llm, "_ollama_call", _blocked)
 
 

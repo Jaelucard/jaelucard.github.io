@@ -7,7 +7,7 @@ from pathlib import Path
 PROJECT = Path(__file__).resolve().parents[1]
 MODULES = sorted((PROJECT / "internship_os").glob("*.py")) + [PROJECT / "app.py"]
 
-FORBIDDEN_IMPORTS = ("smtplib", "selenium", "playwright", "requests", "webbrowser", "pyautogui", "imaplib", "email.mime")
+FORBIDDEN_IMPORTS = ("smtplib", "selenium", "playwright", "requests", "webbrowser", "pyautogui", "imaplib", "email.mime", "anthropic", "dotenv")
 FORBIDDEN_DEF = re.compile(r"^\s*def\s+(send|submit|apply_to|post_to|email|message_send|auto_apply)\w*\s*\(", re.MULTILINE)
 
 
@@ -35,13 +35,19 @@ def test_no_command_submits_or_sends_anything():
     assert "follow_redirects=False" in capture_src and "MAX_REDIRECTS" in capture_src
     llm_src = _source(PROJECT / "internship_os" / "llm.py")
     assert llm_src.count("httpx.post(") == 1
+    # The only subprocess use is the Claude Code CLI in llm.py, as a plain completion with tools off.
+    for path in MODULES:
+        if path.name != "llm.py":
+            assert not re.search(r"^\s*(import|from)\s+subprocess\b", _source(path), re.MULTILINE), f"{path.name} uses subprocess"
+    assert '"--tools", ""' in llm_src and '"--no-session-persistence"' in llm_src
+    assert 'STRIPPED_ENV_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")' in llm_src
     assert 'OLLAMA_URL = "http://localhost:11434/api/generate"' in llm_src
     assert "httpx.post(OLLAMA_URL" in llm_src
 
     # No browser automation or messaging dependencies declared.
     pyproject = tomllib.loads(_source(PROJECT / "pyproject.toml"))
     deps = " ".join(pyproject["project"]["dependencies"]).casefold()
-    for name in ("selenium", "playwright", "smtplib", "celery", "redis", "alembic", "psycopg"):
+    for name in ("selenium", "playwright", "smtplib", "celery", "redis", "alembic", "psycopg", "anthropic", "dotenv"):
         assert name not in deps
 
 
@@ -60,6 +66,9 @@ def test_llm_logging_never_includes_content():
     for call in calls:
         fmt = call.args[0]
         assert isinstance(fmt, ast.Constant) and isinstance(fmt.value, str)
+        if call.func.attr == "warning":
+            assert "rate limit" in fmt.value  # the wait notice carries the delay and the CLI's error line only
+            continue
         assert "prompt=%s" in fmt.value and "status=" in fmt.value
         for arg in call.args[1:]:
             if isinstance(arg, ast.Name):

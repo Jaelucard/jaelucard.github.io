@@ -59,3 +59,13 @@ Ideas and deviations recorded during Phase 1. Nothing here is implemented in Pha
   (claude, gpt-, o1/o3/o4, gemini, anthropic/, openai/, google/). Extend the list as needed.
 - Confirmation is committed before the optional quality checklist call so an interrupted
   LLM call cannot discard a confirmed job.
+
+## Recorded when switching to the Claude Code CLI provider
+
+- The `anthropic` API provider and `.env` were removed at the user's request; the tool now runs
+  `claude -p` on the user's subscription (or Ollama). The LLM boundary rules are unchanged.
+- Models are routed per prompt role (extraction vs drafting) from `user_facts.llm.models`.
+- Rate limits: the CLI reports them as `is_error: true` with a message; detection is by keyword
+  match, and the wait is unbounded unless `llm.max_wait_minutes` is set. If the CLI's wording
+  changes, extend `RATE_LIMIT_PATTERN` in `internship_os/llm.py`.
+- `--json-schema` structured output is used when available; text parsing remains as fallback.

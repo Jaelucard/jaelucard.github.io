@@ -34,6 +34,9 @@ z_visa_issued: false
 prior_yes_participation: false
 
 llm:
-  provider: anthropic
-  model: claude-sonnet-4-6
-  allow_resume_upload_to_api: false
+  provider: claude_code        # claude_code (your Claude subscription via the claude CLI) | ollama
+  models:
+    extraction: sonnet         # extract_job, quality_checklist
+    drafting: opus             # messages, bullets, interview prep, YES explanation
+  allow_resume_upload: false
+  max_wait_minutes: null       # null = wait until the subscription limit resets
