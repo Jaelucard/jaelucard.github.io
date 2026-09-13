@@ -120,7 +120,7 @@ def fixture_for_prompt(prompt: str) -> str:
     return load_extracted_json("hangzhou_ai_app")
 
 
-# Captured before any monkeypatch so a test can exercise the real SDK wrapper with a stubbed client.
+# The unpatched CLI wrapper, captured before the autouse guard replaces it, for tests that stub subprocess.run.
 ORIGINAL_CLAUDE_CODE_CALL = llm._claude_code_call
 
 
@@ -133,6 +133,11 @@ def _no_real_llm_providers(monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr(llm, "_claude_code_call", _blocked)
     monkeypatch.setattr(llm, "_ollama_call", _blocked)
+    # Also the primitives underneath, so no test can spawn the real claude binary or POST to
+    # Ollama by calling the unpatched wrappers; tests that want a fake CLI re-patch these.
+    monkeypatch.setattr(llm.subprocess, "run", _blocked)
+    monkeypatch.setattr(llm.httpx, "post", _blocked)
+    monkeypatch.setattr(llm, "_sleep", lambda s: pytest.fail(f"unexpected sleep({s})"))
 
 
 @pytest.fixture

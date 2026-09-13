@@ -25,8 +25,9 @@ ios llm-check                      # confirms the claude CLI is installed and lo
 ```
 
 The default LLM provider is `claude_code`: the tool runs `claude -p` as a subprocess, which uses
-the Claude subscription you are logged into (`claude login`). Install the CLI with
-`npm install -g @anthropic-ai/claude-code` if `ios llm-check` cannot find it. The subprocess runs
+the Claude subscription you are logged into (`claude auth login`). If `ios llm-check` cannot find
+the CLI, install it with `curl -fsSL https://claude.ai/install.sh | bash` (macOS/Linux),
+`brew install --cask claude-code`, or `npm install -g @anthropic-ai/claude-code`. The subprocess runs
 with all tools, hooks, MCP servers and project settings disabled and never persists a session.
 If the subscription's usage limit is hit, the command waits and retries until it resets
 (`llm.max_wait_minutes` caps the wait). Set `llm.provider: ollama` to use a local model instead.
@@ -85,7 +86,7 @@ Every command validates `config/` first and prints one line per state change (ob
 | `ios job pack 1` | job.md, fit.md, checklist.md under `packs/` (no LLM) | strengths end with `[EV_...]` |
 | `ios job messages 1` / `ios job bullets 1` / `ios job interview-prep 1` | LLM drafts with provenance validation; unsourced claims and invalid bullets are dropped and reported | `Refused unsourced claim: ...` |
 | `ios contact add --company 1 --name "..." --role HR --channel wechat` / `list` / `touch 1 --next 2026-09-20` | contacts | |
-| `ios llm-check` | CLI presence, version and login state; configured models | `loggedIn: true` |
+| `ios llm-check` | CLI presence, version and login state; configured models | `logged in: True \| auth: oauth_token \| provider: firstParty` |
 | `ios timeline [--job 1]` / `ios digest` / `ios constraints` | backward-planned dates; daily digest; constraint table and warnings | `CONTRACT MUST BE SIGNED BY 2027-01-10 (123 days). Placeholders in use: Z_VISA_EMBASSY_LEAD_TIME, ENTRY_PERMIT_LEAD_TIME, LOC_LEAD_TIME` |
 | `streamlit run app.py` | read-mostly dashboard: programme status, jobs, next actions, capture form | |
 

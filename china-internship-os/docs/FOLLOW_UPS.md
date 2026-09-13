@@ -55,8 +55,9 @@ Ideas and deviations recorded during Phase 1. Nothing here is implemented in Pha
   greetings get refused.
 - Mandarin statements are checked after removing the verbatim configured claim, so extra
   proficiency wording appended to the claim is refused.
-- The Ollama fallback rejects `user_facts.llm.model` names with hosted-vendor prefixes
-  (claude, gpt-, o1/o3/o4, gemini, anthropic/, openai/, google/). Extend the list as needed.
+- The hosted-vendor-prefix check on the old `llm.model` key was dropped when models became
+  per-role (`llm.models.*`); with provider ollama the only network call is the POST to
+  localhost:11434 whatever the model name.
 - Confirmation is committed before the optional quality checklist call so an interrupted
   LLM call cannot discard a confirmed job.
 

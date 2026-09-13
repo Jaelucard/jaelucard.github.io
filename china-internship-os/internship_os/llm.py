@@ -57,16 +57,21 @@ DEFAULT_ROLE = "drafting"
 CLAUDE_CODE_SYSTEM_PROMPT = (
     "You are a structured-data extraction and drafting engine used by a local command-line "
     "tool. Follow the instructions in the user message exactly and output only what they ask "
-    "for. Never add commentary, never ask questions, never use tools."
+    "for. Never add commentary and never ask questions. Do not use any tool except "
+    "StructuredOutput when it is offered; when it is offered, answer by calling it."
 )
 CLAUDE_CODE_TIMEOUT_SECONDS = 900
 # Variables that would make the CLI bill an API account instead of using the subscription.
 STRIPPED_ENV_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+# The CLI words subscription limits as "You've hit your <session|weekly|Opus|Sonnet|Fable|usage
+# credit> limit · resets <time>"; overloads as "<model> is experiencing high load".
 RATE_LIMIT_PATTERN = re.compile(
-    r"(usage|session|rate|weekly|daily)\s+limit|allowance|resets? at|too many requests|"
-    r"rate.?limited|overloaded|\b429\b|\b529\b",
+    r"hit your [^.\n]{0,40}limit|\blimit\b[^.\n]{0,40}\bresets?\b|(usage|session|rate|weekly|daily)\s+limit|"
+    r"allowance|resets? at|too many requests|rate.?limited|overloaded|experiencing high load|\b429\b|\b529\b",
     re.IGNORECASE,
 )
+RATE_LIMIT_HTTP_STATUSES = (429, 529)
+STRUCTURED_OUTPUT_RETRY_SUBTYPE = "error_max_structured_output_retries"
 RETRY_DELAYS_SECONDS = (60, 120, 300)  # then the last value repeats
 _sleep = time.sleep  # patched by tests
 
@@ -219,17 +224,39 @@ def looks_like_rate_limit(message: str) -> bool:
 
 
 def _parse_cli_json(stdout: str) -> dict[str, Any]:
+    """The result object from the CLI's stdout, tolerating stray lines before or after it."""
     text = stdout.strip()
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        start = text.rfind("\n{")
+    decoder = json.JSONDecoder()
+    candidates: list[dict[str, Any]] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("{"):
+            continue
+        try:
+            obj, _ = decoder.raw_decode(stripped)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict):
+            candidates.append(obj)
+    if not candidates:
+        # Pretty-printed multi-line JSON: try the whole text from its first brace.
+        start = text.find("{")
         if start == -1:
-            raise
-        data = json.loads(text[start + 1 :])
-    if not isinstance(data, dict):
-        raise json.JSONDecodeError("expected a JSON object", text, 0)
-    return data
+            raise json.JSONDecodeError("no JSON object", text, 0)
+        obj, _ = decoder.raw_decode(text[start:])
+        if not isinstance(obj, dict):
+            raise json.JSONDecodeError("expected a JSON object", text, 0)
+        return obj
+    results = [c for c in candidates if c.get("type") == "result"]
+    return (results or candidates)[-1]
+
+
+def cli_error_message(data: dict[str, Any]) -> str:
+    """Error text from either CLI result shape: ``result`` (success subtype) or ``errors``."""
+    errors = data.get("errors")
+    if isinstance(errors, list) and errors:
+        return "; ".join(str(e) for e in errors)
+    return str(data.get("result") or data.get("error") or f"subtype={data.get('subtype')}")
 
 
 def _claude_code_call(
@@ -256,9 +283,11 @@ def _claude_code_call(
         except FileNotFoundError:
             raise LLMConfigError(
                 f"the Claude Code CLI ({executable!r}) was not found on PATH. Install it with "
-                "'npm install -g @anthropic-ai/claude-code', run 'claude login', or set "
+                "'npm install -g @anthropic-ai/claude-code', run 'claude auth login', or set "
                 "user_facts.llm.claude_command to its full path."
             ) from None
+        except OSError as exc:
+            raise LLMConfigError(f"could not run the Claude Code CLI ({executable!r}): {exc}") from None
         except subprocess.TimeoutExpired:
             raise LLMError(
                 f"the Claude Code CLI did not answer within {CLAUDE_CODE_TIMEOUT_SECONDS} seconds"
@@ -280,14 +309,23 @@ def _claude_code_call(
                 + ". Check that you are logged in: run 'claude auth status'."
             )
         if data.get("is_error"):
-            message = str(data.get("result") or data.get("error") or "unknown error")
-            if looks_like_rate_limit(message):
+            message = cli_error_message(data)
+            subtype = str(data.get("subtype") or "")
+            if subtype == STRUCTURED_OUTPUT_RETRY_SUBTYPE and data.get("result"):
+                # The model answered in text instead of the StructuredOutput tool; let the
+                # text parser and the one validation retry in complete() handle it.
+                break
+            status = data.get("api_error_status")
+            if looks_like_rate_limit(message) or status in RATE_LIMIT_HTTP_STATUSES:
                 delay = RETRY_DELAYS_SECONDS[min(attempt, len(RETRY_DELAYS_SECONDS) - 1)]
-                if max_wait is not None and (waited + delay) > max_wait * 60:
-                    raise LLMError(
-                        f"Claude subscription limit reached and user_facts.llm.max_wait_minutes "
-                        f"({max_wait}) exhausted: {message}"
-                    )
+                if max_wait is not None:
+                    remaining = max_wait * 60 - waited
+                    if remaining <= 0:
+                        raise LLMError(
+                            f"Claude subscription limit reached and user_facts.llm.max_wait_minutes "
+                            f"({max_wait}) exhausted: {message}"
+                        )
+                    delay = min(delay, remaining)
                 log.warning(
                     "claude_code rate limit hit; waiting %s s before retry %s (%s)",
                     delay,
@@ -298,21 +336,22 @@ def _claude_code_call(
                 waited += delay
                 attempt += 1
                 continue
-            raise LLMError(f"Claude Code returned an error: {message}")
-        usage = data.get("usage") or {}
-        input_tokens = None
-        if isinstance(usage, dict) and "input_tokens" in usage:
-            input_tokens = (
-                int(usage.get("input_tokens") or 0)
-                + int(usage.get("cache_creation_input_tokens") or 0)
-                + int(usage.get("cache_read_input_tokens") or 0)
-            )
-        return ProviderResult(
-            text=str(data.get("result") or ""),
-            structured=data.get("structured_output"),
-            input_tokens=input_tokens,
-            output_tokens=usage.get("output_tokens") if isinstance(usage, dict) else None,
+            raise LLMError(f"Claude Code returned an error ({subtype or 'error'}): {message}")
+        break
+    usage = data.get("usage") or {}
+    input_tokens = None
+    if isinstance(usage, dict) and "input_tokens" in usage:
+        input_tokens = (
+            int(usage.get("input_tokens") or 0)
+            + int(usage.get("cache_creation_input_tokens") or 0)
+            + int(usage.get("cache_read_input_tokens") or 0)
         )
+    return ProviderResult(
+        text=str(data.get("result") or ""),
+        structured=data.get("structured_output"),
+        input_tokens=input_tokens,
+        output_tokens=usage.get("output_tokens") if isinstance(usage, dict) else None,
+    )
 
 
 def claude_code_status(config: AppConfig) -> dict[str, Any]:
@@ -334,6 +373,8 @@ def claude_code_status(config: AppConfig) -> dict[str, Any]:
             info["auth_raw"] = (status.stdout or status.stderr).strip()[:300]
     except FileNotFoundError:
         info["error"] = f"{executable!r} not found on PATH"
+    except OSError as exc:
+        info["error"] = f"could not run {executable!r}: {exc}"
     except subprocess.TimeoutExpired:
         info["error"] = "the CLI did not respond"
     return info
