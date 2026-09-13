@@ -853,16 +853,17 @@ def llm_check(ctx: typer.Context) -> None:
         return
     info = claude_code_status(cfg)
     if not info.get("found"):
-        err(f"claude CLI: {info.get('error', 'not found')}. Install: npm install -g @anthropic-ai/claude-code, then: claude login")
+        err(f"claude CLI: {info.get('error', 'not found')}. Install: npm install -g @anthropic-ai/claude-code, then: claude auth login")
         raise typer.Exit(code=1)
     out(f"claude CLI: {info['executable']} (version {info.get('version', '?')})")
     logged_in = info.get("loggedIn")
     out(f"logged in: {logged_in} | auth: {info.get('authMethod', '?')} | provider: {info.get('apiProvider', '?')}")
     if logged_in is False:
-        err("not logged in: run 'claude login' and choose your Claude subscription")
+        err("not logged in: run 'claude auth login' and sign in with your Claude subscription")
         raise typer.Exit(code=1)
-    if logged_in is None and info.get("auth_raw"):
-        out(f"auth status output: {info['auth_raw']}")
+    if logged_in is None:
+        err("could not determine login state: " + str(info.get("error") or info.get("auth_raw") or "no JSON from 'claude auth status'"))
+        raise typer.Exit(code=1)
     stripped = [v for v in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN") if os.environ.get(v)]
     if stripped:
         out(f"note: {', '.join(stripped)} is set in your shell; it is stripped for the CLI so your subscription is used")

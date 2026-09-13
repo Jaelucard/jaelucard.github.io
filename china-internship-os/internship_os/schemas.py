@@ -269,12 +269,29 @@ class LLMModels(StrictModel):
     drafting: str = Field(min_length=1, description="messages, bullets, interview prep, YES explanation")
 
 
+_LEGACY_LLM_KEYS = {
+    "model": "replace with models: {extraction: sonnet, drafting: opus}",
+    "allow_resume_upload_to_api": "rename to allow_resume_upload",
+}
+
+
 class LLMFacts(StrictModel):
     provider: _lax(LLMProvider)
     models: LLMModels
     allow_resume_upload: bool = False
     max_wait_minutes: int | None = Field(default=None, ge=0, description="null = wait until the subscription limit resets")
     claude_command: str = Field(default="claude", min_length=1)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _explain_legacy_keys(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            hints = [f"{k}: {v}" for k, v in _LEGACY_LLM_KEYS.items() if k in data]
+            if data.get("provider") == "anthropic":
+                hints.insert(0, "provider: anthropic was removed; use claude_code (your Claude subscription via the claude CLI) or ollama")
+            if hints:
+                raise ValueError("the llm block uses old keys. " + "; ".join(hints))
+        return data
 
 
 _COHORT_YEAR = re.compile(r"(\d{4})")

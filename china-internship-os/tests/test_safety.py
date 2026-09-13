@@ -62,12 +62,24 @@ def test_llm_logging_never_includes_content():
         and isinstance(node.func.value, ast.Name) and node.func.value.id == "log"
     ]
     assert calls, "llm.py should log its calls"
+    loggers = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "getLogger"]
+    assert len(loggers) == 1, "llm.py must use exactly one logger so this test sees every log call"
     allowed_names = {"prompt_name", "provider_name", "model"}
     for call in calls:
         fmt = call.args[0]
         assert isinstance(fmt, ast.Constant) and isinstance(fmt.value, str)
         if call.func.attr == "warning":
-            assert "rate limit" in fmt.value  # the wait notice carries the delay and the CLI's error line only
+            assert "rate limit" in fmt.value
+            # Only the delay, the attempt counter and a slice of the CLI's own error line.
+            for arg in call.args[1:]:
+                if isinstance(arg, ast.Name):
+                    assert arg.id in ("delay", "attempt"), ast.dump(arg)
+                elif isinstance(arg, ast.BinOp):
+                    assert isinstance(arg.left, ast.Name) and arg.left.id == "attempt", ast.dump(arg)
+                elif isinstance(arg, ast.Subscript):
+                    assert isinstance(arg.value, ast.Name) and arg.value.id == "message", ast.dump(arg)
+                else:
+                    raise AssertionError(ast.dump(arg))
             continue
         assert "prompt=%s" in fmt.value and "status=" in fmt.value
         for arg in call.args[1:]:

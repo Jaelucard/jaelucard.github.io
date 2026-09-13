@@ -316,6 +316,7 @@ def test_first_run_hardening(project_root, session, capture_fixture, fake_llm, c
     def cli(returncode, payload, stderr=""):
         return subprocess.CompletedProcess(args=[], returncode=returncode, stdout=json.dumps(payload), stderr=stderr)
 
+    monkeypatch.setattr(llm_mod, "_sleep", lambda s: pytest.fail("must not sleep on a non-rate-limit error"))
     monkeypatch.setattr(
         llm_mod.subprocess, "run",
         lambda *a, **k: cli(1, {"type": "result", "is_error": True, "result": "There's an issue with the selected model (x)."}),
