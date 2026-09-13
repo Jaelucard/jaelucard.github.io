@@ -16,7 +16,7 @@ Rules for source_span:
 Field rules:
 
 - company_name_zh / company_name_en: the employer's names as written. A translated name that does not appear in the JD gets source_span = the original-language name.
-- title_zh / title_en: the role title. A translated title gets source_span = the original title.
+- title_zh / title_en: the role title without any bracketed internship-type suffix such as （日常实习） or （暑期实习）; that wording goes to internship_type. A translated title gets source_span = the original title.
 - city_zh: the city in Chinese (杭州, 上海, 苏州 ...). If only an English city name appears, translate it and use the English text as the span.
 - district: the district if stated (西湖区, 浦东新区 ...).
 - internship_type: exactly one of 日常实习, 暑期实习, 寒假实习, 校招实习, 转正实习, 留用实习, 留学生实习, 长期实习, 短期实习, unknown. Map only from explicit wording; otherwise "unknown".

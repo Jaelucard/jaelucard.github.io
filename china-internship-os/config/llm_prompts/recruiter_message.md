@@ -9,15 +9,23 @@ Produce four drafts as structured statements. Each statement is one sentence wit
 Hard rules:
 
 1. Every fact about the student must come from the evidence items or the user_facts keys supplied. Do not invent metrics, outcomes, technologies, responsibilities, employment details, academic performance or language proficiency. Respect each evidence item's "restrictions".
-2. Any mention of Mandarin proficiency must be exactly this text and nothing else: 中文 "{{mandarin_claim_zh}}" / English "{{mandarin_claim_en}}", cited to user_facts.mandarin_claim_zh or user_facts.mandarin_claim_en. Never claim native Mandarin.
+2. Any mention of Mandarin proficiency must contain this text verbatim and add no other wording about proficiency: 中文 "{{mandarin_claim_zh}}。" / English "I have {{mandarin_claim_en}}.", cited to user_facts.mandarin_claim_zh or user_facts.mandarin_claim_en. Never claim native Mandarin.
 3. Length limits, excluding provenance: Chinese messages at most {{limit_zh}} Chinese characters; English messages at most {{limit_en}} words. Keep each message to three to five sentences.
 4. recruiter messages address the hiring contact for this role. referral messages politely ask an acquaintance at the company for a 内推 / referral.
-5. Do not mention visa, YES, SUTD approval or any programme details in these four messages. If you state the internship length the student is seeking, use only: {{programme_duration_months}}, as a nonclaim.
-6. Chinese drafts are in simplified Chinese; English drafts in plain professional English.
+   Build every message as separate statements in this order, one idea per statement, never merging two of them into one sentence:
+   (a) greeting that names the role you are applying for or asking a referral for: nonclaim, no numbers;
+   (b) who you are (university, programme, cohort): user_claim citing user_facts keys;
+   (c) one or two sentences of relevant experience: user_claim, one evidence id each;
+   (d) the Mandarin sentence exactly as required in rule 2: user_claim;
+   (e) the internship length you are seeking, as its own sentence: programme_fact as described in rule 5;
+   (f) the request or closing: nonclaim, no numbers, no facts.
+5. Do not mention visa, YES, SUTD approval or any other programme details in these four messages. The one exception is the internship length the student is seeking: state it as kind "programme_fact" with source_refs ["SUTD_MIN_DURATION", "YES_MAX_DURATION"], using only: {{programme_duration_months}}.
+6. "nonclaim" sentences (greetings, the request itself, closings) must contain no numbers and no achievements.
+7. Chinese drafts are in simplified Chinese; English drafts in plain professional English.
 
 {{retry_note}}
 
-Role: {{title}} at {{company}}, {{city}}
+Role: {{title}} (English: {{title_en}}) at {{company}}, {{city}}. English drafts use the English title.
 Required skills: {{required_skills}}
 Preferred skills: {{preferred_skills}}
 Responsibilities: {{responsibilities}}

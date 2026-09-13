@@ -211,6 +211,10 @@ def test_finalize_confirmation_links_company_and_sets_next_action(capture_fixtur
     exact, _ = find_company_matches(session, "杭州星河智能科技", None)
     assert exact is not None and exact.id == company.id
     assert normalise_company("杭州星河智能科技有限公司") == "杭州星河智能"
+    from internship_os.capture import normalise_title
+
+    assert normalise_title("AI应用开发实习生（日常实习）") == normalise_title("AI应用开发实习生") == "ai应用开发实习生"
+    assert normalise_title("Backend Intern (Summer) ") == "backend intern"
 
 
 def test_confirm_cli_accept_all(capture_fixture, engine, project_root):

@@ -270,3 +270,39 @@ def test_mandarin_claim_cannot_be_extended_and_nonclaims_carry_no_facts(config):
     assert nonclaim_problem("The visa takes about two weeks.", programme_context=True)
     report = validate_statements([Statement(text="I led 5 engineers.", kind="nonclaim")], config)
     assert report.kept == [] and "number" in report.rejected[0].reason
+
+
+def test_recruiter_message_may_state_duration_as_programme_fact(confirmed_job, config, fake_llm, today):
+    fake_llm["recruiter_message"] = messages_json(
+        recruiter_zh={"statements": [
+            stmt("您好，我想申请贵司的实习岗位。", "nonclaim"),
+            stmt("希望实习4至6个月。", "programme_fact", ["SUTD_MIN_DURATION", "YES_MAX_DURATION"]),
+            stmt("签证由学校办理。", "programme_fact", ["Z_VISA_PROCESS_CHAIN"]),
+            stmt("希望实习4至6个月，方便的话可否详聊？", "nonclaim"),
+        ]},
+    )
+    fake_llm["yes_explanation"] = yes_json(zh_statements=[
+        stmt("您好，感谢贵司考虑通过新加坡－中国青年实习交流计划（YES）接收实习生。", "nonclaim"),
+        stmt("实习最长可达6个月。", "programme_fact", ["YES_MAX_DURATION"]),
+    ])
+    result = generate_messages(confirmed_job, config, today)
+    zh = result.sections["recruiter_zh"]
+    assert "希望实习4至6个月。 <!-- SUTD_MIN_DURATION, YES_MAX_DURATION -->" in zh
+    reasons = {r.text: r.reason for r in result.rejected}
+    assert "Z_VISA_PROCESS_CHAIN" in reasons["签证由学校办理。"]
+    # A nonclaim carrying only the programme interval is reclassified, not refused.
+    assert "希望实习4至6个月，方便的话可否详聊？ <!-- SUTD_MIN_DURATION, YES_MAX_DURATION -->" in zh
+    assert "新加坡－中国青年实习交流计划（YES）" in strip_comments(result.sections["yes_zh"])
+
+
+def test_duration_nonclaim_is_reclassified_as_programme_fact(config):
+    from internship_os.drafts import reclassify_duration_statement
+
+    ids = ["SUTD_MIN_DURATION", "YES_MAX_DURATION"]
+    st = reclassify_duration_statement(Statement(text="期望实习时长4至6个月，期待回复。", kind="nonclaim"), 4, 6, ids)
+    assert st.kind == "programme_fact" and st.source_refs == ids
+    st = reclassify_duration_statement(Statement(text="I am looking for a 4 to 6 month internship.", kind="nonclaim"), 4, 6, ids)
+    assert st.kind == "programme_fact"
+    # Other numbers, or no month wording, stay nonclaims (and are then refused by the digit guard).
+    assert reclassify_duration_statement(Statement(text="I led 5 engineers for 6 months.", kind="nonclaim"), 4, 6, ids).kind == "nonclaim"
+    assert reclassify_duration_statement(Statement(text="Available from 4 to 6.", kind="nonclaim"), 4, 6, ids).kind == "nonclaim"

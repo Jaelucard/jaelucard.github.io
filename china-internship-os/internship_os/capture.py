@@ -216,8 +216,17 @@ def normalise_company(name: str | None) -> str:
     return key
 
 
+_TRAILING_BRACKETS = re.compile(r"\s*[（(][^（）()]*[）)]\s*$")
+
+
 def normalise_title(title: str | None) -> str:
-    return normalise_text(title)
+    """Casefold, collapse whitespace, and drop a trailing bracketed suffix such as （日常实习）."""
+    key = normalise_text(title)
+    while True:
+        stripped = _TRAILING_BRACKETS.sub("", key)
+        if stripped == key:
+            return key
+        key = stripped
 
 
 def dedup_keys(

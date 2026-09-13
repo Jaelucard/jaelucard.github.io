@@ -25,7 +25,7 @@ from internship_os import llm
 from internship_os.config import AppConfig
 from internship_os.eligibility import skill_matches
 from internship_os.models import Job
-from internship_os.programme import constraint_warnings, programme_interval
+from internship_os.programme import SUTD_MIN, YES_MAX, constraint_warnings, programme_interval
 from internship_os.schemas import ConstraintStatus, ExtractedJob, JobStatus, UserFacts
 from internship_os.timeline import build_timeline, render as render_timeline, top_line
 
@@ -157,10 +157,24 @@ _CLAIM_VERBS = re.compile(
     re.IGNORECASE,
 )
 _PROGRAMME_WORDS = re.compile(
-    r"visa|permit|stipend|sponsor|business china|\bLOC\b|\bYES\b|months?|weeks?|days?|签证|许可|津贴|"
-    r"补贴|个月|周|天|通商中国|实习计划",
+    r"visa|permit|stipend|sponsor|business china|\bLOC\b|months?|weeks?|days?|签证|许可|津贴|"
+    r"补贴|个月|周|天|通商中国",
     re.IGNORECASE,
 )
+
+
+_MONTH_WORDS = re.compile(r"month|个月", re.IGNORECASE)
+
+
+def reclassify_duration_statement(st: Statement, lo: int, hi: int, duration_ids: list[str]) -> Statement:
+    """A nonclaim whose only numbers are the programme interval bounds and that talks about
+    months is the sought internship length: make it the programme_fact it should have been."""
+    if st.kind != "nonclaim":
+        return st
+    numbers = set(re.findall(r"\d+", st.text))
+    if numbers and numbers <= {str(lo), str(hi)} and _MONTH_WORDS.search(st.text):
+        return Statement(text=st.text, kind="programme_fact", source_refs=list(duration_ids))
+    return st
 
 
 def nonclaim_problem(text: str, *, programme_context: bool) -> str | None:
@@ -310,6 +324,7 @@ def _user_facts_json(config: AppConfig) -> str:
 def _job_variables(job: Job, extracted: ExtractedJob) -> dict[str, Any]:
     return {
         "title": job.display_title,
+        "title_en": job.title_en or job.display_title,
         "company": job.company.display_name if job.company else "",
         "city": job.city_zh or "",
         "required_skills": extracted.required_skills.value or [],
@@ -465,11 +480,12 @@ def generate_messages(job: Job, config: AppConfig, today: date | None = None) ->
     failures: dict[str, str] = {}
 
     lo, hi = programme_interval(config.constraints)
+    duration_ids = [SUTD_MIN, YES_MAX]
     variables = {
         **_job_variables(job, extracted),
         "evidence_json": _evidence_json(config),
         "user_facts_json": _user_facts_json(config),
-        "programme_duration_months": f"{lo} to {hi} months (SUTD_MIN_DURATION, YES_MAX_DURATION)",
+        "programme_duration_months": f"{lo} to {hi} months",
         "mandarin_claim_zh": config.user_facts.mandarin_claim_zh,
         "mandarin_claim_en": config.user_facts.mandarin_claim_en,
         "limit_zh": LIMIT_ZH_CHARS,
@@ -477,7 +493,10 @@ def generate_messages(job: Job, config: AppConfig, today: date | None = None) ->
     }
 
     def render_section(key: str, lang: str, draft: MessageDraft) -> tuple[str | None, str | None]:
-        report = validate_statements(draft.statements, config)
+        # Recruiter and referral messages may carry exactly one programme fact: the sought
+        # internship length, cited to the two duration constraints.
+        statements = [reclassify_duration_statement(st, lo, hi, duration_ids) for st in draft.statements]
+        report = validate_statements(statements, config, allowed_constraint_ids=duration_ids)
         rejected.extend(report.rejected)
         if not report.kept:
             return None, "no valid statements remained after provenance validation"
