@@ -31,3 +31,4 @@ packages = ["internship_os"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
