@@ -203,7 +203,7 @@ class CityClass(StrEnum):
 
 
 class LLMProvider(StrEnum):
-    anthropic = "anthropic"
+    claude_code = "claude_code"
     ollama = "ollama"
 
 
@@ -261,10 +261,20 @@ class TimelineFacts(StrictModel):
     buffer_days_admin: int = Field(ge=0)
 
 
+class LLMModels(StrictModel):
+    """Model per prompt role. For claude_code use CLI aliases (sonnet, opus, fable) or full
+    ids (claude-sonnet-5); for ollama use Ollama model names (qwen2.5:14b)."""
+
+    extraction: str = Field(min_length=1, description="extract_job, quality_checklist")
+    drafting: str = Field(min_length=1, description="messages, bullets, interview prep, YES explanation")
+
+
 class LLMFacts(StrictModel):
     provider: _lax(LLMProvider)
-    model: str = Field(min_length=1)
-    allow_resume_upload_to_api: bool
+    models: LLMModels
+    allow_resume_upload: bool = False
+    max_wait_minutes: int | None = Field(default=None, ge=0, description="null = wait until the subscription limit resets")
+    claude_command: str = Field(default="claude", min_length=1)
 
 
 _COHORT_YEAR = re.compile(r"(\d{4})")

@@ -13,7 +13,8 @@
 - No scraping of login-walled sites.
 - Single user-supplied URL GET only, with paste fallback.
 - Never delete jobs or companies; use terminal statuses.
-- config/user_facts.yaml, db.sqlite, db.sqlite-*, .env and packs/ are gitignored.
+- config/user_facts.yaml, db.sqlite, db.sqlite-* and packs/ are gitignored.
+- LLM calls go through the Claude Code CLI on the user's subscription (provider claude_code) or local Ollama. No API keys; llm.py strips ANTHROPIC_API_KEY from the subprocess environment.
 - Manual programme state such as SUTD approval and agreed employer dates must survive recompute.
 - ios recompute is deterministic and never calls an LLM.
 - Edit surgically.

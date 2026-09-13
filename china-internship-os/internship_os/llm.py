@@ -1,5 +1,15 @@
 """LLM access. The only module that talks to an LLM provider.
 
+Providers:
+
+* ``claude_code``: runs the official Claude Code CLI in print mode (``claude -p``) as a
+  subprocess. It uses the user's logged-in Claude subscription; no API key is involved and the
+  ``ANTHROPIC_API_KEY`` / ``ANTHROPIC_AUTH_TOKEN`` variables are stripped from the subprocess
+  environment so a stray key can never switch it to pay-per-token billing. Tools, hooks, MCP
+  servers, project settings and session persistence are all disabled, so each call is a plain
+  completion.
+* ``ollama``: POST to a local Ollama server.
+
 The LLM is used for extraction, translation, quality-signal extraction, drafting and interview
 question generation. It never decides eligibility, programme compatibility, tier, pipeline
 state, deadlines, deduplication or timing.
@@ -14,14 +24,15 @@ import json
 import logging
 import os
 import re
+import subprocess
+import time
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from collections.abc import Callable, Iterator
 
 import httpx
-from dotenv import load_dotenv
 from pydantic import BaseModel, ValidationError
 
 from internship_os.config import AppConfig, load_config, prompts_dir
@@ -30,11 +41,34 @@ from internship_os.schemas import LLMProvider
 log = logging.getLogger("internship_os.llm")
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL_ENV = "OLLAMA_MODEL"
-ANTHROPIC_KEY_ENV = "ANTHROPIC_API_KEY"
-MAX_OUTPUT_TOKENS = 16000
 RESUME_VARIABLE = "resume_text"
-HOSTED_MODEL_PREFIXES = ("claude", "anthropic/", "gpt-", "o1", "o3", "o4", "openai/", "gemini", "google/")
+
+# Which configured model each prompt uses: user_facts.llm.models.<role>.
+PROMPT_ROLES: dict[str, str] = {
+    "extract_job": "extraction",
+    "quality_checklist": "extraction",
+    "recruiter_message": "drafting",
+    "yes_explanation": "drafting",
+    "tailor_bullets": "drafting",
+    "interview_prep": "drafting",
+}
+DEFAULT_ROLE = "drafting"
+
+CLAUDE_CODE_SYSTEM_PROMPT = (
+    "You are a structured-data extraction and drafting engine used by a local command-line "
+    "tool. Follow the instructions in the user message exactly and output only what they ask "
+    "for. Never add commentary, never ask questions, never use tools."
+)
+CLAUDE_CODE_TIMEOUT_SECONDS = 900
+# Variables that would make the CLI bill an API account instead of using the subscription.
+STRIPPED_ENV_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+RATE_LIMIT_PATTERN = re.compile(
+    r"(usage|session|rate|weekly|daily)\s+limit|allowance|resets? at|too many requests|"
+    r"rate.?limited|overloaded|\b429\b|\b529\b",
+    re.IGNORECASE,
+)
+RETRY_DELAYS_SECONDS = (60, 120, 300)  # then the last value repeats
+_sleep = time.sleep  # patched by tests
 
 
 class LLMError(Exception):
@@ -50,12 +84,13 @@ class LLMResponseError(LLMError):
 
 
 class ResumeUploadBlocked(LLMError):
-    """A resume would have been sent to a hosted API without explicit permission."""
+    """A resume would have been sent to a hosted model without explicit permission."""
 
 
 @dataclass
 class ProviderResult:
     text: str
+    structured: Any | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
 
@@ -136,57 +171,172 @@ def _template_variables(template: str) -> set[str]:
 
 
 # --------------------------------------------------------------------------------------
+# Model routing
+# --------------------------------------------------------------------------------------
+
+
+def role_for(prompt_name: str) -> str:
+    return PROMPT_ROLES.get(prompt_name, DEFAULT_ROLE)
+
+
+def model_for(prompt_name: str, config: AppConfig) -> str:
+    """The configured model for this prompt: user_facts.llm.models.<extraction|drafting>."""
+    return getattr(config.user_facts.llm.models, role_for(prompt_name))
+
+
+# --------------------------------------------------------------------------------------
 # Providers
 # --------------------------------------------------------------------------------------
 
 
-def _anthropic_call(prompt: str, model: str, root: Path) -> ProviderResult:
-    load_dotenv(root / ".env")
-    api_key = os.environ.get(ANTHROPIC_KEY_ENV)
-    if not api_key:
-        raise LLMConfigError(
-            f"{ANTHROPIC_KEY_ENV} is not set. Put it in .env (see .env.example) or switch "
-            "user_facts.llm.provider to ollama."
-        )
-    import anthropic  # imported lazily so tests never need the SDK configured
+def claude_code_command(
+    executable: str, model: str, json_schema: dict[str, Any] | None
+) -> list[str]:
+    """The exact ``claude -p`` invocation: a plain completion with everything else off."""
+    cmd = [
+        executable,
+        "-p",
+        "--output-format", "json",
+        "--tools", "",
+        "--no-session-persistence",
+        "--setting-sources", "",
+        "--strict-mcp-config",
+        "--model", model,
+        "--system-prompt", CLAUDE_CODE_SYSTEM_PROMPT,
+    ]
+    if json_schema is not None:
+        cmd += ["--json-schema", json.dumps(json_schema, ensure_ascii=False)]
+    return cmd
 
-    client = anthropic.Anthropic(api_key=api_key)
+
+def subscription_env() -> dict[str, str]:
+    """The subprocess environment with API-key variables removed."""
+    return {k: v for k, v in os.environ.items() if k not in STRIPPED_ENV_VARS}
+
+
+def looks_like_rate_limit(message: str) -> bool:
+    return bool(RATE_LIMIT_PATTERN.search(message or ""))
+
+
+def _parse_cli_json(stdout: str) -> dict[str, Any]:
+    text = stdout.strip()
     try:
-        response = client.messages.create(
-            model=model,
-            max_tokens=MAX_OUTPUT_TOKENS,
-            messages=[{"role": "user", "content": prompt}],
-        )
-    except anthropic.APIError as exc:
-        raise LLMError(f"Anthropic API call failed ({type(exc).__name__}): {exc}") from exc
-    text = "".join(getattr(block, "text", "") for block in response.content)
-    if getattr(response, "stop_reason", None) == "max_tokens":
-        raise LLMResponseError(
-            f"the model reply was cut off at {MAX_OUTPUT_TOKENS} output tokens; shorten the input"
-        )
-    if getattr(response, "stop_reason", None) == "refusal":
-        raise LLMResponseError("the model declined this request (stop_reason=refusal)")
-    usage = getattr(response, "usage", None)
-    return ProviderResult(
-        text=text,
-        input_tokens=getattr(usage, "input_tokens", None),
-        output_tokens=getattr(usage, "output_tokens", None),
-    )
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        start = text.rfind("\n{")
+        if start == -1:
+            raise
+        data = json.loads(text[start + 1 :])
+    if not isinstance(data, dict):
+        raise json.JSONDecodeError("expected a JSON object", text, 0)
+    return data
 
 
-def ollama_model_name(config: AppConfig) -> str:
-    load_dotenv(config.root / ".env")
-    env_model = os.environ.get(OLLAMA_MODEL_ENV)
-    if env_model:
-        return env_model
-    configured = config.user_facts.llm.model
-    # A hosted-API model name is not intended for Ollama.
-    if configured.lower().startswith(HOSTED_MODEL_PREFIXES):
-        raise LLMConfigError(
-            f"{OLLAMA_MODEL_ENV} is not set and user_facts.llm.model ({configured}) is a hosted "
-            "API model name. Set OLLAMA_MODEL in .env to the Ollama model to use."
+def _claude_code_call(
+    prompt: str, model: str, json_schema: dict[str, Any] | None, config: AppConfig
+) -> ProviderResult:
+    executable = config.user_facts.llm.claude_command
+    cmd = claude_code_command(executable, model, json_schema)
+    env = subscription_env()
+    max_wait = config.user_facts.llm.max_wait_minutes
+    waited = 0
+    attempt = 0
+    while True:
+        try:
+            proc = subprocess.run(
+                cmd,
+                input=prompt,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                timeout=CLAUDE_CODE_TIMEOUT_SECONDS,
+                env=env,
+                cwd=config.root,
+            )
+        except FileNotFoundError:
+            raise LLMConfigError(
+                f"the Claude Code CLI ({executable!r}) was not found on PATH. Install it with "
+                "'npm install -g @anthropic-ai/claude-code', run 'claude login', or set "
+                "user_facts.llm.claude_command to its full path."
+            ) from None
+        except subprocess.TimeoutExpired:
+            raise LLMError(
+                f"the Claude Code CLI did not answer within {CLAUDE_CODE_TIMEOUT_SECONDS} seconds"
+            ) from None
+        try:
+            data = _parse_cli_json(proc.stdout)
+        except json.JSONDecodeError:
+            detail = (proc.stderr or proc.stdout or "").strip().splitlines()
+            tail = detail[-1][:300] if detail else "no output"
+            raise LLMError(
+                f"the Claude Code CLI returned no JSON result (exit code {proc.returncode}): {tail}. "
+                "Check that you are logged in: run 'claude auth status'."
+            ) from None
+        if proc.returncode != 0 and not data.get("is_error") and not data.get("result"):
+            tail = (proc.stderr or "").strip().splitlines()
+            raise LLMError(
+                f"the Claude Code CLI exited with code {proc.returncode} without a result"
+                + (f": {tail[-1][:300]}" if tail else "")
+                + ". Check that you are logged in: run 'claude auth status'."
+            )
+        if data.get("is_error"):
+            message = str(data.get("result") or data.get("error") or "unknown error")
+            if looks_like_rate_limit(message):
+                delay = RETRY_DELAYS_SECONDS[min(attempt, len(RETRY_DELAYS_SECONDS) - 1)]
+                if max_wait is not None and (waited + delay) > max_wait * 60:
+                    raise LLMError(
+                        f"Claude subscription limit reached and user_facts.llm.max_wait_minutes "
+                        f"({max_wait}) exhausted: {message}"
+                    )
+                log.warning(
+                    "claude_code rate limit hit; waiting %s s before retry %s (%s)",
+                    delay,
+                    attempt + 1,
+                    message[:160],
+                )
+                _sleep(delay)
+                waited += delay
+                attempt += 1
+                continue
+            raise LLMError(f"Claude Code returned an error: {message}")
+        usage = data.get("usage") or {}
+        input_tokens = None
+        if isinstance(usage, dict) and "input_tokens" in usage:
+            input_tokens = (
+                int(usage.get("input_tokens") or 0)
+                + int(usage.get("cache_creation_input_tokens") or 0)
+                + int(usage.get("cache_read_input_tokens") or 0)
+            )
+        return ProviderResult(
+            text=str(data.get("result") or ""),
+            structured=data.get("structured_output"),
+            input_tokens=input_tokens,
+            output_tokens=usage.get("output_tokens") if isinstance(usage, dict) else None,
         )
-    return configured
+
+
+def claude_code_status(config: AppConfig) -> dict[str, Any]:
+    """Version and login state of the CLI, for ``ios llm-check``. Never raises on CLI errors."""
+    executable = config.user_facts.llm.claude_command
+    info: dict[str, Any] = {"executable": executable, "found": False}
+    try:
+        version = subprocess.run(
+            [executable, "--version"], capture_output=True, text=True, timeout=30, env=subscription_env()
+        )
+        info["found"] = True
+        info["version"] = version.stdout.strip() or version.stderr.strip()
+        status = subprocess.run(
+            [executable, "auth", "status"], capture_output=True, text=True, timeout=30, env=subscription_env()
+        )
+        try:
+            info.update(_parse_cli_json(status.stdout))
+        except json.JSONDecodeError:
+            info["auth_raw"] = (status.stdout or status.stderr).strip()[:300]
+    except FileNotFoundError:
+        info["error"] = f"{executable!r} not found on PATH"
+    except subprocess.TimeoutExpired:
+        info["error"] = "the CLI did not respond"
+    return info
 
 
 def _ollama_call(prompt: str, model: str, want_json: bool) -> ProviderResult:
@@ -207,21 +357,20 @@ def _ollama_call(prompt: str, model: str, want_json: bool) -> ProviderResult:
 
 
 def _call_provider(
-    prompt_name: str, prompt: str, config: AppConfig, want_json: bool
+    prompt_name: str, prompt: str, config: AppConfig, json_schema: type[BaseModel] | None
 ) -> ProviderResult:
     provider = config.user_facts.llm.provider
+    model = model_for(prompt_name, config)
     if _fake_provider is not None:
         result = ProviderResult(text=_fake_provider(prompt_name, prompt))
-        model = "fake"
         provider_name = "fake"
-    elif provider == LLMProvider.anthropic:
-        model = config.user_facts.llm.model
-        provider_name = "anthropic"
-        result = _anthropic_call(prompt, model, config.root)
+    elif provider == LLMProvider.claude_code:
+        provider_name = "claude_code"
+        schema = json_schema.model_json_schema() if json_schema is not None else None
+        result = _claude_code_call(prompt, model, schema, config)
     elif provider == LLMProvider.ollama:
-        model = ollama_model_name(config)
         provider_name = "ollama"
-        result = _ollama_call(prompt, model, want_json)
+        result = _ollama_call(prompt, model, json_schema is not None)
     else:  # pragma: no cover - config validation prevents this
         raise LLMConfigError(f"unknown provider {provider}")
     log.info(
@@ -266,6 +415,10 @@ def parse_structured(text: str, json_schema: type[BaseModel]) -> BaseModel:
         data = parse_json_object(text)
     except json.JSONDecodeError as exc:
         raise ValueError(f"response was not valid JSON: {exc}") from exc
+    return validate_data(data, json_schema)
+
+
+def validate_data(data: Any, json_schema: type[BaseModel]) -> BaseModel:
     try:
         return json_schema.model_validate(data)
     except ValidationError as exc:
@@ -273,6 +426,12 @@ def parse_structured(text: str, json_schema: type[BaseModel]) -> BaseModel:
             ".".join(str(p) for p in err["loc"]) + ": " + err["msg"] for err in exc.errors()
         )
         raise ValueError(f"response did not match the schema: {problems}") from exc
+
+
+def _result_to_model(result: ProviderResult, json_schema: type[BaseModel]) -> BaseModel:
+    if result.structured is not None:
+        return validate_data(result.structured, json_schema)
+    return parse_structured(result.text, json_schema)
 
 
 # --------------------------------------------------------------------------------------
@@ -293,21 +452,21 @@ def complete(
     validated, and one retry carrying the validation error is attempted before failing.
     """
     cfg = config or load_config()
+    llm_cfg = cfg.user_facts.llm
     if (
-        cfg.user_facts.llm.provider == LLMProvider.anthropic
+        llm_cfg.provider == LLMProvider.claude_code
         and RESUME_VARIABLE in variables
-        and not cfg.user_facts.llm.allow_resume_upload_to_api
+        and not llm_cfg.allow_resume_upload
     ):
         raise ResumeUploadBlocked(
-            "This command would send resume text to the Anthropic API. Either run it with "
+            "This command would send resume text to a hosted Claude model. Either run it with "
             "user_facts.llm.provider set to ollama, or explicitly set "
-            "user_facts.llm.allow_resume_upload_to_api: true."
+            "user_facts.llm.allow_resume_upload: true."
         )
 
     prompt = build_prompt(prompt_name, variables, json_schema, cfg.root)
-    want_json = json_schema is not None
     try:
-        first = _call_provider(prompt_name, prompt, cfg, want_json)
+        first = _call_provider(prompt_name, prompt, cfg, json_schema)
     except LLMError:
         log.info("llm call prompt=%s status=failure", prompt_name)
         raise
@@ -316,7 +475,7 @@ def complete(
         return first.text
 
     try:
-        return parse_structured(first.text, json_schema)
+        return _result_to_model(first, json_schema)
     except ValueError as first_error:
         retry_prompt = (
             prompt
@@ -325,8 +484,8 @@ def complete(
             + "\nRespond again with a single JSON object that matches the schema exactly."
         )
         try:
-            second = _call_provider(prompt_name, retry_prompt, cfg, want_json)
-            return parse_structured(second.text, json_schema)
+            second = _call_provider(prompt_name, retry_prompt, cfg, json_schema)
+            return _result_to_model(second, json_schema)
         except (ValueError, LLMError) as second_error:
             log.info("llm call prompt=%s status=failure", prompt_name)
             raise LLMResponseError(

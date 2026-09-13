@@ -7,6 +7,7 @@ to an external party; the only network access is the single user-supplied job UR
 
 from __future__ import annotations
 
+import os
 import sys
 from datetime import date
 from pathlib import Path
@@ -829,3 +830,39 @@ def job_interview_prep(ctx: typer.Context, job_id: int) -> None:
     for r in result.rejected:
         err(f"dropped evidence reference: {r.text} ({r.reason})")
     out(f"wrote interview-prep.md to {result.directory}")
+
+
+# ======================================================================================
+# LLM provider check
+# ======================================================================================
+
+from internship_os.llm import PROMPT_ROLES, claude_code_status  # noqa: E402
+
+
+@app.command("llm-check")
+def llm_check(ctx: typer.Context) -> None:
+    """Show the configured LLM provider and, for claude_code, whether the CLI is installed and logged in."""
+    cfg: AppConfig = ctx.obj
+    llm_cfg = cfg.user_facts.llm
+    out(f"provider: {llm_cfg.provider}")
+    out(f"models: extraction={llm_cfg.models.extraction} ({', '.join(p for p, r in PROMPT_ROLES.items() if r == 'extraction')}); "
+        f"drafting={llm_cfg.models.drafting} ({', '.join(p for p, r in PROMPT_ROLES.items() if r == 'drafting')})")
+    out(f"rate-limit wait: {'until the limit resets' if llm_cfg.max_wait_minutes is None else str(llm_cfg.max_wait_minutes) + ' minutes'}")
+    if llm_cfg.provider != "claude_code":
+        out("ollama: POST http://localhost:11434/api/generate; make sure 'ollama serve' is running")
+        return
+    info = claude_code_status(cfg)
+    if not info.get("found"):
+        err(f"claude CLI: {info.get('error', 'not found')}. Install: npm install -g @anthropic-ai/claude-code, then: claude login")
+        raise typer.Exit(code=1)
+    out(f"claude CLI: {info['executable']} (version {info.get('version', '?')})")
+    logged_in = info.get("loggedIn")
+    out(f"logged in: {logged_in} | auth: {info.get('authMethod', '?')} | provider: {info.get('apiProvider', '?')}")
+    if logged_in is False:
+        err("not logged in: run 'claude login' and choose your Claude subscription")
+        raise typer.Exit(code=1)
+    if logged_in is None and info.get("auth_raw"):
+        out(f"auth status output: {info['auth_raw']}")
+    stripped = [v for v in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN") if os.environ.get(v)]
+    if stripped:
+        out(f"note: {', '.join(stripped)} is set in your shell; it is stripped for the CLI so your subscription is used")

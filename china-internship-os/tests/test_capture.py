@@ -256,23 +256,15 @@ def test_confirmation_survives_checklist_failure(capture_fixture, session, engin
     assert row[0] is not None and row[1] == "LIKELY_ELIGIBLE" and row[2] == company.id
 
 
-def test_ollama_model_fallback_rejects_hosted_model_names(config, monkeypatch):
+def test_model_routing_by_prompt_role(config):
     from internship_os import llm
-    from internship_os.config import AppConfig
 
-    monkeypatch.delenv("OLLAMA_MODEL", raising=False)
-    for name in ("claude-sonnet-4-6", "gpt-4o", "gemini-2.5-pro"):
-        facts = config.user_facts.model_copy(deep=True)
-        facts.llm.model = name
-        cfg = AppConfig(root=config.root, user_facts=facts, constraints=config.constraints, evidence=config.evidence, cities=config.cities)
-        with pytest.raises(llm.LLMConfigError, match="OLLAMA_MODEL"):
-            llm.ollama_model_name(cfg)
-    facts = config.user_facts.model_copy(deep=True)
-    facts.llm.model = "qwen2.5:7b"
-    cfg = AppConfig(root=config.root, user_facts=facts, constraints=config.constraints, evidence=config.evidence, cities=config.cities)
-    assert llm.ollama_model_name(cfg) == "qwen2.5:7b"
-    monkeypatch.setenv("OLLAMA_MODEL", "llama3")
-    assert llm.ollama_model_name(cfg) == "llama3"
+    assert llm.model_for("extract_job", config) == config.user_facts.llm.models.extraction
+    assert llm.model_for("quality_checklist", config) == config.user_facts.llm.models.extraction
+    for name in ("recruiter_message", "yes_explanation", "tailor_bullets", "interview_prep"):
+        assert llm.model_for(name, config) == config.user_facts.llm.models.drafting
+    assert config.user_facts.llm.provider == "claude_code"
+    assert config.user_facts.llm.max_wait_minutes is None
 
 
 def test_first_run_hardening(project_root, session, capture_fixture, fake_llm, config, monkeypatch, today):
@@ -281,7 +273,6 @@ def test_first_run_hardening(project_root, session, capture_fixture, fake_llm, c
     from internship_os import llm as llm_mod
     from internship_os.cli import read_jd_file
     from internship_os.config import load_config
-    from tests.conftest import ORIGINAL_ANTHROPIC_CALL
 
     # GBK-saved JD files decode instead of crashing.
     gbk = project_root / "gbk.txt"
@@ -313,21 +304,28 @@ def test_first_run_hardening(project_root, session, capture_fixture, fake_llm, c
     with open(project_root / "n.log", "w") as fh:
         assert load_config(project_root, notice_stream=fh).user_facts.exchange.end_date == date(2027, 1, 15)
 
-    # Anthropic SDK errors surface as LLMError, not a traceback.
-    import anthropic
+    # Claude Code CLI failures surface as LLMError, never as a traceback.
+    import subprocess
 
-    class _Boom:
-        def __init__(self, **_k):
-            self.messages = self
+    from tests.conftest import ORIGINAL_CLAUDE_CODE_CALL
 
-        def create(self, **_k):
-            raise anthropic.AuthenticationError(
-                "bad key",
-                response=httpx.Response(401, request=httpx.Request("POST", "https://api.anthropic.com")),
-                body=None,
-            )
+    def cli(returncode, payload, stderr=""):
+        return subprocess.CompletedProcess(args=[], returncode=returncode, stdout=json.dumps(payload), stderr=stderr)
 
-    monkeypatch.setattr(anthropic, "Anthropic", _Boom)
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
-    with pytest.raises(llm_mod.LLMError, match="AuthenticationError"):
-        ORIGINAL_ANTHROPIC_CALL("prompt", "claude-sonnet-4-6", project_root)
+    monkeypatch.setattr(
+        llm_mod.subprocess, "run",
+        lambda *a, **k: cli(1, {"type": "result", "is_error": True, "result": "There's an issue with the selected model (x)."}),
+    )
+    with pytest.raises(llm_mod.LLMError, match="selected model"):
+        ORIGINAL_CLAUDE_CODE_CALL("prompt", "sonnet", None, config)
+
+    def missing(*a, **k):
+        raise FileNotFoundError("claude")
+
+    monkeypatch.setattr(llm_mod.subprocess, "run", missing)
+    with pytest.raises(llm_mod.LLMConfigError, match="npm install"):
+        ORIGINAL_CLAUDE_CODE_CALL("prompt", "sonnet", None, config)
+
+    monkeypatch.setattr(llm_mod.subprocess, "run", lambda *a, **k: cli(1, {}, stderr="Not logged in"))
+    with pytest.raises(llm_mod.LLMError, match="claude auth status"):
+        ORIGINAL_CLAUDE_CODE_CALL("prompt", "sonnet", None, config)
