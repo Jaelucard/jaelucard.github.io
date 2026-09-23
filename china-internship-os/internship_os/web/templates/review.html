@@ -19,7 +19,8 @@
       {% for o in f.options %}<option value="{{ o }}"{% if o == f.value %} selected{% endif %}>{{ o }}</option>{% endfor %}
     </select>
     {% elif f.kind == "textarea" %}
-    <textarea name="field__{{ f.name }}" id="field__{{ f.name }}">{{ f.value }}</textarea>
+    <textarea name="field__{{ f.name }}" id="field__{{ f.name }}">
+{{ f.value }}</textarea>
     {% else %}
     <input name="field__{{ f.name }}" id="field__{{ f.name }}" value="{{ f.value }}"{% if f.kind == "date" %} type="date"{% elif f.kind == "number" %} type="number"{% endif %}>
     {% endif %}

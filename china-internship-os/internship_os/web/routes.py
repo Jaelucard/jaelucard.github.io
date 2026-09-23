@@ -1,7 +1,7 @@
 """Page routes. Routes read the request, call a service or core function, and render or redirect.
 
-Every POST answers with a 303 redirect to a GET page, except a rejected form, which is shown
-again with status 400 and the submitted values so no typing is lost.
+Every POST answers with a 303 redirect to a GET page, except a rejected form (400) or a possible
+duplicate awaiting a decision (409), which are shown again with the submitted values.
 """
 
 from __future__ import annotations
@@ -67,8 +67,11 @@ def job_message(job: Job, msg: str) -> tuple[str, str] | None:
     return MESSAGES.get(msg)
 
 
+MAX_ID = 2**63 - 1  # SQLite INTEGER
+
+
 def get_job(session: Session, job_id: int) -> Job:
-    job = session.get(Job, job_id)
+    job = session.get(Job, job_id) if 0 < job_id <= MAX_ID else None
     if job is None:
         raise HTTPException(status_code=404, detail=f"job {job_id} does not exist")
     return job
@@ -116,12 +119,15 @@ def jobs_page(
     return page(request, "jobs.html", cli="ios job list", jobs=jobs, filters=filters, options=options)
 
 
-def job_view(request: Request, job: Job, *, message: tuple[str, str] | None = None, status_code: int = 200) -> Response:
+def job_view(request: Request, job: Job, *, message: tuple[str, str] | None = None,
+             form: dict[str, str] | None = None, status_code: int = 200) -> Response:
+    """``form`` re-shows a rejected action's typed values; keys are '<form>.<field>'."""
     extraction = ExtractedJob.model_validate(job.extracted) if job.extracted else None
     return page(
         request, "job.html", cli=f"ios job show {job.id}", status_code=status_code,
         job=job,
         message=message,
+        form=form or {},
         extraction=extraction,
         field_names=ExtractedJob.field_names(),
         contacts=list(job.company.contacts) if job.company else [],
@@ -196,6 +202,8 @@ def capture_create(
         return capture_again(request, form, status_code=400, error="Choose where the posting came from.")
     try:
         if action == "attach":
+            if not (attach_to.isascii() and attach_to.isdigit() and len(attach_to) <= 18):
+                return capture_again(request, form, status_code=400, error="Choose one of the listed jobs to attach to.")
             target = int(attach_to)
             attach_to_existing(session, target, text=text.strip(), url=source_url, source_channel=source)
             return see_other(f"/jobs/{target}?msg=attached")
@@ -226,7 +234,7 @@ def capture_create(
 def review_view(request: Request, session: Session, job: Job, *, form: dict[str, str] | None = None,
                 errors: dict[str, str] | None = None, status_code: int = 200) -> Response:
     extracted = ExtractedJob.model_validate(job.extracted)
-    exact, near = review_service.company_matches(session, extracted)
+    exact, near = review_service.company_matches(session, extracted, form)
     return page(
         request, "review.html", cli=f"ios confirm {job.id}", status_code=status_code,
         job=job,
@@ -260,6 +268,8 @@ async def review_confirm(
     job = await run_in_threadpool(get_job, session, job_id)
     if job.confirmed_at is not None or job.is_terminal:
         return see_other(f"/jobs/{job.id}")
+    if not job.extracted:
+        raise HTTPException(status_code=404, detail=f"job {job.id} has no extraction to review")
     try:
         # The confirmation may call the LLM for the quality checklist, so keep it off the event loop.
         result = await run_in_threadpool(review_service.confirm_job, session, job, form, config, today)
@@ -320,7 +330,8 @@ def job_status_change(
         )
     except (TransitionError, ValueError) as exc:
         text = str(exc).replace("--next and --due", "a next action and a due date").replace("--note", "a note")
-        return job_view(request, job, message=("bad", text), status_code=400)
+        typed = {"status.status": status, "status.next_action": next_action, "status.due": due, "status.note": note}
+        return job_view(request, job, message=("bad", text), form=typed, status_code=400)
     if result.refused:
         return see_other(f"/jobs/{job.id}?msg=refused")
     return see_other(f"/jobs/{job.id}?msg={'at_risk' if result.warnings else 'status'}")
@@ -338,7 +349,8 @@ def job_next_action(
     try:
         job_service.set_next_action(session, job, text, parse_due(due))
     except ValueError as exc:
-        return job_view(request, job, message=("bad", str(exc)), status_code=400)
+        typed = {"next.text": text, "next.due": due}
+        return job_view(request, job, message=("bad", str(exc)), form=typed, status_code=400)
     return see_other(f"/jobs/{job.id}?msg=next")
 
 
@@ -370,5 +382,6 @@ def job_contact(
     try:
         job_service.add_contact(session, job, name=name, role=role, channel=channel, notes=notes)
     except ValueError as exc:
-        return job_view(request, job, message=("bad", str(exc)), status_code=400)
+        typed = {"contact.name": name, "contact.role": role, "contact.channel": channel, "contact.notes": notes}
+        return job_view(request, job, message=("bad", str(exc)), form=typed, status_code=400)
     return see_other(f"/jobs/{job.id}?msg=contact")

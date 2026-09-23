@@ -73,3 +73,20 @@ def test_pages_show_their_cli_equivalent(client):
     assert "ios digest" in client.get("/").text
     assert "ios job list" in client.get("/jobs").text
     assert "ios constraints" in client.get("/facts").text
+
+
+def test_timestamps_are_shown_in_local_time(make_confirmed_job, session, client, monkeypatch):
+    import time
+    from datetime import UTC, datetime
+
+    job = make_confirmed_job()
+    job.confirmed_at = datetime(2026, 9, 23, 17, 7, tzinfo=UTC)
+    session.commit()
+    monkeypatch.setenv("TZ", "Asia/Shanghai")
+    time.tzset()
+    try:
+        body = client.get(f"/jobs/{job.id}").text
+    finally:
+        monkeypatch.undo()
+        time.tzset()
+    assert "<dt>confirmed</dt><dd>2026-09-24</dd>" in body

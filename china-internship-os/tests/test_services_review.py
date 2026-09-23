@@ -151,3 +151,84 @@ def test_discard_closes_the_job_with_a_note(capture_fixture, session, config, to
     assert job.status == "CLOSED" and job.next_action is None
     change = [e for e in job.events if e.kind == "status_change"][-1]
     assert change.detail["note"] == rv.DISCARD_NOTE
+
+
+def _browser_submit(fields) -> dict[str, str]:
+    """What a browser sends for an untouched form: inputs drop newlines, textareas send CRLF."""
+    form = {}
+    for f in fields:
+        value = f.value.replace("\n", "\r\n") if f.kind == "textarea" else f.value.replace("\n", "")
+        form[f"field__{f.name}"] = value
+    form.update({f"confirm__{name}": "on" for name in rv.ALWAYS_CONFIRM})
+    return form
+
+
+def test_untouched_multiline_values_are_not_overrides():
+    extracted = load_extracted("hangzhou_ai_app")
+    extracted.application_method.value = "投递方式：\n1. 邮件 hr@example.com\n2. 官网投递"
+    extracted.nationality_or_work_auth_restriction.value = "仅限中国籍\n不提供签证支持"
+    extracted.nationality_or_work_auth_restriction.source_span = "仅限中国籍"
+    fields = rv.review_fields(extracted)
+    confirmed, overrides, errors = rv.parse_form(extracted, _browser_submit(fields))
+    assert errors == {} and overrides == []
+    assert confirmed.application_method.value == extracted.application_method.value
+    assert confirmed.nationality_or_work_auth_restriction.source_span == "仅限中国籍"
+
+
+def test_multiline_text_is_shown_in_a_textarea():
+    extracted = load_extracted("hangzhou_ai_app")
+    extracted.application_method.value = "投递方式：\n1. 邮件"
+    by = {f.name: f for f in rv.review_fields(extracted)}
+    assert by["application_method"].kind == "textarea"
+
+
+def test_awkward_list_items_round_trip_unchanged():
+    extracted = load_extracted("hangzhou_ai_app")
+    extracted.required_skills.value = ["[加分] CUDA", "Python"]
+    extracted.preferred_skills.value = ["Python ", "Go"]
+    extracted.salary_text.value = " 300元/天 "
+    confirmed, overrides, errors = rv.parse_form(extracted, _form(extracted))
+    assert errors == {} and overrides == []
+    assert confirmed.required_skills.value == ["[加分] CUDA", "Python"]
+
+
+def test_edited_list_with_bracketed_item_still_parses():
+    extracted = load_extracted("hangzhou_ai_app")
+    extracted.required_skills.value = ["[加分] CUDA", "Python"]
+    shown = {f.name: f.value for f in rv.review_fields(extracted)}["required_skills"]
+    edited = shown.replace("Python", "Go")
+    confirmed, _, errors = rv.parse_form(extracted, _form(extracted, field__required_skills=edited))
+    assert errors == {} and confirmed.required_skills.value == ["[加分] CUDA", "Go"]
+
+
+def test_company_matches_follow_the_submitted_names(session):
+    near = Company(name_zh="杭州星河智能集团")
+    session.add(near)
+    session.commit()
+    extracted = load_extracted("hangzhou_ai_app")
+    extracted.company_name_zh.value = None
+    exact, found = rv.company_matches(session, extracted)
+    assert exact is None and found == []
+    exact, found = rv.company_matches(session, extracted, {"field__company_name_zh": "杭州星河智能科技有限公司"})
+    assert [c.id for c in found] == [near.id]
+
+
+def test_company_choice_must_be_one_of_the_listed_companies(capture_fixture, session, config, today, fake_llm):
+    fake_llm["quality_checklist"] = '{"signals": []}'
+    near = Company(name_zh="杭州星河智能集团")
+    unrelated = Company(name_zh="北京某某公司")
+    session.add_all([near, unrelated])
+    session.commit()
+    job = capture_fixture("hangzhou_ai_app")
+    form = _form(ExtractedJob.model_validate(job.extracted))
+    for choice in (str(unrelated.id), "²", "9" * 25, "abc"):
+        with pytest.raises(rv.ReviewInvalid):
+            rv.confirm_job(session, job, {**form, "company_choice": choice}, config, today)
+    assert job.confirmed_at is None
+
+
+def test_discard_refuses_a_job_that_is_already_closed(capture_fixture, session, config, today):
+    job = capture_fixture("hangzhou_ai_app")
+    rv.discard_job(session, job, config, today)
+    with pytest.raises(rv.ReviewInvalid):
+        rv.discard_job(session, job, config, today)

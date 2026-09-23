@@ -70,3 +70,21 @@ Ideas and deviations recorded during Phase 1. Nothing here is implemented in Pha
   match, and the wait is unbounded unless `llm.max_wait_minutes` is set. If the CLI's wording
   changes, extend `RATE_LIMIT_PATTERN` in `internship_os/llm.py`.
 - `--json-schema` structured output is used when available; text parsing remains as fallback.
+
+## Recorded for the web UI
+
+- The Streamlit page (`app.py`) named in ARCHITECTURE_RECOMMENDATION.md and in the notes above is
+  replaced by `ios ui`: FastAPI and Jinja2 pages, no JavaScript, bound to 127.0.0.1.
+  `docs/WORKFLOW_GUIDE.pdf` sections 13 and 15 still describe the Streamlit page.
+- The browser Review page is the same confirmation as `ios confirm` (`services/review.py`). The
+  inputs of eligibility's hard-fail codes need an explicit tick. The web duplicate page offers
+  attach, create a separate job, and cancel.
+- Not in the web UI yet: fit, quality, SUTD approval, agreed dates, company settings, recompute,
+  contact touch and drafting. The Job page shows the commands.
+- An always-on launchd agent was deferred: under launchd the `claude` CLI is not on PATH, and a
+  long-running server keeps old code loaded while other work changes the same modules.
+- Captures run inside the request. With `llm.max_wait_minutes: null` a rate limit keeps the tab
+  waiting; submitting twice during extraction makes two LLM calls (the second shows the
+  duplicate page).
+- The web tests use Starlette's TestClient over httpx, which Starlette now deprecates in favour
+  of httpx2.

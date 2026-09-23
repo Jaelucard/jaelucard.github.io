@@ -875,11 +875,19 @@ def llm_check(ctx: typer.Context) -> None:
 
 
 @app.command()
-def ui(ctx: typer.Context, port: int = typer.Option(8765, "--port", help="Port on 127.0.0.1.")) -> None:
+def ui(ctx: typer.Context, port: int = typer.Option(8765, "--port", min=1, max=65535, help="Port on 127.0.0.1.")) -> None:
     """Serve the web UI at http://127.0.0.1:<port>. It listens on this machine only."""
+    import socket
+
     import uvicorn
 
     cfg: AppConfig = ctx.obj
+    try:
+        with socket.create_server(("127.0.0.1", port)):
+            pass
+    except OSError as exc:
+        err(f"port {port} on 127.0.0.1 is not available ({exc.strerror or exc}); try --port N")
+        raise typer.Exit(code=1)
     init_db(get_engine(database_url(cfg.root)))
     out(f"Internship OS UI: http://127.0.0.1:{port}  (Ctrl-C to stop)")
     uvicorn.run("internship_os.web.app:app", host="127.0.0.1", port=port)
