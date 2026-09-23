@@ -14,6 +14,8 @@ from internship_os.services.review import display
 HERE = Path(__file__).parent
 TEMPLATES = Jinja2Templates(directory=str(HERE / "templates"))
 TEMPLATES.env.filters["show"] = lambda value: display(value) or "-"
+# Timestamps are stored in UTC; show them in the machine's local time.
+TEMPLATES.env.filters["local"] = lambda moment: moment.astimezone() if moment is not None else None
 
 
 def page(request: Request, name: str, *, cli: str, status_code: int = 200, **context: Any) -> Response:

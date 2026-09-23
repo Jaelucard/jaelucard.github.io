@@ -10,8 +10,8 @@ MODULES = sorted(PACKAGE.rglob("*.py"))
 LLM_MODULE = PACKAGE / "llm.py"
 CAPTURE_MODULE = PACKAGE / "capture.py"
 WEB_PACKAGE = PACKAGE / "web"
-# The web UI's own form handlers are POST routes; that decorator is the only allowed ".post(".
-ROUTE_DECORATOR = re.compile(r"^@router\.post\(.*$", re.MULTILINE)
+# The web UI's own form handlers are POST routes; that exact decorator is the only allowed ".post(".
+ROUTE_DECORATOR = re.compile(r'^@router\.post\("/[^"\n]*"\)$', re.MULTILINE)
 
 FORBIDDEN_IMPORTS = ("smtplib", "selenium", "playwright", "requests", "webbrowser", "pyautogui", "imaplib", "email.mime", "anthropic", "dotenv")
 FORBIDDEN_DEF = re.compile(r"^\s*def\s+(send|submit|apply_to|post_to|email|message_send|auto_apply)\w*\s*\(", re.MULTILINE)
@@ -33,6 +33,8 @@ def test_no_command_submits_or_sends_anything():
     for path in MODULES:
         src = _source(path)
         if WEB_PACKAGE in path.parents:
+            decorators = re.findall(r"^\s*@router\.post\(", src, re.MULTILINE)
+            assert len(ROUTE_DECORATOR.findall(src)) == len(decorators), f"{path.name}: unexpected POST decorator form"
             src = ROUTE_DECORATOR.sub("", src)
         if path != LLM_MODULE:
             assert "httpx.post" not in src and ".post(" not in src, f"{path.name} performs a POST"
@@ -110,4 +112,5 @@ def test_web_ui_is_local_and_script_free():
     for path in templates + sorted((WEB_PACKAGE / "static").glob("*")):
         src = _source(path).casefold()
         assert "<script" not in src and "javascript:" not in src, f"{path.name} contains script"
+        assert not re.search(r"\son[a-z]+\s*=", src), f"{path.name} has an inline event handler"
         assert "http://" not in src and "https://" not in src, f"{path.name} loads a remote asset"

@@ -39,3 +39,25 @@ def test_pages_cannot_be_framed(client):
 def test_api_docs_are_disabled(client):
     for path in ("/docs", "/redoc", "/openapi.json"):
         assert client.get(path).status_code == 404, path
+
+
+def test_csp_forbids_scripts(client):
+    assert "script-src 'none'" in client.get("/").headers["Content-Security-Policy"]
+
+
+def test_unexpected_error_pages_carry_the_security_headers(engine, config):
+    from fastapi.testclient import TestClient
+
+    from internship_os.web import deps
+    from internship_os.web.app import create_app
+
+    def broken():
+        raise RuntimeError("boom")
+
+    web_app = create_app()
+    web_app.dependency_overrides[deps.get_config] = broken
+    with TestClient(web_app, base_url="http://127.0.0.1:8765", raise_server_exceptions=False) as c:
+        response = c.get("/")
+    assert response.status_code == 500
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]

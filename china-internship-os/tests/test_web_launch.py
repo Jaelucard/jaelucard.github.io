@@ -42,3 +42,21 @@ def test_streamlit_dashboard_is_retired():
     assert "streamlit" not in deps.casefold()
     for path in (project / "internship_os").rglob("*.py"):
         assert "streamlit" not in path.read_text(encoding="utf-8").casefold(), path.name
+
+
+def test_ui_refuses_a_port_that_is_in_use(project_root, engine, monkeypatch):
+    import socket
+
+    import uvicorn
+
+    calls = []
+    monkeypatch.setattr(uvicorn, "run", lambda *a, **k: calls.append(a))
+    with socket.create_server(("127.0.0.1", 0)) as busy:
+        port = busy.getsockname()[1]
+        result = CliRunner().invoke(app, ["ui", "--port", str(port)])
+    assert result.exit_code == 1 and "not available" in result.output
+    assert calls == []
+
+
+def test_ui_rejects_an_invalid_port(project_root, engine):
+    assert CliRunner().invoke(app, ["ui", "--port", "70000"]).exit_code == 2

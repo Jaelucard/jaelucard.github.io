@@ -112,7 +112,8 @@ The web UI is a local, single-user alternative to the terminal for daily use. It
 - **Facts**: timeline, programme constraints with verification dates, and warnings.
 
 Fit, quality, SUTD approval, agreed dates, company settings, recompute and drafting stay in the
-terminal; the Job page shows the commands.
+terminal; the Job page shows the commands. The Streamlit dashboard (`streamlit run app.py`) was
+replaced by `ios ui`; sections 13 and 15 of `docs/WORKFLOW_GUIDE.pdf` still describe it.
 
 ## Tests
 

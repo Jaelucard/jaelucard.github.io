@@ -25,7 +25,10 @@ DEFAULT_PORT = 8765
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 SECURITY_HEADERS = {
-    "Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'none'",
+    "Content-Security-Policy": (
+        "default-src 'self'; script-src 'none'; object-src 'none'; "
+        "frame-ancestors 'none'; form-action 'self'; base-uri 'none'"
+    ),
     "X-Frame-Options": "DENY",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "same-origin",
@@ -86,8 +89,11 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(Exception)
     async def unexpected_error(request: Request, exc: Exception) -> Response:
-        return page(request, "error.html", cli="-", status_code=500,
-                    title="Unexpected error", message=f"{type(exc).__name__}: {exc}", details=None)
+        # Runs in the outermost error middleware, outside same_origin_writes, so add the headers here.
+        response = page(request, "error.html", cli="-", status_code=500,
+                        title="Unexpected error", message=f"{type(exc).__name__}: {exc}", details=None)
+        response.headers.update(SECURITY_HEADERS)
+        return response
 
     return app
 

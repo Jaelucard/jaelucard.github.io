@@ -9,7 +9,7 @@
 {% if s.needs_review %}
 <ul class="plain">
   {% for j in s.needs_review %}
-  <li><a href="/jobs/{{ j.id }}/review">Review job {{ j.id }}: {{ j.display_title }}</a> <span class="note">captured {{ j.captured_at.date() }}</span></li>
+  <li><a href="/jobs/{{ j.id }}/review">Review job {{ j.id }}: {{ j.display_title }}</a> <span class="note">captured {{ (j.captured_at|local).date() }}</span></li>
   {% endfor %}
 </ul>
 {% else %}<p class="note">none</p>{% endif %}

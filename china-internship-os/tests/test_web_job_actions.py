@@ -102,3 +102,26 @@ def test_contact_form_without_a_company_returns_400(make_confirmed_job, client):
     job = make_confirmed_job(company=False)
     response = client.post(f"/jobs/{job.id}/contact", data={"name": "Li Wei", "role": "", "channel": "wechat", "notes": ""})
     assert response.status_code == 400 and "no company" in response.text
+
+
+def test_rejected_status_form_keeps_the_typed_values(make_confirmed_job, client):
+    job = make_confirmed_job()
+    response = client.post(
+        f"/jobs/{job.id}/status",
+        data={"status": "SHORTLISTED", "next_action": "apply via 实习僧", "due": "", "note": "looked good"},
+    )
+    assert response.status_code == 400
+    assert 'value="apply via 实习僧"' in response.text and 'value="looked good"' in response.text
+    assert '<option value="SHORTLISTED" selected>' in response.text
+
+
+def test_rejected_contact_form_keeps_the_typed_values(make_confirmed_job, client):
+    job = make_confirmed_job()
+    response = client.post(f"/jobs/{job.id}/contact", data={"name": "", "role": "HR", "channel": "email", "notes": "hr@x.cn"})
+    assert response.status_code == 400
+    assert 'value="hr@x.cn"' in response.text and '<option value="email" selected>' in response.text
+
+
+def test_a_huge_job_id_is_404(client):
+    assert client.get("/jobs/99999999999999999999999").status_code == 404
+    assert client.post("/jobs/99999999999999999999999/note", data={"text": "x"}).status_code == 404

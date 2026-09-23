@@ -12,11 +12,11 @@
   <dt>title</dt><dd>{{ job.title_zh or "" }} / {{ job.title_en or "" }}</dd>
   <dt>source</dt><dd>{{ job.source_channel }} {% if job.source_url %}<span class="mono">{{ job.source_url }}</span>{% endif %}</dd>
   <dt>next action</dt><dd>{{ job.next_action or "-" }} <span class="mono">{{ job.next_action_date or "" }}</span></dd>
-  <dt>confirmed</dt><dd>{{ job.confirmed_at.date() if job.confirmed_at else "not confirmed" }}</dd>
+  <dt>confirmed</dt><dd>{{ (job.confirmed_at|local).date() if job.confirmed_at else "not confirmed" }}</dd>
   <dt>city / track</dt><dd>{{ job.city_zh or "-" }} / {{ job.track }}</dd>
   <dt>dates</dt><dd>deadline {{ job.deadline or "-" }} · JD start {{ job.start_date or "-" }} · duration {{ job.duration_months or "-" }} months</dd>
   {% if job.agreed_start_date or job.agreed_duration_months %}<dt>agreed</dt><dd>start {{ job.agreed_start_date }} for {{ job.agreed_duration_months }} months</dd>{% endif %}
-  {% if job.sutd_approved_at %}<dt>SUTD approved</dt><dd>{{ job.sutd_approved_at.date() }}</dd>{% endif %}
+  {% if job.sutd_approved_at %}<dt>SUTD approved</dt><dd>{{ (job.sutd_approved_at|local).date() }}</dd>{% endif %}
   <dt>fit / quality</dt><dd>{{ job.fit }} / {{ job.quality }} · referral {{ job.referral }}</dd>
 </dl>
 
@@ -42,27 +42,27 @@
 <form method="post" action="/jobs/{{ job.id }}/status" class="inline">
   <label class="stack" for="status">Status
     <select name="status" id="status">
-      {% for s in statuses %}<option value="{{ s }}"{% if s == job.status %} selected{% endif %}>{{ s }}</option>{% endfor %}
+      {% for s in statuses %}<option value="{{ s }}"{% if s == form.get("status.status", job.status) %} selected{% endif %}>{{ s }}</option>{% endfor %}
     </select>
   </label>
   <label class="stack" for="status_next">Next action (not needed for closing states)
-    <input name="next_action" id="status_next" value="{{ job.next_action or '' }}">
+    <input name="next_action" id="status_next" value="{{ form.get('status.next_action', job.next_action or '') }}">
   </label>
   <label class="stack" for="status_due">Due
-    <input type="date" name="due" id="status_due" value="{{ job.next_action_date or '' }}">
+    <input type="date" name="due" id="status_due" value="{{ form.get('status.due', job.next_action_date or '') }}">
   </label>
   <label class="stack" for="status_note">Note (required for INELIGIBLE)
-    <input name="note" id="status_note">
+    <input name="note" id="status_note" value="{{ form.get('status.note', '') }}">
   </label>
   <button type="submit">Change status</button>
 </form>
 {% if not job.is_terminal %}
 <form method="post" action="/jobs/{{ job.id }}/next" class="inline">
   <label class="stack" for="next_text">Next action
-    <input name="text" id="next_text" value="{{ job.next_action or '' }}">
+    <input name="text" id="next_text" value="{{ form.get('next.text', job.next_action or '') }}">
   </label>
   <label class="stack" for="next_due">Due
-    <input type="date" name="due" id="next_due" value="{{ job.next_action_date or '' }}">
+    <input type="date" name="due" id="next_due" value="{{ form.get('next.due', job.next_action_date or '') }}">
   </label>
   <button type="submit">Set next action</button>
 </form>
@@ -75,19 +75,20 @@
 </form>
 {% if job.company %}
 <form method="post" action="/jobs/{{ job.id }}/contact" class="inline">
-  <label class="stack" for="contact_name">Contact name <input name="name" id="contact_name"></label>
-  <label class="stack" for="contact_role">Role <input name="role" id="contact_role"></label>
+  <label class="stack" for="contact_name">Contact name <input name="name" id="contact_name" value="{{ form.get('contact.name', '') }}"></label>
+  <label class="stack" for="contact_role">Role <input name="role" id="contact_role" value="{{ form.get('contact.role', '') }}"></label>
   <label class="stack" for="contact_channel">Channel
-    <select name="channel" id="contact_channel">{% for c in channels %}<option value="{{ c }}">{{ c }}</option>{% endfor %}</select>
+    <select name="channel" id="contact_channel">{% for c in channels %}<option value="{{ c }}"{% if c == form.get('contact.channel') %} selected{% endif %}>{{ c }}</option>{% endfor %}</select>
   </label>
-  <label class="stack" for="contact_notes">Handle or notes <input name="notes" id="contact_notes"></label>
+  <label class="stack" for="contact_notes">Handle or notes <input name="notes" id="contact_notes" value="{{ form.get('contact.notes', '') }}"></label>
   <button type="submit">Add contact</button>
 </form>
 {% endif %}
-<p class="note">Fit, quality, SUTD approval, agreed dates and company settings stay in the terminal:
+<p class="note">Fit, quality, SUTD approval, agreed dates, company settings and drafting stay in the terminal:
   <span class="mono">ios job fit {{ job.id }} strong</span> · <span class="mono">ios job quality {{ job.id }} ok</span> ·
   <span class="mono">ios job approve-sutd {{ job.id }}</span> · <span class="mono">ios job dates {{ job.id }} --start YYYY-MM-DD --months N</span>{% if job.company %} ·
-  <span class="mono">ios company set {{ job.company.id }} --yes-status willing</span> then <span class="mono">ios recompute</span>{% endif %}</p>
+  <span class="mono">ios company set {{ job.company.id }} --yes-status willing</span> then <span class="mono">ios recompute</span>{% endif %} ·
+  <span class="mono">ios job pack {{ job.id }}</span> · <span class="mono">ios job messages {{ job.id }}</span> · <span class="mono">ios job bullets {{ job.id }}</span></p>
 
 <h2 class="section">Contacts{% if job.company %} at {{ job.company.display_name }}{% endif %}</h2>
 {% if contacts %}
@@ -99,7 +100,7 @@
 <h2 class="section">Events</h2>
 <ul class="plain">
   {% for e in job.events|reverse %}
-  <li><span class="mono note">{{ e.at.strftime("%Y-%m-%d %H:%M") }}</span> <strong>{{ e.kind }}</strong>
+  <li><span class="mono note">{{ (e.at|local).strftime("%Y-%m-%d %H:%M") }}</span> <strong>{{ e.kind }}</strong>
     {% if e.detail is mapping %}
       {% if e.detail.note %}{{ e.detail.note }}{% endif %}
       {% for k, v in e.detail.items() if k not in ("note", "raw_text", "overrides") and v is not none %}<span class="note">{{ k }}={{ v }}</span> {% endfor %}

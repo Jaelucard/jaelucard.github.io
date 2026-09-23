@@ -179,3 +179,71 @@ def test_review_of_a_confirmed_job_goes_to_the_job_page(make_confirmed_job, clie
     job = make_confirmed_job()
     response = client.get(f"/jobs/{job.id}/review")
     assert response.status_code == 303 and response.headers["location"] == f"/jobs/{job.id}"
+
+
+def test_edited_company_name_with_similar_company_offers_the_choice(capture_fixture, client, session, fake_llm):
+    fake_llm["quality_checklist"] = '{"signals": []}'
+    near = Company(name_zh="杭州星河智能集团")
+    session.add(near)
+    session.commit()
+    job = capture_fixture("hangzhou_ai_app")
+    data = dict(job.extracted)
+    data["company_name_zh"] = {**data["company_name_zh"], "value": None, "source_span": None}
+    job.extracted = data
+    session.commit()
+    form = {**_review_form(job), "field__company_name_zh": "杭州星河智能科技有限公司"}
+    response = client.post(f"/jobs/{job.id}/review", data=form)
+    assert response.status_code == 400
+    assert f'name="company_choice" value="{near.id}"' in response.text
+    assert 'name="company_choice" value="new"' in response.text
+    response = client.post(f"/jobs/{job.id}/review", data={**form, "company_choice": "new"})
+    assert response.status_code == 303
+
+
+def test_create_anyway_stores_every_field_unconfirmed(capture_fixture, client, session):
+    first = capture_fixture("hangzhou_ai_app")
+    tampered = {name: {**field, "confirmed": True} for name, field in first.extracted.items()}
+    import json
+
+    client.post(
+        "/capture",
+        data={"text": load_jd("hangzhou_ai_app"), "source": "boss", "action": "new", "extracted_json": json.dumps(tampered)},
+    )
+    second = _jobs(session)[-1]
+    assert second.id != first.id
+    assert not any(field["confirmed"] for field in second.extracted.values())
+
+
+def test_opening_the_review_page_confirms_nothing(capture_fixture, client, session):
+    job = capture_fixture("hangzhou_ai_app")
+    client.get(f"/jobs/{job.id}/review")
+    stored = _jobs(session)[0]
+    assert stored.confirmed_at is None
+    assert not any(field["confirmed"] for field in stored.extracted.values())
+
+
+def test_attach_needs_a_real_job_id(capture_fixture, client, session):
+    capture_fixture("hangzhou_ai_app")
+    for bad in ("abc", "9" * 25, "424242"):
+        response = client.post(
+            "/capture", data={"text": load_jd("hangzhou_ai_app"), "source": "boss", "action": "attach", "attach_to": bad}
+        )
+        assert response.status_code == 400, bad
+        assert "invalid literal" not in response.text
+    assert len(_jobs(session)) == 1
+
+
+def test_review_post_for_a_job_without_extraction_is_404(make_confirmed_job, client, session):
+    job = make_confirmed_job()
+    job.confirmed_at = None
+    job.extracted = None
+    session.commit()
+    assert client.post(f"/jobs/{job.id}/review", data={}).status_code == 404
+
+
+def test_discarding_twice_does_not_add_a_second_close(capture_fixture, client, session):
+    job = capture_fixture("hangzhou_ai_app")
+    client.post(f"/jobs/{job.id}/discard")
+    response = client.post(f"/jobs/{job.id}/discard")
+    assert response.headers["location"] == f"/jobs/{job.id}"
+    assert [e.kind for e in _jobs(session)[0].events].count("closed") == 1
