@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Capture · Internship OS{% endblock %}
+{% block body %}
+<h1>Capture a posting</h1>
+{% if error %}<p class="bad callout">{{ error }}</p>{% endif %}
+
+{% if duplicate %}
+<div class="callout">
+  <p><strong>Possible duplicate. Nothing was saved yet.</strong> Existing job(s):</p>
+  <ul class="plain">
+    {% for j in duplicate.candidates %}
+    <li><a href="/jobs/{{ j.id }}">{{ j.id }}: {{ j.display_title }}</a> <span class="note">[{{ j.status }}] {{ j.source_url or "" }}</span></li>
+    {% endfor %}
+  </ul>
+  {% for j in duplicate.candidates %}
+  <form method="post" action="/capture">
+    <input type="hidden" name="action" value="attach">
+    <input type="hidden" name="attach_to" value="{{ j.id }}">
+    <input type="hidden" name="text" value="{{ form.text }}">
+    <input type="hidden" name="source" value="{{ form.source }}">
+    <input type="hidden" name="url" value="{{ form.url }}">
+    <button type="submit">Attach this capture as a note to job {{ j.id }}</button>
+  </form>
+  {% endfor %}
+  <form method="post" action="/capture">
+    <input type="hidden" name="action" value="new">
+    <input type="hidden" name="extracted_json" value="{{ duplicate.extracted_json }}">
+    <input type="hidden" name="text" value="{{ form.text }}">
+    <input type="hidden" name="source" value="{{ form.source }}">
+    <input type="hidden" name="url" value="{{ form.url }}">
+    <button type="submit">Create a separate new job</button>
+  </form>
+  <p><a href="/capture">Cancel</a></p>
+</div>
+{% else %}
+<form method="post" action="/capture">
+  <label class="stack" for="text">Job description text
+    <textarea class="jd" name="text" id="text" required>{{ form.text or "" }}</textarea>
+  </label>
+  <label class="stack" for="source">Where it came from
+    <select name="source" id="source" required>
+      <option value="">choose…</option>
+      {% for s in sources %}<option value="{{ s }}"{% if s == form.source %} selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="stack" for="url">Posting URL (optional; stored for duplicate matching, never fetched)
+    <input name="url" id="url" value="{{ form.url or "" }}">
+  </label>
+  <div class="actions"><button type="submit" class="primary">Capture and extract</button></div>
+</form>
+<p class="note">Extraction runs through your Claude subscription and can take a minute. Keep this tab open until the review page appears.</p>
+{% endif %}
+{% endblock %}
