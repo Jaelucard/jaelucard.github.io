@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Job {{ job.id }} · Internship OS{% endblock %}
+{% block body %}
+<h1>Job {{ job.id }}: {{ job.display_title }} <span class="pill">{{ job.status }}</span> <span class="pill">{{ job.tier }}</span></h1>
+{% block messages %}{% endblock %}
+{% if not job.confirmed_at and job.extracted and not job.is_terminal %}
+<p class="callout">This extraction is not confirmed yet. <a class="button primary" href="/jobs/{{ job.id }}/review">Review and confirm</a></p>
+{% endif %}
+
+<dl class="facts">
+  <dt>company</dt><dd>{% if job.company %}{{ job.company.display_name }} <span class="note">id {{ job.company.id }}, host_type {{ job.company.host_type }}, yes_status {{ job.company.yes_status }}</span>{% else %}<span class="note">not linked</span>{% endif %}</dd>
+  <dt>title</dt><dd>{{ job.title_zh or "" }} / {{ job.title_en or "" }}</dd>
+  <dt>source</dt><dd>{{ job.source_channel }} {% if job.source_url %}<span class="mono">{{ job.source_url }}</span>{% endif %}</dd>
+  <dt>next action</dt><dd>{{ job.next_action or "-" }} <span class="mono">{{ job.next_action_date or "" }}</span></dd>
+  <dt>confirmed</dt><dd>{{ job.confirmed_at.date() if job.confirmed_at else "not confirmed" }}</dd>
+  <dt>city / track</dt><dd>{{ job.city_zh or "-" }} / {{ job.track }}</dd>
+  <dt>dates</dt><dd>deadline {{ job.deadline or "-" }} · JD start {{ job.start_date or "-" }} · duration {{ job.duration_months or "-" }} months</dd>
+  {% if job.agreed_start_date or job.agreed_duration_months %}<dt>agreed</dt><dd>start {{ job.agreed_start_date }} for {{ job.agreed_duration_months }} months</dd>{% endif %}
+  {% if job.sutd_approved_at %}<dt>SUTD approved</dt><dd>{{ job.sutd_approved_at.date() }}</dd>{% endif %}
+  <dt>fit / quality</dt><dd>{{ job.fit }} / {{ job.quality }} · referral {{ job.referral }}</dd>
+</dl>
+
+<h2 class="section">Eligibility: {{ job.eligibility }}</h2>
+{% if job.eligibility_reasons %}
+<ul class="plain">
+  {% for r in job.eligibility_reasons %}<li><span class="mono">{{ r.code }}</span> [{{ r.field }}] {{ r.detail }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+<h2 class="section">Programme: {{ job.programme_overall }}</h2>
+<ul class="plain">
+  {% for name, d in (job.programme or {}).items() %}<li>{{ name }}: <strong>{{ d.status }}</strong> <span class="note">{{ d.note or "" }}</span></li>{% endfor %}
+</ul>
+
+{% if job.quality_checklist %}
+<h2 class="section">Quality checklist</h2>
+<p>present: {{ job.quality_checklist|selectattr("present", "true")|map(attribute="signal")|join(", ") or "-" }}</p>
+<p>absent: {{ job.quality_checklist|selectattr("present", "false")|map(attribute="signal")|join(", ") or "-" }}</p>
+{% endif %}
+
+{% block actions %}{% endblock %}
+
+<h2 class="section">Contacts{% if job.company %} at {{ job.company.display_name }}{% endif %}</h2>
+{% if contacts %}
+<ul class="plain">
+  {% for c in contacts %}<li>{{ c.name }} <span class="note">{{ c.role or "-" }}, {{ c.channel }}{% if c.next_followup %}, follow up {{ c.next_followup }}{% endif %}</span>{% if c.notes %} <span class="mono">{{ c.notes }}</span>{% endif %}</li>{% endfor %}
+</ul>
+{% else %}<p class="note">none</p>{% endif %}
+
+<h2 class="section">Events</h2>
+<ul class="plain">
+  {% for e in job.events|reverse %}
+  <li><span class="mono note">{{ e.at.strftime("%Y-%m-%d %H:%M") }}</span> <strong>{{ e.kind }}</strong>
+    {% if e.detail is mapping %}
+      {% if e.detail.note %}{{ e.detail.note }}{% endif %}
+      {% for k, v in e.detail.items() if k not in ("note", "raw_text", "overrides") and v is not none %}<span class="note">{{ k }}={{ v }}</span> {% endfor %}
+      {% if e.detail.overrides %}<span class="note">overrides: {{ e.detail.overrides|map(attribute="field")|join(", ") }}</span>{% endif %}
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+
+{% if extraction %}
+<h2 class="section">{{ "Confirmed extraction" if job.confirmed_at else "Extraction (unconfirmed)" }}</h2>
+<table>
+  <thead><tr><th>field</th><th>value</th><th>source</th></tr></thead>
+  <tbody>
+  {% for name in field_names %}{% set f = extraction.get(name) %}
+  <tr><td class="mono">{{ name }}</td><td>{{ f.value|show }}</td><td class="note">{{ f.source_span or "" }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Facts · Internship OS{% endblock %}
+{% block body %}
+<h1>Programme facts</h1>
+<p class="note">From config/programme_constraints.yaml and config/user_facts.yaml. Edit those files to change anything here.</p>
+
+<h2 class="section">Timeline</h2>
+<pre class="mono">{% for line in timeline %}{{ line }}
+{% endfor %}</pre>
+
+<h2 class="section">Global dimensions (no host assumed)</h2>
+<ul class="plain">
+  {% for name, d in dimensions.items() %}<li>{{ name }}: <strong>{{ d.status }}</strong> <span class="note">{{ d.note or "" }}</span></li>{% endfor %}
+</ul>
+
+<h2 class="section">Warnings ({{ warnings|length }})</h2>
+{% if warnings %}<ul class="plain">{% for w in warnings %}<li class="warn">{{ w }}</li>{% endfor %}</ul>{% else %}<p class="note">none</p>{% endif %}
+
+<h2 class="section">Constraints</h2>
+<table>
+  <thead><tr><th>id</th><th>status</th><th>verified</th><th>next verification</th><th>value</th></tr></thead>
+  <tbody>
+  {% for c in constraints %}
+  <tr{% if c.verification_is_past(today) %} class="past-due"{% endif %}>
+    <td class="mono">{{ c.constraint_id }}</td>
+    <td>{{ c.status.value }}</td>
+    <td class="mono">{{ c.date_verified or "-" }}</td>
+    <td class="mono">{{ c.next_verification_date or "-" }}</td>
+    <td>{% if c.value_months is not none %}{{ c.value_months }} months{% elif c.value_days is not none %}{{ c.value_days }} days{% elif c.placeholder_days is not none %}placeholder {{ c.placeholder_days }} days{% endif %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

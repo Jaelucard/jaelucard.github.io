@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Internship OS{% endblock %}</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<nav>
+  <a href="/" class="brand">Internship OS</a>
+  <a href="/">Today</a>
+  <a href="/jobs">Jobs</a>
+  <a href="/capture">Capture</a>
+  <a href="/facts">Facts</a>
+</nav>
+<main>
+{% block body %}{% endblock %}
+</main>
+<footer class="note mono">CLI equivalent: {{ cli }}</footer>
+</body>
+</html>

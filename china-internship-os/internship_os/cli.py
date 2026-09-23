@@ -867,3 +867,19 @@ def llm_check(ctx: typer.Context) -> None:
     stripped = [v for v in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN") if os.environ.get(v)]
     if stripped:
         out(f"note: {', '.join(stripped)} is set in your shell; it is stripped for the CLI so your subscription is used")
+
+
+# ======================================================================================
+# Local web UI
+# ======================================================================================
+
+
+@app.command()
+def ui(ctx: typer.Context, port: int = typer.Option(8765, "--port", help="Port on 127.0.0.1.")) -> None:
+    """Serve the web UI at http://127.0.0.1:<port>. It listens on this machine only."""
+    import uvicorn
+
+    cfg: AppConfig = ctx.obj
+    init_db(get_engine(database_url(cfg.root)))
+    out(f"Internship OS UI: http://127.0.0.1:{port}  (Ctrl-C to stop)")
+    uvicorn.run("internship_os.web.app:app", host="127.0.0.1", port=port)
