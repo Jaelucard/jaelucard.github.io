@@ -21,3 +21,6 @@
 - Run pytest -q before every checkpoint commit.
 - Do not delete or weaken tests to make them pass.
 - Out of scope until told otherwise: collectors, bookmarklet, OCR, job_sources, analytics, autofill, source diffing, browser automation, automatic submission, any JS frontend.
+- The web UI (internship_os/web, started with ios ui) listens on 127.0.0.1 only, has no JavaScript, and refuses cross-origin writes and unknown Host headers.
+- Web routes stay thin over internship_os/services and the core modules. The browser review is the same confirmation as ios confirm: fields stay confirmed: false until the user submits the review.
+- Every POST redirects 303 to a GET, except a rejected form, which is shown again with status 400 and the submitted values.

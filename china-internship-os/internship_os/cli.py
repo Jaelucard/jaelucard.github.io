@@ -397,7 +397,7 @@ def _choice(value: str, enum: Any, flag: str) -> str:
 
 
 def job_show_lines(job: Job, cfg: AppConfig) -> list[str]:
-    """The ``ios job show`` text for one job (also used by the Streamlit page)."""
+    """The ``ios job show`` text for one job."""
     lines: list[str] = []
     out = lines.append
     company = job.company

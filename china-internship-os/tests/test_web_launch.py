@@ -30,3 +30,15 @@ def test_ui_command_creates_missing_tables(project_root, monkeypatch):
     result = CliRunner().invoke(app, ["ui"])
     assert result.exit_code == 0, result.output
     assert "jobs" in inspect(get_engine()).get_table_names()
+
+
+def test_streamlit_dashboard_is_retired():
+    import tomllib
+    from pathlib import Path
+
+    project = Path(__file__).resolve().parents[1]
+    assert not (project / "app.py").exists()
+    deps = " ".join(tomllib.loads((project / "pyproject.toml").read_text(encoding="utf-8"))["project"]["dependencies"])
+    assert "streamlit" not in deps.casefold()
+    for path in (project / "internship_os").rglob("*.py"):
+        assert "streamlit" not in path.read_text(encoding="utf-8").casefold(), path.name
