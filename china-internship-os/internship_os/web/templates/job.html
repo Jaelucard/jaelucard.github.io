@@ -38,7 +38,56 @@
 <p>absent: {{ job.quality_checklist|selectattr("present", "false")|map(attribute="signal")|join(", ") or "-" }}</p>
 {% endif %}
 
-{% block actions %}{% endblock %}
+<h2 class="section">Update</h2>
+<form method="post" action="/jobs/{{ job.id }}/status" class="inline">
+  <label class="stack" for="status">Status
+    <select name="status" id="status">
+      {% for s in statuses %}<option value="{{ s }}"{% if s == job.status %} selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="stack" for="status_next">Next action (not needed for closing states)
+    <input name="next_action" id="status_next" value="{{ job.next_action or '' }}">
+  </label>
+  <label class="stack" for="status_due">Due
+    <input type="date" name="due" id="status_due" value="{{ job.next_action_date or '' }}">
+  </label>
+  <label class="stack" for="status_note">Note (required for INELIGIBLE)
+    <input name="note" id="status_note">
+  </label>
+  <button type="submit">Change status</button>
+</form>
+{% if not job.is_terminal %}
+<form method="post" action="/jobs/{{ job.id }}/next" class="inline">
+  <label class="stack" for="next_text">Next action
+    <input name="text" id="next_text" value="{{ job.next_action or '' }}">
+  </label>
+  <label class="stack" for="next_due">Due
+    <input type="date" name="due" id="next_due" value="{{ job.next_action_date or '' }}">
+  </label>
+  <button type="submit">Set next action</button>
+</form>
+{% endif %}
+<form method="post" action="/jobs/{{ job.id }}/note" class="inline">
+  <label class="stack" for="note_text">Note
+    <input name="text" id="note_text">
+  </label>
+  <button type="submit">Add note</button>
+</form>
+{% if job.company %}
+<form method="post" action="/jobs/{{ job.id }}/contact" class="inline">
+  <label class="stack" for="contact_name">Contact name <input name="name" id="contact_name"></label>
+  <label class="stack" for="contact_role">Role <input name="role" id="contact_role"></label>
+  <label class="stack" for="contact_channel">Channel
+    <select name="channel" id="contact_channel">{% for c in channels %}<option value="{{ c }}">{{ c }}</option>{% endfor %}</select>
+  </label>
+  <label class="stack" for="contact_notes">Handle or notes <input name="notes" id="contact_notes"></label>
+  <button type="submit">Add contact</button>
+</form>
+{% endif %}
+<p class="note">Fit, quality, SUTD approval, agreed dates and company settings stay in the terminal:
+  <span class="mono">ios job fit {{ job.id }} strong</span> · <span class="mono">ios job quality {{ job.id }} ok</span> ·
+  <span class="mono">ios job approve-sutd {{ job.id }}</span> · <span class="mono">ios job dates {{ job.id }} --start YYYY-MM-DD --months N</span>{% if job.company %} ·
+  <span class="mono">ios company set {{ job.company.id }} --yes-status willing</span> then <span class="mono">ios recompute</span>{% endif %}</p>
 
 <h2 class="section">Contacts{% if job.company %} at {{ job.company.display_name }}{% endif %}</h2>
 {% if contacts %}
