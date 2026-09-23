@@ -88,7 +88,31 @@ Every command validates `config/` first and prints one line per state change (ob
 | `ios contact add --company 1 --name "..." --role HR --channel wechat` / `list` / `touch 1 --next 2026-09-20` | contacts | |
 | `ios llm-check` | CLI presence, version and login state; configured models | `logged in: True \| auth: oauth_token \| provider: firstParty` |
 | `ios timeline [--job 1]` / `ios digest` / `ios constraints` | backward-planned dates; daily digest; constraint table and warnings | `CONTRACT MUST BE SIGNED BY 2027-01-10 (123 days). Placeholders in use: Z_VISA_EMBASSY_LEAD_TIME, ENTRY_PERMIT_LEAD_TIME, LOC_LEAD_TIME` |
-| `streamlit run app.py` | read-mostly dashboard: programme status, jobs, next actions, capture form | |
+| `ios ui [--port 8765]` | local web UI on 127.0.0.1: Today, Jobs, Job, Capture, Review, Facts | `Internship OS UI: http://127.0.0.1:8765  (Ctrl-C to stop)` |
+
+## Web UI
+
+```bash
+ios ui                             # then open http://127.0.0.1:8765
+```
+
+The web UI is a local, single-user alternative to the terminal for daily use. It listens on
+127.0.0.1 only, has no login and no JavaScript, and refuses requests another website could forge
+(cross-origin form posts, unknown Host headers). Pages:
+
+- **Today**: the digest (contract deadline, due and upcoming actions, deadlines, recommendations,
+  counts, programme warnings) plus captures waiting for review.
+- **Capture**: paste a job description and pick its source. The URL box is stored for duplicate
+  matching and is never fetched from the browser; use `ios capture --url` for that.
+- **Review**: the browser version of `ios confirm`. Each box shows the extracted value: leave it to
+  confirm, change it to override, or empty it to set null. The fields that can make a job ineligible
+  need an explicit tick. `ios confirm <id>` still works for the same jobs.
+- **Jobs / Job**: the filtered job list, and one job with status changes (through the same
+  READY_TO_APPLY programme gate as `ios job status`), next action, notes and contacts.
+- **Facts**: timeline, programme constraints with verification dates, and warnings.
+
+Fit, quality, SUTD approval, agreed dates, company settings, recompute and drafting stay in the
+terminal; the Job page shows the commands.
 
 ## Tests
 

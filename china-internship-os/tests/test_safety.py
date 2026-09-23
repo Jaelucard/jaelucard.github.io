@@ -5,7 +5,13 @@ import tomllib
 from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parents[1]
-MODULES = sorted((PROJECT / "internship_os").glob("*.py")) + [PROJECT / "app.py"]
+PACKAGE = PROJECT / "internship_os"
+MODULES = sorted(PACKAGE.rglob("*.py"))
+LLM_MODULE = PACKAGE / "llm.py"
+CAPTURE_MODULE = PACKAGE / "capture.py"
+WEB_PACKAGE = PACKAGE / "web"
+# The web UI's own form handlers are POST routes; that decorator is the only allowed ".post(".
+ROUTE_DECORATOR = re.compile(r"^@router\.post\(.*$", re.MULTILINE)
 
 FORBIDDEN_IMPORTS = ("smtplib", "selenium", "playwright", "requests", "webbrowser", "pyautogui", "imaplib", "email.mime", "anthropic", "dotenv")
 FORBIDDEN_DEF = re.compile(r"^\s*def\s+(send|submit|apply_to|post_to|email|message_send|auto_apply)\w*\s*\(", re.MULTILINE)
@@ -26,9 +32,11 @@ def test_no_command_submits_or_sends_anything():
     # Network use: httpx.post only in the Ollama provider (llm.py); httpx.get only in capture.py.
     for path in MODULES:
         src = _source(path)
-        if path.name != "llm.py":
+        if WEB_PACKAGE in path.parents:
+            src = ROUTE_DECORATOR.sub("", src)
+        if path != LLM_MODULE:
             assert "httpx.post" not in src and ".post(" not in src, f"{path.name} performs a POST"
-        if path.name != "capture.py":
+        if path != CAPTURE_MODULE:
             assert "httpx.get" not in src, f"{path.name} performs a GET"
     capture_src = _source(PROJECT / "internship_os" / "capture.py")
     assert capture_src.count("httpx.get(") == 1
@@ -37,7 +45,7 @@ def test_no_command_submits_or_sends_anything():
     assert llm_src.count("httpx.post(") == 1
     # The only subprocess use is the Claude Code CLI in llm.py, as a plain completion with tools off.
     for path in MODULES:
-        if path.name != "llm.py":
+        if path != LLM_MODULE:
             assert not re.search(r"^\s*(import|from)\s+subprocess\b", _source(path), re.MULTILINE), f"{path.name} uses subprocess"
     assert '"--tools", ""' in llm_src and '"--no-session-persistence"' in llm_src
     assert 'STRIPPED_ENV_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")' in llm_src
@@ -89,3 +97,17 @@ def test_llm_logging_never_includes_content():
                 assert arg.attr in ("input_tokens", "output_tokens"), ast.dump(arg)
             else:
                 raise AssertionError(ast.dump(arg))
+
+
+def test_web_ui_is_local_and_script_free():
+    """The web UI binds to this machine only and serves no JavaScript or third-party assets."""
+    cli_src = _source(PACKAGE / "cli.py")
+    assert 'host="127.0.0.1"' in cli_src
+    for path in MODULES:
+        assert "0.0.0.0" not in _source(path), f"{path.name} mentions 0.0.0.0"
+    templates = sorted((WEB_PACKAGE / "templates").glob("*.html"))
+    assert templates
+    for path in templates + sorted((WEB_PACKAGE / "static").glob("*")):
+        src = _source(path).casefold()
+        assert "<script" not in src and "javascript:" not in src, f"{path.name} contains script"
+        assert "http://" not in src and "https://" not in src, f"{path.name} loads a remote asset"
