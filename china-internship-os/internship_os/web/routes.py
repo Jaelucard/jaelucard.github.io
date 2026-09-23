@@ -22,8 +22,9 @@ from internship_os.capture import (
 from internship_os.config import AppConfig
 from internship_os.llm import LLMError
 from internship_os.models import Job
+from internship_os.pipeline import TransitionError, add_note
 from internship_os.programme import constraint_warnings, global_dimensions
-from internship_os.schemas import ExtractedJob, JobStatus, ProgrammeStatus, SourceChannel, Tier, Track
+from internship_os.schemas import ContactChannel, ExtractedJob, JobStatus, ProgrammeStatus, SourceChannel, Tier, Track
 from internship_os.services import jobs as job_service
 from internship_os.services import review as review_service
 from internship_os.services.today import summary
@@ -115,6 +116,20 @@ def jobs_page(
     return page(request, "jobs.html", cli="ios job list", jobs=jobs, filters=filters, options=options)
 
 
+def job_view(request: Request, job: Job, *, message: tuple[str, str] | None = None, status_code: int = 200) -> Response:
+    extraction = ExtractedJob.model_validate(job.extracted) if job.extracted else None
+    return page(
+        request, "job.html", cli=f"ios job show {job.id}", status_code=status_code,
+        job=job,
+        message=message,
+        extraction=extraction,
+        field_names=ExtractedJob.field_names(),
+        contacts=list(job.company.contacts) if job.company else [],
+        statuses=[s.value for s in JobStatus],
+        channels=[c.value for c in ContactChannel],
+    )
+
+
 @router.get("/jobs/{job_id}")
 def job_page(
     request: Request,
@@ -123,15 +138,7 @@ def job_page(
     session: Session = Depends(deps.get_db),
 ) -> Response:
     job = get_job(session, job_id)
-    extraction = ExtractedJob.model_validate(job.extracted) if job.extracted else None
-    return page(
-        request, "job.html", cli=f"ios job show {job.id}",
-        job=job,
-        message=job_message(job, msg),
-        extraction=extraction,
-        field_names=ExtractedJob.field_names(),
-        contacts=list(job.company.contacts) if job.company else [],
-    )
+    return job_view(request, job, message=job_message(job, msg))
 
 
 @router.get("/facts")
@@ -274,3 +281,94 @@ def review_discard(
     except review_service.ReviewInvalid:
         return see_other(f"/jobs/{job.id}")
     return see_other(f"/jobs/{job.id}?msg=discarded")
+
+
+# --------------------------------------------------------------------------------------
+# Job actions: user-entered facts, written directly
+# --------------------------------------------------------------------------------------
+
+
+def parse_due(raw: str) -> date | None:
+    raw = raw.strip()
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(raw)
+    except ValueError:
+        raise ValueError(f"the date must be YYYY-MM-DD, got {raw!r}") from None
+
+
+@router.post("/jobs/{job_id}/status")
+def job_status_change(
+    request: Request,
+    job_id: int,
+    status: str = Form(""),
+    next_action: str = Form(""),
+    due: str = Form(""),
+    note: str = Form(""),
+    session: Session = Depends(deps.get_db),
+    config: AppConfig = Depends(deps.get_config),
+    today: date = Depends(deps.today),
+) -> Response:
+    """Same path as ``ios job status``: READY_TO_APPLY is gated on the programme dimensions."""
+    job = get_job(session, job_id)
+    try:
+        result = job_service.set_status(
+            session, job, status,
+            next_action=next_action.strip() or None, due=parse_due(due), note=note.strip() or None,
+            config=config, today=today,
+        )
+    except (TransitionError, ValueError) as exc:
+        text = str(exc).replace("--next and --due", "a next action and a due date").replace("--note", "a note")
+        return job_view(request, job, message=("bad", text), status_code=400)
+    if result.refused:
+        return see_other(f"/jobs/{job.id}?msg=refused")
+    return see_other(f"/jobs/{job.id}?msg={'at_risk' if result.warnings else 'status'}")
+
+
+@router.post("/jobs/{job_id}/next")
+def job_next_action(
+    request: Request,
+    job_id: int,
+    text: str = Form(""),
+    due: str = Form(""),
+    session: Session = Depends(deps.get_db),
+) -> Response:
+    job = get_job(session, job_id)
+    try:
+        job_service.set_next_action(session, job, text, parse_due(due))
+    except ValueError as exc:
+        return job_view(request, job, message=("bad", str(exc)), status_code=400)
+    return see_other(f"/jobs/{job.id}?msg=next")
+
+
+@router.post("/jobs/{job_id}/note")
+def job_note(
+    request: Request,
+    job_id: int,
+    text: str = Form(""),
+    session: Session = Depends(deps.get_db),
+) -> Response:
+    job = get_job(session, job_id)
+    if not text.strip():
+        return job_view(request, job, message=("bad", "The note is empty."), status_code=400)
+    add_note(session, job, text.strip())
+    return see_other(f"/jobs/{job.id}?msg=note")
+
+
+@router.post("/jobs/{job_id}/contact")
+def job_contact(
+    request: Request,
+    job_id: int,
+    name: str = Form(""),
+    role: str = Form(""),
+    channel: str = Form(""),
+    notes: str = Form(""),
+    session: Session = Depends(deps.get_db),
+) -> Response:
+    job = get_job(session, job_id)
+    try:
+        job_service.add_contact(session, job, name=name, role=role, channel=channel, notes=notes)
+    except ValueError as exc:
+        return job_view(request, job, message=("bad", str(exc)), status_code=400)
+    return see_other(f"/jobs/{job.id}?msg=contact")
