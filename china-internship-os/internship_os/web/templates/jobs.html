@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Jobs · Internship OS{% endblock %}
+{% block body %}
+<h1>Jobs <span class="note">({{ jobs|length }})</span></h1>
+<form method="get" action="/jobs" class="filters">
+  {% for key in ("tier", "status", "track", "city") %}
+  <label>{{ key }}
+    <select name="{{ key }}">
+      <option value="">any</option>
+      {% for o in options[key] %}<option value="{{ o }}" {% if o == filters[key] %}selected{% endif %}>{{ o }}</option>{% endfor %}
+    </select>
+  </label>
+  {% endfor %}
+  <button type="submit">Filter</button>
+</form>
+{% if jobs %}
+<table>
+  <thead><tr><th>id</th><th>tier</th><th>company</th><th>title</th><th>city</th><th>track</th><th>status</th><th>eligibility</th><th>programme</th><th>deadline</th><th>next action</th></tr></thead>
+  <tbody>
+  {% for j in jobs %}
+  <tr>
+    <td><a href="/jobs/{{ j.id }}">{{ j.id }}</a></td>
+    <td>{{ j.tier }}</td>
+    <td>{{ j.company.display_name if j.company else "-" }}</td>
+    <td><a href="/jobs/{{ j.id }}">{{ j.display_title }}</a></td>
+    <td>{{ j.city_zh or "-" }}</td>
+    <td>{{ j.track }}</td>
+    <td>{{ j.status }}</td>
+    <td>{{ j.eligibility }}</td>
+    <td>{{ j.programme_overall }}</td>
+    <td class="mono">{{ j.deadline or "-" }}</td>
+    <td>{{ j.next_action or "-" }} <span class="mono note">{{ j.next_action_date or "" }}</span></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="note">No jobs match. <a href="/capture">Capture one</a>.</p>{% endif %}
+{% endblock %}

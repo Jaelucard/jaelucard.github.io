@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "_macros.html" import job_link, counts %}
+{% block title %}Today · Internship OS{% endblock %}
+{% block body %}
+<p class="countdown">{{ s.top_line }}</p>
+<p><a class="button primary" href="/capture">Capture a posting</a></p>
+
+<h2 class="section">Needs your review ({{ s.needs_review|length }})</h2>
+{% if s.needs_review %}
+<ul class="plain">
+  {% for j in s.needs_review %}
+  <li><a href="/jobs/{{ j.id }}/review">Review job {{ j.id }}: {{ j.display_title }}</a> <span class="note">captured {{ j.captured_at.date() }}</span></li>
+  {% endfor %}
+</ul>
+{% else %}<p class="note">none</p>{% endif %}
+
+<h2 class="section">Due today or overdue ({{ s.due|length }})</h2>
+{% if s.due %}
+<ul class="plain">
+  {% for j in s.due %}
+  <li><span class="mono {% if j.next_action_date < today %}bad{% endif %}">{{ j.next_action_date }}</span> {{ job_link(j) }} → {{ j.next_action }}</li>
+  {% endfor %}
+</ul>
+{% else %}<p class="note">none</p>{% endif %}
+
+<h2 class="section">Upcoming ({{ s.upcoming|length }})</h2>
+{% if s.upcoming %}
+<ul class="plain">
+  {% for j in s.upcoming %}
+  <li><span class="mono">{{ j.next_action_date }}</span> {{ job_link(j) }} → {{ j.next_action }}</li>
+  {% endfor %}
+</ul>
+{% else %}<p class="note">none</p>{% endif %}
+
+<h2 class="section">Deadlines within 7 days ({{ s.deadlines_soon|length }})</h2>
+{% if s.deadlines_soon %}
+<ul class="plain">
+  {% for j in s.deadlines_soon %}
+  <li><span class="mono warn">{{ j.deadline }}</span> {{ job_link(j) }}</li>
+  {% endfor %}
+</ul>
+{% else %}<p class="note">none</p>{% endif %}
+
+<h2 class="section">Recommended today ({{ s.recommended|length }})</h2>
+{% if s.recommended %}
+<ul class="plain">
+  {% for j in s.recommended %}
+  <li><span class="pill">{{ j.tier }}</span> {{ job_link(j) }} <span class="note">{{ j.status }}; next: {{ j.next_action }}</span></li>
+  {% endfor %}
+</ul>
+{% else %}<p class="note">none</p>{% endif %}
+
+<h2 class="section">Pipeline</h2>
+<p>Tier: {{ counts(s.by_tier) }}</p>
+<p>Status: {{ counts(s.by_status) }}</p>
+<p>Programme overall: {{ counts(s.by_programme) }}</p>
+
+<h2 class="section">Programme</h2>
+<ul class="plain">
+  {% for name, d in s.global_dimensions.items() %}
+  <li>{{ name }}: <strong>{{ d.status }}</strong> <span class="note">{{ d.note or "" }}</span></li>
+  {% endfor %}
+  <li class="note">SUTD_APPROVAL, HOST_COMPANY and DURATION_AND_DATES are evaluated per job.</li>
+</ul>
+{% if s.constraint_warnings %}
+<ul class="plain">
+  {% for w in s.constraint_warnings %}<li class="warn">{{ w }}</li>{% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

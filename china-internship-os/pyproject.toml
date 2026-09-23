@@ -29,7 +29,10 @@ dev = ["pytest>=8.0,<9"]
 ios = "internship_os.cli:app"
 
 [tool.setuptools]
-packages = ["internship_os"]
+packages = ["internship_os", "internship_os.services", "internship_os.web"]
+
+[tool.setuptools.package-data]
+"internship_os.web" = ["templates/*.html", "static/*.css"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

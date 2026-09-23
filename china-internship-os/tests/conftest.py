@@ -227,3 +227,26 @@ def make_confirmed_job(session, config, today):
         return job
 
     return _make
+
+
+# --------------------------------------------------------------------------------------
+# Web UI test client
+# --------------------------------------------------------------------------------------
+
+
+@pytest.fixture
+def client(engine, config, fake_llm, today):
+    """The web app against the temporary project root and database, with ``today`` pinned.
+
+    Requests use the 127.0.0.1 host the server binds to; redirects are not followed so tests
+    can assert the 303 and its Location.
+    """
+    from fastapi.testclient import TestClient
+
+    from internship_os.web import deps
+    from internship_os.web.app import create_app
+
+    web_app = create_app()
+    web_app.dependency_overrides[deps.today] = lambda: today
+    with TestClient(web_app, base_url="http://127.0.0.1:8765", follow_redirects=False) as c:
+        yield c

@@ -1,0 +1,7 @@
+{% macro job_link(j) -%}
+<a href="/jobs/{{ j.id }}">{{ j.id }}: {{ j.display_title }}</a>{% if j.company %} <span class="note">@ {{ j.company.display_name }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro counts(pairs) -%}
+{% for name, n in pairs %}<span class="pill">{{ name }} {{ n }}</span> {% else %}<span class="note">none</span>{% endfor %}
+{%- endmacro %}
