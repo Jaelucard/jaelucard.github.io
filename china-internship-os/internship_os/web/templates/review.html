@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Review job {{ job.id }} · Internship OS{% endblock %}
+{% block body %}
+<h1>Review job {{ job.id }}: {{ job.display_title }} <span class="pill">unconfirmed</span></h1>
+{% if errors %}
+<p class="bad callout">Nothing was saved. Fix the fields marked below.{% if errors.company %} {{ errors.company }}{% endif %}{% if errors.job %} {{ errors.job }}{% endif %}</p>
+{% endif %}
+<p class="note">Each box shows the extracted value. Leave it to confirm it, change it to override it, or empty it to set it to null.
+  The "must check" fields can make the job ineligible: compare each with the posting and tick it.</p>
+<details><summary>Posting text</summary><pre class="mono">{{ job.raw_text or "" }}</pre></details>
+
+<form method="post" action="/jobs/{{ job.id }}/review">
+  {% for f in fields %}
+  {% if loop.first %}<h2 class="section">Must check</h2>{% elif not f.must_confirm and loop.previtem.must_confirm %}<h2 class="section">Other fields</h2>{% endif %}
+  <div class="row{% if f.must_confirm %} must{% endif %}">
+    <label for="field__{{ f.name }}" class="mono">{{ f.name }}</label>
+    {% if f.kind == "select" %}
+    <select name="field__{{ f.name }}" id="field__{{ f.name }}">
+      {% for o in f.options %}<option value="{{ o }}"{% if o == f.value %} selected{% endif %}>{{ o }}</option>{% endfor %}
+    </select>
+    {% elif f.kind == "textarea" %}
+    <textarea name="field__{{ f.name }}" id="field__{{ f.name }}">{{ f.value }}</textarea>
+    {% else %}
+    <input name="field__{{ f.name }}" id="field__{{ f.name }}" value="{{ f.value }}"{% if f.kind == "date" %} type="date"{% elif f.kind == "number" %} type="number"{% endif %}>
+    {% endif %}
+    {% if f.must_confirm %}<label for="confirm__{{ f.name }}"><input type="checkbox" name="confirm__{{ f.name }}" id="confirm__{{ f.name }}"{% if f.ticked %} checked{% endif %}> checked</label>{% else %}<span></span>{% endif %}
+    {% if f.error %}<div class="error bad">{{ f.error }}</div>{% endif %}
+    {% if f.source_span %}<div class="source mono">{{ f.source_span }}</div>{% endif %}
+  </div>
+  {% endfor %}
+
+  <h2 class="section">Company</h2>
+  {% if exact %}
+  <p>Will link existing company {{ exact.id }}: {{ exact.display_name }}.</p>
+  {% elif near %}
+  <p>Similar companies exist. Choose one, or create a new company:</p>
+  {% for c in near %}
+  <label><input type="radio" name="company_choice" value="{{ c.id }}"{% if company_choice == c.id|string %} checked{% endif %}> {{ c.display_name }} (id {{ c.id }})</label><br>
+  {% endfor %}
+  <label><input type="radio" name="company_choice" value="new"{% if company_choice == "new" %} checked{% endif %}> create a new company</label>
+  {% else %}
+  <p class="note">A new company will be created from the company name fields.</p>
+  {% endif %}
+  {% if errors.company %}<p class="bad">{{ errors.company }}</p>{% endif %}
+
+  <div class="actions"><button type="submit" class="primary">Confirm and save</button></div>
+</form>
+
+<form method="post" action="/jobs/{{ job.id }}/discard" class="actions">
+  <button type="submit">Discard this capture (closes the job)</button>
+</form>
+{% endblock %}

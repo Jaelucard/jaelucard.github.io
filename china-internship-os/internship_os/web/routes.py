@@ -8,21 +8,62 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from sqlalchemy.orm import Session
-from starlette.responses import Response
+from starlette.concurrency import run_in_threadpool
+from starlette.responses import RedirectResponse, Response
 
+from internship_os.capture import (
+    CaptureError,
+    DuplicateCaptureNeedsDecision,
+    attach_to_existing,
+    capture as capture_posting,
+)
 from internship_os.config import AppConfig
+from internship_os.llm import LLMError
 from internship_os.models import Job
 from internship_os.programme import constraint_warnings, global_dimensions
-from internship_os.schemas import ExtractedJob, JobStatus, Tier, Track
+from internship_os.schemas import ExtractedJob, JobStatus, ProgrammeStatus, SourceChannel, Tier, Track
 from internship_os.services import jobs as job_service
+from internship_os.services import review as review_service
 from internship_os.services.today import summary
 from internship_os.timeline import build_timeline, render as render_timeline
 from internship_os.web import deps
 from internship_os.web.render import page
 
 router = APIRouter()
+
+SOURCES = [s.value for s in SourceChannel]
+CAPTURE_CLI = "ios capture --paste --source <channel>"
+MESSAGES = {
+    "confirmed": ("ok", "Confirmed. Eligibility, programme and tier are updated."),
+    "checklist_failed": ("warn", "Confirmed. The quality checklist could not be generated; set quality by hand if needed."),
+    "discarded": ("note", "Capture discarded; the job is CLOSED."),
+    "attached": ("ok", "The duplicate capture was attached to this job as a note."),
+    "status": ("ok", "Status changed."),
+    "next": ("ok", "Next action updated."),
+    "note": ("ok", "Note added."),
+    "contact": ("ok", "Contact added to the company."),
+}
+
+
+def see_other(url: str) -> RedirectResponse:
+    return RedirectResponse(url, status_code=303)
+
+
+def job_message(job: Job, msg: str) -> tuple[str, str] | None:
+    """The one-line result shown after a redirect back to the job page."""
+    if msg == "refused":
+        reason = next(
+            (e.detail.get("refused_reason") for e in reversed(job.events)
+             if e.kind == "status_change" and isinstance(e.detail, dict) and e.detail.get("refused_reason")),
+            None,
+        )
+        return "bad", f"READY_TO_APPLY was refused; the job is {job.status}. {reason or ''}".strip()
+    if msg == "at_risk":
+        at_risk = [n for n, d in (job.programme or {}).items() if d["status"] == ProgrammeStatus.AT_RISK]
+        return "warn", f"Status changed, with a programme AT_RISK warning on {', '.join(at_risk)}."
+    return MESSAGES.get(msg)
 
 
 def get_job(session: Session, job_id: int) -> Job:
@@ -78,6 +119,7 @@ def jobs_page(
 def job_page(
     request: Request,
     job_id: int,
+    msg: str = "",
     session: Session = Depends(deps.get_db),
 ) -> Response:
     job = get_job(session, job_id)
@@ -85,6 +127,7 @@ def job_page(
     return page(
         request, "job.html", cli=f"ios job show {job.id}",
         job=job,
+        message=job_message(job, msg),
         extraction=extraction,
         field_names=ExtractedJob.field_names(),
         contacts=list(job.company.contacts) if job.company else [],
@@ -106,3 +149,128 @@ def facts_page(
         timeline=render_timeline(steps, today),
         today=today,
     )
+
+
+# --------------------------------------------------------------------------------------
+# Capture
+# --------------------------------------------------------------------------------------
+
+
+def capture_again(request: Request, form: dict[str, str], *, status_code: int, error: str | None = None,
+                  duplicate: dict | None = None) -> Response:
+    return page(request, "capture.html", cli=CAPTURE_CLI, status_code=status_code,
+                form=form, sources=SOURCES, error=error, duplicate=duplicate)
+
+
+@router.get("/capture")
+def capture_page(request: Request) -> Response:
+    return page(request, "capture.html", cli=CAPTURE_CLI, form={}, sources=SOURCES, error=None, duplicate=None)
+
+
+@router.post("/capture")
+def capture_create(
+    request: Request,
+    text: str = Form(""),
+    source: str = Form(""),
+    url: str = Form(""),
+    action: str = Form(""),
+    attach_to: str = Form(""),
+    extracted_json: str = Form(""),
+    session: Session = Depends(deps.get_db),
+    config: AppConfig = Depends(deps.get_config),
+    today: date = Depends(deps.today),
+) -> Response:
+    """Pasted text only: the URL box is stored for duplicate matching and never fetched here."""
+    form = {"text": text, "source": source, "url": url}
+    source_url = url.strip() or None
+    if not text.strip():
+        return capture_again(request, form, status_code=400, error="Paste the job description text.")
+    if source not in SOURCES:
+        return capture_again(request, form, status_code=400, error="Choose where the posting came from.")
+    try:
+        if action == "attach":
+            target = int(attach_to)
+            attach_to_existing(session, target, text=text.strip(), url=source_url, source_channel=source)
+            return see_other(f"/jobs/{target}?msg=attached")
+        if action == "new":
+            job = capture_posting(
+                text, source_url, source, session=session, config=config, today=today,
+                extracted=ExtractedJob.model_validate_json(extracted_json), force_new=True,
+            )
+        else:
+            job = capture_posting(text, source_url, source, session=session, config=config, today=today)
+    except DuplicateCaptureNeedsDecision as dup:
+        candidates = [j for j in (session.get(Job, i) for i in dup.candidate_ids) if j is not None]
+        return capture_again(request, form, status_code=409, duplicate={
+            "candidates": candidates, "extracted_json": dup.extracted.model_dump_json(),
+        })
+    except LLMError as exc:
+        return capture_again(request, form, status_code=400, error=f"Extraction failed: {exc}")
+    except (CaptureError, ValueError) as exc:
+        return capture_again(request, form, status_code=400, error=str(exc))
+    return see_other(f"/jobs/{job.id}/review")
+
+
+# --------------------------------------------------------------------------------------
+# Review and confirm (the web version of `ios confirm`)
+# --------------------------------------------------------------------------------------
+
+
+def review_view(request: Request, session: Session, job: Job, *, form: dict[str, str] | None = None,
+                errors: dict[str, str] | None = None, status_code: int = 200) -> Response:
+    extracted = ExtractedJob.model_validate(job.extracted)
+    exact, near = review_service.company_matches(session, extracted)
+    return page(
+        request, "review.html", cli=f"ios confirm {job.id}", status_code=status_code,
+        job=job,
+        fields=review_service.review_fields(extracted, form, errors),
+        exact=exact,
+        near=near,
+        company_choice=(form or {}).get("company_choice", ""),
+        errors=errors or {},
+    )
+
+
+@router.get("/jobs/{job_id}/review")
+def review_page(request: Request, job_id: int, session: Session = Depends(deps.get_db)) -> Response:
+    job = get_job(session, job_id)
+    if job.confirmed_at is not None or job.is_terminal:
+        return see_other(f"/jobs/{job.id}")
+    if not job.extracted:
+        raise HTTPException(status_code=404, detail=f"job {job.id} has no extraction to review")
+    return review_view(request, session, job)
+
+
+@router.post("/jobs/{job_id}/review")
+async def review_confirm(
+    request: Request,
+    job_id: int,
+    session: Session = Depends(deps.get_db),
+    config: AppConfig = Depends(deps.get_config),
+    today: date = Depends(deps.today),
+) -> Response:
+    form = {key: value for key, value in (await request.form()).items() if isinstance(value, str)}
+    job = await run_in_threadpool(get_job, session, job_id)
+    if job.confirmed_at is not None or job.is_terminal:
+        return see_other(f"/jobs/{job.id}")
+    try:
+        # The confirmation may call the LLM for the quality checklist, so keep it off the event loop.
+        result = await run_in_threadpool(review_service.confirm_job, session, job, form, config, today)
+    except review_service.ReviewInvalid as exc:
+        return await run_in_threadpool(review_view, request, session, job, form=form, errors=exc.errors, status_code=400)
+    return see_other(f"/jobs/{job.id}?msg={'checklist_failed' if result.checklist_error else 'confirmed'}")
+
+
+@router.post("/jobs/{job_id}/discard")
+def review_discard(
+    job_id: int,
+    session: Session = Depends(deps.get_db),
+    config: AppConfig = Depends(deps.get_config),
+    today: date = Depends(deps.today),
+) -> Response:
+    job = get_job(session, job_id)
+    try:
+        review_service.discard_job(session, job, config, today)
+    except review_service.ReviewInvalid:
+        return see_other(f"/jobs/{job.id}")
+    return see_other(f"/jobs/{job.id}?msg=discarded")

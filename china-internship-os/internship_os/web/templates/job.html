@@ -2,7 +2,7 @@
 {% block title %}Job {{ job.id }} · Internship OS{% endblock %}
 {% block body %}
 <h1>Job {{ job.id }}: {{ job.display_title }} <span class="pill">{{ job.status }}</span> <span class="pill">{{ job.tier }}</span></h1>
-{% block messages %}{% endblock %}
+{% if message %}<p class="callout {{ message[0] }}">{{ message[1] }}</p>{% endif %}
 {% if not job.confirmed_at and job.extracted and not job.is_terminal %}
 <p class="callout">This extraction is not confirmed yet. <a class="button primary" href="/jobs/{{ job.id }}/review">Review and confirm</a></p>
 {% endif %}
