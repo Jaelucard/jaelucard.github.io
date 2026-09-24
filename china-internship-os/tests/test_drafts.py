@@ -337,3 +337,21 @@ def test_mindef_message_statements_with_figures_are_refused(config):
     assert [s.text for s in report.kept] == ["At MINDEF I maintained a service-injury database."]
     assert all("EV_MINDEF_DB" in r.reason and "numbers or counts" in r.reason for r in report.rejected)
     assert len(report.rejected) == 2
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["作为一名开发者", "保证数据一致性", "一系列自动化脚本", "一定程度上", "一线业务", "逐一核对",
+     "第三方接口", "十分注重细节", "一体化流程", "同一数据源", "the one point of contact", "one of the core tools"],
+)
+def test_common_non_count_words_are_not_figures(text):
+    from internship_os.drafts import contains_figure
+
+    assert not contains_figure(text)
+
+
+@pytest.mark.parametrize("text", ["维护了三千条记录", "两年", "3,000 records", "two years", "a dozen macros"])
+def test_counts_are_still_figures(text):
+    from internship_os.drafts import contains_figure
+
+    assert contains_figure(text)

@@ -6,7 +6,7 @@
 <p class="bad callout">Nothing was saved. Fix the fields marked below.{% if errors.company %} {{ errors.company }}{% endif %}{% if errors.job %} {{ errors.job }}{% endif %}</p>
 {% endif %}
 <p class="note">Each box shows the extracted value. Leave it to confirm it, change it to override it, or empty it to set it to null.
-  The "must check" fields can make the job ineligible: compare each with the posting and tick it.</p>
+  The "must check" fields can make the job ineligible or change its next step: compare each with the posting and tick it.</p>
 <p class="note">Jev: {% if jev_view and jev_view.error %}could not check this posting ({{ jev_view.error }}); review it as usual.{% elif jev_view %}{{ jev_view.model }} answered {{ jev_view.answered }} of {{ jev_view.asked }} questions; its notes are suggestions to check, not answers.{% elif jev_status.startswith("on") %}did not run for this posting (captured before Jev was set up, or its answers were not saved); Jev is {{ jev_status }}.{% else %}{{ jev_status }}{% endif %}</p>
 {% if jev_view and jev_view.warnings %}
 <div class="callout warn">{% for w in jev_view.warnings %}<p>{{ w }}</p>{% endfor %}</div>

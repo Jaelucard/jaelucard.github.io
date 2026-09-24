@@ -179,9 +179,13 @@ def reclassify_duration_statement(st: Statement, lo: int, hi: int, duration_ids:
 
 # EV_MINDEF_DB may carry no figures, counts or statistics of any kind (SAF Act), in any language.
 _CN_NUMERAL = re.compile(r"[零〇一二两三四五六七八九十百千万亿]")
-_CN_NON_COUNT_WORDS = ("一个", "一套", "一起", "统一", "进一步", "唯一", "万一", "一些", "一直")
+_CN_NON_COUNT_WORDS = (
+    "一个", "一套", "一起", "统一", "进一步", "唯一", "万一", "一些", "一直", "一名", "一致", "一系列",
+    "一定", "一线", "逐一", "同一", "一体", "第三方", "十分", "一般", "一旦",
+)
+# "one" is left out: "one of the", "the one point of contact" are not counts.
 _EN_NUMBER_WORD = re.compile(
-    r"\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|"
+    r"\b(two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|"
     r"sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|"
     r"hundreds?|thousands?|millions?|billions?|dozens?|twice|thrice|percent)\b",
     re.IGNORECASE,

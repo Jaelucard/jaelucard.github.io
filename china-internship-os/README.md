@@ -135,7 +135,8 @@ tiering rule reads them, and the must-check fields still need your tick.
   unavailable (a Jev failure never stops a capture; one short attempt, no retries).
 - To measure Jev before relying on it, label real postings in `data/labelled_postings.jsonl`
   (format: `data/labelled_postings.example.jsonl`; the real file is gitignored) and run
-  `.venv/bin/python scripts/eval_prefill.py`.
+  `.venv/bin/python scripts/eval_prefill.py`. It makes one paid TypeSafe call per labelled
+  posting, even with `provider: none`, and measures the posting questions only.
 
 ## Tests
 
