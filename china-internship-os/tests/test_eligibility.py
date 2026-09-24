@@ -1,3 +1,4 @@
+import pytest
 
 from internship_os.eligibility import run_eligibility, skill_matches
 
@@ -176,3 +177,30 @@ def test_daily_internship_has_no_summer_flag(make_confirmed_job, config, today):
     job = make_confirmed_job("hangzhou_ai_app")  # 日常实习
     _, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
     assert "SUMMER_PROGRAMME_TIMING" not in codes(reasons)
+
+
+@pytest.mark.parametrize(
+    ("text", "years"),
+    [
+        ("2026届、2027届（2028届及以后毕业生请勿投递）", [2026, 2027]),
+        ("仅限2026届，2027届及以后不考虑", [2026]),
+        ("2026届毕业生，入职以后表现优秀可转正", [2026]),
+        ("2026届毕业生，毕业之后可留用", [2026]),
+        ("2026 graduates only; available from June onwards", [2026]),
+        ("2026届本科，计算机相关专业优先", [2026]),
+        ("2026届，985/211院校优先", [2026]),
+        ("2029届及以后", [2029]),
+        ("2026届及以前", [2026]),
+    ],
+)
+def test_cohort_wording_that_excludes_the_user_still_hard_fails(make_confirmed_job, config, today, text, years):
+    job = make_confirmed_job("hangzhou_ai_app", cohort_years=years, graduation_cohort_text=text)
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert status == "INELIGIBLE" and "GRADUATION_COHORT_INELIGIBLE" in codes(reasons), text
+
+
+def test_open_ended_year_is_the_one_attached_to_the_wording(make_confirmed_job, config, today):
+    # 2025 is listed, but "及以后" is attached to 2029, which is after the user's 2028 cohort.
+    job = make_confirmed_job("hangzhou_ai_app", cohort_years=[2025, 2029], graduation_cohort_text="2025届、2029届及以后")
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert "GRADUATION_COHORT_INELIGIBLE" in codes(reasons)
