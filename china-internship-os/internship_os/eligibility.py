@@ -69,6 +69,11 @@ UNCERTAIN_CODES = frozenset(
     }
 )
 
+# Cohort wording in the confirmed graduation_cohort_text. "2027届及以后" lists 2027 but also
+# accepts later cohorts; "2027届优先" states a preference, not a requirement.
+OPEN_ENDED_COHORT = re.compile(r"及以后|以后|之后|or\s+later|and\s+later|onwards?", re.IGNORECASE)
+PREFERRED_COHORT = re.compile(r"优先|preferred", re.IGNORECASE)
+
 # Clearly exclusionary nationality wording. Silence never matches anything here.
 NATIONALITY_PATTERNS = [
     re.compile(p, re.IGNORECASE)
@@ -196,13 +201,25 @@ def run_eligibility(
             )
         )
     elif not v["cohort_unrestricted"] and cohort_years and user_year not in cohort_years:
-        reasons.append(
-            Reason(
-                "GRADUATION_COHORT_INELIGIBLE",
-                "cohort_years",
-                f"JD cohorts {cohort_years} exclude user cohort {user_facts.graduation_cohort} ({user_year})",
+        cohort_wording = v["graduation_cohort_text"] or ""
+        if OPEN_ENDED_COHORT.search(cohort_wording) and min(cohort_years) <= user_year:
+            pass  # "X届及以后" with X at or before the user's cohort includes it
+        elif PREFERRED_COHORT.search(cohort_wording):
+            reasons.append(
+                Reason(
+                    "GRADUATION_COHORT_PREFERRED",
+                    "graduation_cohort_text",
+                    f"JD prefers cohorts {cohort_years} ({cohort_wording}); user cohort {user_facts.graduation_cohort}",
+                )
             )
-        )
+        else:
+            reasons.append(
+                Reason(
+                    "GRADUATION_COHORT_INELIGIBLE",
+                    "cohort_years",
+                    f"JD cohorts {cohort_years} exclude user cohort {user_facts.graduation_cohort} ({user_year})",
+                )
+            )
 
     restriction = v["nationality_or_work_auth_restriction"]
     if restriction:
