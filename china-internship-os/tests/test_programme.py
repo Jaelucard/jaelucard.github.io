@@ -214,3 +214,26 @@ def test_early_start_is_at_risk_even_without_duration(make_confirmed_job, config
                               duration_max_months=None, start_date=None)
     dims2, _ = dims_of(job2, config, today)
     assert dims2["DURATION_AND_DATES"]["status"] == "UNKNOWN"
+
+
+def test_asap_posting_adds_an_ask_hr_step_at_confirmation(make_confirmed_job, session, config, today):
+    from internship_os.pipeline import finalize_confirmation, recompute_all
+    from internship_os.schemas import ExtractedJob
+
+    job = make_confirmed_job("suzhou_backend", run=False, start_timing="asap")
+    finalize_confirmation(session, job, ExtractedJob.model_validate(job.extracted), job.company, [], config, today=today)
+    expected = f"assess fit; ask HR whether a {config.user_facts.internship.intended_start.isoformat()} start works"
+    assert job.next_action == expected and job.next_action_date == today
+    job.next_action = "user's own next step"
+    session.commit()
+    recompute_all(session, config, today)
+    assert job.next_action == "user's own next step"  # written once at confirmation, never on recompute
+
+
+def test_named_month_posting_keeps_the_plain_next_action(make_confirmed_job, session, config, today):
+    from internship_os.pipeline import finalize_confirmation
+    from internship_os.schemas import ExtractedJob
+
+    job = make_confirmed_job("hangzhou_ai_app", run=False)
+    finalize_confirmation(session, job, ExtractedJob.model_validate(job.extracted), job.company, [], config, today=today)
+    assert job.next_action == "assess fit"

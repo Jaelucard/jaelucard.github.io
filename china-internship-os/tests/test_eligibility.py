@@ -163,3 +163,16 @@ def test_preferred_cohort_is_a_soft_flag(make_confirmed_job, config, today):
     assert "GRADUATION_COHORT_INELIGIBLE" not in codes(reasons)
     assert "GRADUATION_COHORT_PREFERRED" in codes(reasons)
     assert status == "LIKELY_ELIGIBLE"
+
+
+def test_summer_programme_is_a_soft_flag(make_confirmed_job, config, today):
+    job = make_confirmed_job("hangzhou_ai_app", internship_type="暑期实习")
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    flag = next(r for r in reasons if r.code == "SUMMER_PROGRAMME_TIMING")
+    assert flag.field == "internship_type" and status in ("LIKELY_ELIGIBLE", "UNCERTAIN")
+
+
+def test_daily_internship_has_no_summer_flag(make_confirmed_job, config, today):
+    job = make_confirmed_job("hangzhou_ai_app")  # 日常实习
+    _, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert "SUMMER_PROGRAMME_TIMING" not in codes(reasons)
