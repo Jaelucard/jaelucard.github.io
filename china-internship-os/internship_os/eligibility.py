@@ -18,6 +18,7 @@ from internship_os.schemas import (
     Degree,
     Eligibility,
     ExtractedJob,
+    InternshipType,
     SkillEvidenceSet,
     UnconfirmedField,
     UserFacts,
@@ -48,6 +49,7 @@ DECISION_FIELDS = [
     "required_skills",
     "preferred_skills",
     "research_signals",
+    "internship_type",
 ]
 
 HARD_FAIL_CODES = frozenset(
@@ -302,6 +304,15 @@ def run_eligibility(
             reasons.append(
                 Reason("REQUIRED_SKILL_GAPS", "required_skills", "no evidence for: " + ", ".join(gaps))
             )
+
+    if v["internship_type"] == InternshipType.summer:
+        reasons.append(
+            Reason(
+                "SUMMER_PROGRAMME_TIMING",
+                "internship_type",
+                "summer programme timing is likely outside the planned internship window",
+            )
+        )
 
     signals = v["research_signals"] or []
     if signals:

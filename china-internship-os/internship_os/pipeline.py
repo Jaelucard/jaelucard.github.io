@@ -31,6 +31,7 @@ from internship_os.schemas import (
     ProgrammeStatus,
     Quality,
     QualityChecklist,
+    StartTiming,
     Tier,
     YesStatus,
     is_terminal,
@@ -160,6 +161,10 @@ def finalize_confirmation(
     previous_status = job.status
     run_checks(job, config, when)
     apply_eligibility_effect(job, when)
+    if not is_terminal(job.status) and confirmed.start_timing.value == StartTiming.asap:
+        # Written once here, never on recompute, so a next action the user sets later survives.
+        start = config.user_facts.internship.intended_start.isoformat()
+        job.next_action = f"{job.next_action}; ask HR whether a {start} start works"
     if job.status != previous_status:
         session.add(
             JobEvent(
