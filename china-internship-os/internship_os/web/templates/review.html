@@ -7,6 +7,10 @@
 {% endif %}
 <p class="note">Each box shows the extracted value. Leave it to confirm it, change it to override it, or empty it to set it to null.
   The "must check" fields can make the job ineligible: compare each with the posting and tick it.</p>
+<p class="note">Jev: {% if jev_view and jev_view.error %}could not check this posting ({{ jev_view.error }}); review it as usual.{% elif jev_view %}checked by {{ jev_view.model }}; its notes are suggestions to check, not answers.{% else %}{{ jev_status }}{% endif %}</p>
+{% if jev_view and jev_view.warnings %}
+<div class="callout warn">{% for w in jev_view.warnings %}<p>{{ w }}</p>{% endfor %}</div>
+{% endif %}
 <details><summary>Posting text</summary><pre class="mono">{{ job.raw_text or "" }}</pre></details>
 
 <form method="post" action="/jobs/{{ job.id }}/review">
@@ -27,6 +31,7 @@
     {% if f.must_confirm %}<label for="confirm__{{ f.name }}"><input type="checkbox" name="confirm__{{ f.name }}" id="confirm__{{ f.name }}"{% if f.ticked %} checked{% endif %}> checked</label>{% else %}<span></span>{% endif %}
     {% if f.error %}<div class="error bad">{{ f.error }}</div>{% endif %}
     {% if f.source_span %}<div class="source mono">{{ f.source_span }}</div>{% endif %}
+    {% for n in notes.get(f.name, []) %}<div class="source warn">{{ n }}</div>{% endfor %}
   </div>
   {% endfor %}
 

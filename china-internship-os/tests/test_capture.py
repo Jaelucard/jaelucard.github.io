@@ -336,3 +336,15 @@ def test_first_run_hardening(project_root, session, capture_fixture, fake_llm, c
     monkeypatch.setattr(llm_mod.subprocess, "run", lambda *a, **k: cli(1, {}, stderr="Not logged in"))
     with pytest.raises(llm_mod.LLMError, match="claude auth status"):
         ORIGINAL_CLAUDE_CODE_CALL("prompt", "sonnet", None, config)
+
+
+def test_cli_capture_reports_jev_status(project_root, engine, fake_llm, monkeypatch):
+    from internship_os import jev
+    from internship_os.decision_provider import NullProvider
+
+    monkeypatch.setattr(jev, "get_provider", lambda config: NullProvider("no TYPESAFE_API_KEY"))
+    jd = project_root / "jd.txt"
+    jd.write_text(load_jd("hangzhou_ai_app"), encoding="utf-8")
+    result = CliRunner().invoke(app, ["capture", "--text-file", str(jd), "--source", "boss"])
+    assert result.exit_code == 0, result.output
+    assert "Jev: off (no TYPESAFE_API_KEY)" in result.output

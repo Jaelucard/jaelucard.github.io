@@ -163,6 +163,7 @@ class EventKind(StrEnum):
     note = "note"
     closed = "closed"
     programme_update = "programme_update"
+    jev_suggestions = "jev_suggestions"  # Jev's answers at capture; shown at review, read by no gate
 
 
 class ContactChannel(StrEnum):
