@@ -6,7 +6,8 @@ extracts structured fields with an LLM that you then confirm, and runs determini
 programme-compatibility, tiering and timeline logic over the confirmed data.
 
 The LLM runs through the official Claude Code CLI on your Claude subscription (no API key, no
-per-token billing), or through a local Ollama model.
+per-token billing), or through a local Ollama model. The one exception is the optional Jev
+decision layer below, which uses a TypeSafe API key kept only on your machine.
 
 Nothing is ever submitted, sent, messaged, emailed or posted by this tool. It generates text for
 you to review and send yourself.
@@ -114,6 +115,27 @@ The web UI is a local, single-user alternative to the terminal for daily use. It
 Fit, quality, SUTD approval, agreed dates, company settings, recompute and drafting stay in the
 terminal; the Job page shows the commands. The Streamlit dashboard (`streamlit run app.py`) was
 replaced by `ios ui`; sections 13 and 15 of `docs/WORKFLOW_GUIDE.pdf` still describe it.
+
+## Jev decision layer (optional)
+
+Jev (TypeSafe's System One model) answers a few typed questions about each captured posting: the
+role track, minimum degree, Chinese level, start timing, a nationality or visa restriction, fees,
+data-labelling work and sales work, plus whether a few extracted values are supported by the text.
+Its answers are stored as a `jev_suggestions` job event and shown as notes and warnings on the
+review page and before `ios confirm`. They are suggestions only: no eligibility, programme or
+tiering rule reads them, and the must-check fields still need your tick.
+
+- Only the pasted posting text and a few values extracted from it are sent. Nothing from
+  `user_facts.yaml`, drafts or skill evidence.
+- The key stays on your machine: put `TYPESAFE_API_KEY=...` in `.env` (gitignored) or export it.
+  It is never written to a tracked file, and a test fails if one ever contains a key.
+- `config/decisions.yaml` pins the model and the note thresholds. Set `provider: none` to turn
+  Jev off. Without a key, Jev is off and capture works exactly as before.
+- `ios llm-check` prints whether Jev is on. Capture prints one line: answers stored, off, or
+  unavailable (a Jev failure never stops a capture; one short attempt, no retries).
+- To measure Jev before relying on it, label real postings in `data/labelled_postings.jsonl`
+  (format: `data/labelled_postings.example.jsonl`; the real file is gitignored) and run
+  `.venv/bin/python scripts/eval_prefill.py`.
 
 ## Tests
 

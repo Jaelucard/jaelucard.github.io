@@ -88,3 +88,23 @@ Ideas and deviations recorded during Phase 1. Nothing here is implemented in Pha
   duplicate page).
 - The web tests use Starlette's TestClient over httpx, which Starlette now deprecates in favour
   of httpx2.
+
+## Recorded for the Jev decision layer
+
+- Jev runs once after capture (CLI and web) and its answers are stored as a `jev_suggestions`
+  job event, not a column, so there was no schema migration. The review page and `ios confirm`
+  show them as notes; no gate reads them.
+- Four confirmable fields were added: start_timing, pays_fee, mostly_annotation, mostly_sales.
+  Stored extractions from before load them as confirmed nulls, so earlier jobs stay confirmed.
+  An ASAP start adds "ask HR whether a <intended_start> start works" to the next action at
+  confirmation only.
+- `ios confirm`'s 'a' now still asks each must-check field (schemas.ALWAYS_CONFIRM_FIELDS).
+- Thresholds in config/decisions.yaml (noul_flag_p 0.7, choice_min_confidence 0.6) are starting
+  values. Label 40-60 real postings and run scripts/eval_prefill.py to tune them per question.
+- Not built: the draft overclaim checker (it would send drafts and evidence to TypeSafe), a
+  database column for suggestions, Jev on the Job page after confirmation.
+- typesafe-sdk is pinned exactly (0.7.1); the SDK has shipped breaking releases weekly. It pulls
+  httpx2 and tenacity alongside the repo's httpx.
+- Separate fixes made alongside: EV_MINDEF_DB now refuses Chinese numerals and number words in
+  bullets and message statements; "X届及以后" no longer hard-fails later cohorts and "X届优先" is a
+  soft flag; summer programmes get the soft SUMMER_PROGRAMME_TIMING flag.
