@@ -141,3 +141,25 @@ def test_unparseable_user_cohort_is_uncertain_not_ineligible(make_confirmed_job,
     status, reasons = run_eligibility(job, facts, today, evidence=config.evidence)
     assert status == "UNCERTAIN"
     assert "USER_COHORT_UNPARSEABLE" in codes(reasons) and "GRADUATION_COHORT_INELIGIBLE" not in codes(reasons)
+
+
+def test_open_ended_cohort_includes_later_years(make_confirmed_job, config, today):
+    for text in ("2027届及以后", "2027届以后毕业", "Class of 2027 or later"):
+        job = make_confirmed_job("hangzhou_ai_app", cohort_years=[2027], graduation_cohort_text=text)
+        status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+        assert "GRADUATION_COHORT_INELIGIBLE" not in codes(reasons), text
+        assert status != "INELIGIBLE", text
+
+
+def test_open_ended_cohort_starting_after_the_user_still_fails(make_confirmed_job, config, today):
+    job = make_confirmed_job("hangzhou_ai_app", cohort_years=[2029], graduation_cohort_text="2029届及以后")
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert status == "INELIGIBLE" and "GRADUATION_COHORT_INELIGIBLE" in codes(reasons)
+
+
+def test_preferred_cohort_is_a_soft_flag(make_confirmed_job, config, today):
+    job = make_confirmed_job("hangzhou_ai_app", cohort_years=[2027], graduation_cohort_text="2027届优先")
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert "GRADUATION_COHORT_INELIGIBLE" not in codes(reasons)
+    assert "GRADUATION_COHORT_PREFERRED" in codes(reasons)
+    assert status == "LIKELY_ELIGIBLE"
