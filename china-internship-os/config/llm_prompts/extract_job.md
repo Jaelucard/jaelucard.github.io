@@ -11,7 +11,7 @@ Rules for source_span:
 1. For a positively extracted value, copy the supporting text character for character. Do not paraphrase, translate, reorder or shorten words inside the excerpt.
 2. The excerpt may contain more than one sentence or bullet when the value depends on several lines. Keep them adjacent and verbatim.
 3. Never fabricate an excerpt. If you cannot point at JD text that supports the value, the value must be null.
-4. For values that represent absence, or a sentinel derived from silence, source_span must be null. Examples: degree_required = "none_stated", degree_preferred = "none_stated", cohort_unrestricted = false, role_closed = false, nationality_or_work_auth_restriction = null, track_guess = "unknown", internship_type = "unknown", chinese_required_level = "none_stated", empty lists.
+4. For values that represent absence, or a sentinel derived from silence, source_span must be null. Examples: degree_required = "none_stated", degree_preferred = "none_stated", cohort_unrestricted = false, role_closed = false, nationality_or_work_auth_restriction = null, track_guess = "unknown", internship_type = "unknown", chinese_required_level = "none_stated", start_timing = "not_stated", pays_fee = false, mostly_annotation = false, mostly_sales = false, empty lists.
 
 Field rules:
 
@@ -40,6 +40,10 @@ Field rules:
 - responsibilities_summary: at most five sentences summarising the responsibilities, in the JD's own language.
 - track_guess: AI, SWE, research, other or unknown. You may infer the role category from the title and responsibilities, but you may not invent job facts to justify it. Use "research" only for roles centred on algorithm research, papers or model training research.
 - research_signals: a list from master_required, phd_preferred, publications, cuda, large_scale_training, deep_math_ml. Include a signal only when explicit JD text supports it, and quote that text in source_span.
+- start_timing: asap for wording like 尽快到岗, 随时到岗, 立即入职, "ASAP", "start immediately"; named_month when the JD names a start month or date (2027年3月起, "start in March"); flexible for 到岗时间可协商 or "start date negotiable"; not_stated when the JD says nothing about when to start. Quote the start wording; source_span null for not_stated.
+- pays_fee: true only when the JD asks the applicant to pay money (培训费, 押金, 保证金, 服装费, "training fee", "deposit"); quote that text. Otherwise false.
+- mostly_annotation: true when the main daily work is data labelling or annotation (数据标注, 标注员, AI训练师), even under an AI or algorithm title; quote the responsibility. Otherwise false.
+- mostly_sales: true when the main daily work is sales, promotion or customer acquisition (销售, 地推, 电话销售, 客户开发); quote the responsibility. Otherwise false.
 
 Worked example. JD:
 
@@ -49,7 +53,7 @@ Worked example. JD:
 要求：2027届本科及以上；熟悉Go或Java；每周至少3天，实习不少于3个月。
 薪资：250元/天
 
-Correct output. This example omits some keys for brevity, but YOUR output must contain all 31 keys of the schema, each as a {value, confirmed, source_span} object; unstated fields have value null (or their sentinel), confirmed false and source_span null:
+Correct output. This example omits some keys for brevity, but YOUR output must contain all 35 keys of the schema, each as a {value, confirmed, source_span} object; unstated fields have value null (or their sentinel), confirmed false and source_span null:
 
 {"company_name_zh": {"value": "上海某某科技有限公司", "confirmed": false, "source_span": "上海某某科技有限公司"},
  "title_zh": {"value": "后端开发实习生", "confirmed": false, "source_span": "后端开发实习生"},
@@ -73,7 +77,11 @@ Correct output. This example omits some keys for brevity, but YOUR output must c
  "role_closed": {"value": false, "confirmed": false, "source_span": null},
  "responsibilities_summary": {"value": "负责内部工具的后端接口开发与维护，并参与数据库设计。", "confirmed": false, "source_span": "职责：负责内部工具的后端接口开发与维护；参与数据库设计。"},
  "track_guess": {"value": "SWE", "confirmed": false, "source_span": "后端开发实习生"},
- "research_signals": {"value": [], "confirmed": false, "source_span": null}}
+ "research_signals": {"value": [], "confirmed": false, "source_span": null},
+ "start_timing": {"value": "not_stated", "confirmed": false, "source_span": null},
+ "pays_fee": {"value": false, "confirmed": false, "source_span": null},
+ "mostly_annotation": {"value": false, "confirmed": false, "source_span": null},
+ "mostly_sales": {"value": false, "confirmed": false, "source_span": null}}
 
 Now extract from this JD:
 
