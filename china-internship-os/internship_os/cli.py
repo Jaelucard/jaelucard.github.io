@@ -20,7 +20,7 @@ from rich.text import Text
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from internship_os import __version__, jev, resolve
+from internship_os import __version__, jev
 from internship_os.capture import (
     CaptureError,
     CaptureNeedsPaste,
@@ -34,7 +34,6 @@ from internship_os.capture import (
 )
 from internship_os.config import USER_FACTS_FILE, AppConfig, ConfigError, load_config
 from internship_os.db import database_url, get_engine, get_session, init_db
-from internship_os.decision_provider import load_decisions
 from internship_os.llm import LLMError
 from internship_os.models import Company, Job
 from internship_os.pipeline import finalize_confirmation
@@ -210,7 +209,8 @@ def capture(
 
 def report_jev(outcome: jev.Outcome) -> None:
     if outcome.state == "on":
-        out(f"Jev ({outcome.model}): {outcome.answers} answers stored; they show as notes at confirmation")
+        noun = "answer" if outcome.answers == 1 else "answers"
+        out(f"Jev ({outcome.model}): {outcome.answers} {noun} stored; they show as notes at confirmation")
     elif outcome.state == "off":
         out(f"Jev: off ({outcome.detail})")
     else:
@@ -295,18 +295,14 @@ def confirm(ctx: typer.Context, job_id: int) -> None:
         raise typer.Exit(code=1)
     extracted = ExtractedJob.model_validate(job.extracted)
     console.print(_extraction_table(extracted))
-    record = jev.latest_record(job)
-    if record:
-        view = jev.interpret(record, extracted, load_decisions(cfg.root))
-        if view.error:
-            out(f"Jev could not check this posting ({view.error}).")
-        for warning in view.warnings:
-            out(f"Jev warning: {warning}")
-        for name, notes in view.notes.items():
-            for note in notes:
-                out(f"  {name}: {note}")
-    for name, note in resolve.cross_check(job.raw_text or "", extracted).items():
-        out(f"  {name}: {note}")
+    view, notes = jev.review_notes(job, extracted, cfg)
+    if view is not None and view.error:
+        out(f"Jev could not check this posting ({view.error}).")
+    for warning in view.warnings if view is not None else []:
+        out(f"Jev warning: {warning}")
+    for name, items in notes.items():
+        for note in items:
+            out(f"  {name}: {note}")
     out(
         "Enter = confirm shown value | typed value = override | '-' = null | 'a' = accept this "
         "and all remaining except the must-check fields, which are still asked. Lists: JSON list "

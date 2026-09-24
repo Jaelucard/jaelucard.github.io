@@ -166,8 +166,8 @@ class TypeSafeProvider:
         response = self._client.system_one(state, questions)
         decisions: dict[str, Decision] = {}
         for key, answer in response.answers.items():
-            if key not in questions:
-                continue
+            if key not in questions or answer.type != questions[key].get("type"):
+                continue  # an answer to no question, or of the wrong kind, is not an answer
             if answer.type == "noul":
                 decisions[key] = Decision("noul", float(answer.noul), None, {})
             elif answer.type == "choice":

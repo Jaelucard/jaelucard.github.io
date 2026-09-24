@@ -206,3 +206,16 @@ def test_the_test_guard_stops_a_real_typesafe_call():
     provider = dp.TypeSafeProvider(api_key="apikey_test", model="jev-1.13.0", timeout=1, connect_timeout=1)
     with pytest.raises(pytest.fail.Exception):
         provider.ask("text", {"q": {"type": "noul", "instructions": "x"}})
+
+
+def test_answers_of_the_wrong_type_are_dropped():
+    def handler(request):
+        return httpx2.Response(200, json={
+            "model": "jev-1.13.0", "usage": {"input_tokens": 1},
+            "answers": {"restricted": {"type": "choice", "choice": "true", "confidence": 0.9, "probabilities": {}},
+                        "pays_fee": {"type": "noul", "noul": 0.2}},
+        })
+
+    batch = _mock(handler).ask("text", {"restricted": {"type": "noul", "instructions": "x"},
+                                        "pays_fee": {"type": "noul", "instructions": "y"}})
+    assert set(batch.decisions) == {"pays_fee"}

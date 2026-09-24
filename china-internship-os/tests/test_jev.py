@@ -154,3 +154,119 @@ def test_gates_never_read_jev_output(module):
     source = inspect.getsource(importlib.import_module(f"internship_os.{module}"))
     for marker in ("jev", "decision_provider", "suggestion"):
         assert marker not in source.lower(), f"{module} mentions {marker}"
+
+
+# --------------------------------------------------------------------------------------
+# Robustness: failures are recorded, bad answers are ignored, gates are unaffected
+# --------------------------------------------------------------------------------------
+
+
+def test_a_broken_provider_setup_is_recorded_for_the_review(capture_fixture, session, config, monkeypatch):
+    job = capture_fixture("hangzhou_ai_app")
+
+    def broken(_config):
+        raise ValueError("bad key format")
+
+    monkeypatch.setattr(jev, "get_provider", broken)
+    jev.record_suggestions(session, job, config)
+    assert jev.latest_record(job)["error"] == "ValueError"
+
+
+def test_no_usable_answers_counts_as_a_failure(capture_fixture, session, config):
+    job = capture_fixture("hangzhou_ai_app")
+    outcome = jev.record_suggestions(session, job, config, provider=FakeDecisionProvider({}))
+    record = jev.latest_record(job)
+    assert outcome.state == "failed" and record["error"] == "no usable answers"
+    assert record["asked"] == len(jev.all_questions(ExtractedJob.model_validate(job.extracted)))
+
+
+def test_a_failed_record_write_does_not_raise(capture_fixture, session, config, monkeypatch):
+    job = capture_fixture("hangzhou_ai_app")
+
+    def failing_commit():
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(session, "commit", failing_commit)
+    outcome = jev.record_suggestions(session, job, config, provider=FakeDecisionProvider({"degree": Decision("choice", "bachelor", 0.9, {})}))
+    assert outcome.state == "failed" and outcome.detail == "RuntimeError"
+
+
+def test_answers_of_the_wrong_kind_or_value_are_ignored():
+    extracted = load_extracted("hangzhou_ai_app")
+    record = _batch(restricted=Decision("choice", "true", 0.9, {}), degree=Decision("noul", 0.9, None, {}))
+    record["decisions"]["pays_fee"] = {"kind": "noul", "value": None, "confidence": None, "probabilities": {}}
+    view = jev.interpret(record, extracted, _cfg())
+    assert view.notes == {} and view.warnings == []
+
+
+def test_records_from_an_older_question_set_are_not_interpreted():
+    extracted = load_extracted("hangzhou_ai_app")
+    record = {**_batch(degree=Decision("choice", "master", 0.9, {})), "version": 0}
+    view = jev.interpret(record, extracted, _cfg())
+    assert view.notes == {} and "older" in view.error
+
+
+def test_thresholds_come_from_the_config():
+    from internship_os.decision_provider import DecisionsConfig
+
+    extracted = load_extracted("hangzhou_ai_app")
+    record = _batch(pays_fee=Decision("noul", 0.9, None, {}), degree=Decision("choice", "bachelor", 0.8, {}))
+    strict = DecisionsConfig(noul_flag_p=0.95, choice_min_confidence=0.85)
+    view = jev.interpret(record, extracted, strict)
+    assert view.warnings == [] and any("unsure" in n for n in view.notes["degree_required"])
+
+
+def test_jev_saying_no_to_an_extracted_yes_is_noted():
+    extracted = load_extracted("hangzhou_ai_app")
+    extracted.mostly_sales.value = True
+    view = jev.interpret(_batch(mostly_sales=Decision("noul", 0.1, None, {})), extracted, _cfg())
+    assert any("says no" in n for n in view.notes["mostly_sales"])
+
+
+def test_missing_value_notes_name_what_the_posting_may_say():
+    extracted = load_extracted("hangzhou_ai_app")  # role_closed false
+    view = jev.interpret(_batch(check__role_closed=Decision("noul", 0.8, None, {})), extracted, _cfg())
+    assert "closed or already filled" in view.notes["role_closed"][0]
+
+
+def test_status_reports_an_invalid_decisions_file(config, project_root):
+    (project_root / "config" / "decisions.yaml").write_text("noul_flag_p: 7\n", encoding="utf-8")
+    assert jev.status(config).startswith("off (config/decisions.yaml is invalid")
+
+
+def test_review_notes_survive_an_invalid_decisions_file(capture_fixture, session, config, project_root):
+    job = capture_fixture("hangzhou_ai_app")
+    jev.record_suggestions(session, job, config, provider=FakeDecisionProvider({"degree": Decision("choice", "master", 0.9, {})}))
+    (project_root / "config" / "decisions.yaml").write_text("noul_flag_p: 7\n", encoding="utf-8")
+    view, notes = jev.review_notes(job, ExtractedJob.model_validate(job.extracted), config)
+    assert "invalid" in view.error
+
+
+def test_cross_check_does_not_change_the_extraction():
+    from internship_os import resolve
+
+    extracted = load_extracted("hangzhou_ai_app")
+    before = extracted.model_dump()
+    resolve.cross_check("实习6-12个月，每周3天，2027年6月入职", extracted)
+    assert extracted.model_dump() == before
+
+
+def test_gate_results_are_identical_with_and_without_jev_answers(make_confirmed_job, session, config, today):
+    from internship_os.pipeline import finalize_confirmation, recompute_all
+
+    extreme = {
+        "degree": Decision("choice", "phd", 0.99, {}),
+        "start_timing": Decision("choice", "asap", 0.99, {}),
+        "chinese_level": Decision("choice", "native", 0.99, {}),
+        "restricted": Decision("noul", 0.99, None, {}),
+        "pays_fee": Decision("noul", 0.99, None, {}),
+        "check__role_closed": Decision("noul", 0.99, None, {}),
+    }
+    with_jev = make_confirmed_job("hangzhou_ai_app", run=False)
+    without = make_confirmed_job("hangzhou_ai_app", run=False)
+    jev.record_suggestions(session, with_jev, config, provider=FakeDecisionProvider(extreme))
+    for job in (with_jev, without):
+        finalize_confirmation(session, job, ExtractedJob.model_validate(job.extracted), job.company, [], config, today=today)
+    recompute_all(session, config, today)
+    fields = ("status", "eligibility", "eligibility_reasons", "programme", "programme_overall", "tier", "next_action")
+    assert {f: getattr(with_jev, f) for f in fields} == {f: getattr(without, f) for f in fields}

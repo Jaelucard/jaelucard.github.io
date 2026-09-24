@@ -15,7 +15,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from internship_os.config import AppConfig
+from internship_os import resolve
+from internship_os.config import AppConfig, ConfigError
 from internship_os.decision_provider import (
     DecisionBatch,
     DecisionProvider,
@@ -176,6 +177,10 @@ def build_state(raw_text: str, extracted: ExtractedJob) -> dict[str, Any]:
 # --------------------------------------------------------------------------------------
 
 
+# Bump when a question's wording or meaning changes: stored answers to other versions are not read.
+QUESTIONS_VERSION = 2
+
+
 @dataclass
 class Outcome:
     state: str  # "on" | "off" | "failed"
@@ -184,20 +189,38 @@ class Outcome:
     answers: int = 0
 
 
-def record_detail(batch: DecisionBatch | None, *, error: str | None, model: str | None = None) -> dict[str, Any]:
+def record_detail(batch: DecisionBatch | None, *, error: str | None, model: str | None = None, asked: int = 0) -> dict[str, Any]:
     return {
+        "version": QUESTIONS_VERSION,
         "model": batch.model if batch is not None else model,
         "error": error,
+        "asked": asked,
         "decisions": {k: asdict(d) for k, d in batch.decisions.items()} if batch is not None else {},
     }
 
 
+def _store(session: Session, job: Job, detail: dict[str, Any]) -> str | None:
+    """Save the record as a job event. Returns the error class name instead of raising."""
+    try:
+        session.add(JobEvent(job_id=job.id, kind=EventKind.jev_suggestions.value, detail=detail))
+        session.commit()
+        return None
+    except Exception as exc:  # noqa: BLE001 - the capture is already saved; losing the notes is acceptable
+        session.rollback()
+        return type(exc).__name__
+
+
 def record_suggestions(session: Session, job: Job, config: AppConfig, *, provider: DecisionProvider | None = None) -> Outcome:
-    """Ask Jev about ``job``'s posting and store the answers. Never raises: capture must not fail."""
+    """Ask Jev about ``job``'s posting and store the answers. Never raises: capture must not fail.
+
+    Failures are stored too, so the review page can say that Jev could not check this posting.
+    """
     try:
         provider = provider if provider is not None else get_provider(config)
     except Exception as exc:  # noqa: BLE001 - a bad key or config must not stop a capture
-        return Outcome("failed", None, type(exc).__name__)
+        error = type(exc).__name__
+        _store(session, job, record_detail(None, error=error))
+        return Outcome("failed", None, error)
     if isinstance(provider, NullProvider):
         return Outcome("off", None, provider.reason)
     if not job.extracted or not job.raw_text:
@@ -206,11 +229,16 @@ def record_suggestions(session: Session, job: Job, config: AppConfig, *, provide
         extracted = ExtractedJob.model_validate(job.extracted)
         state, questions = build_state(job.raw_text, extracted), all_questions(extracted)
     except Exception as exc:  # noqa: BLE001
-        return Outcome("failed", provider.model, type(exc).__name__)
+        error = type(exc).__name__
+        _store(session, job, record_detail(None, error=error, model=provider.model))
+        return Outcome("failed", provider.model, error)
     batch, error = ask_safely(provider, state, questions)
-    detail = record_detail(batch, error=error, model=provider.model)
-    session.add(JobEvent(job_id=job.id, kind=EventKind.jev_suggestions.value, detail=detail))
-    session.commit()
+    if batch is not None and not batch.decisions and error is None:
+        error = "no usable answers"
+    detail = record_detail(batch, error=error, model=provider.model, asked=len(questions))
+    write_error = _store(session, job, detail)
+    if write_error:
+        return Outcome("failed", detail["model"], write_error)
     return Outcome("failed" if error else "on", detail["model"], error, len(detail["decisions"]))
 
 
@@ -223,7 +251,10 @@ def latest_record(job: Job) -> dict[str, Any] | None:
 
 def status(config: AppConfig) -> str:
     """One line for the review page and ``ios llm-check``. Builds no client and sends nothing."""
-    decisions = load_decisions(config.root)
+    try:
+        decisions = load_decisions(config.root)
+    except ConfigError:
+        return "off (config/decisions.yaml is invalid; run ios llm-check for details)"
     if decisions.provider != "typesafe":
         return "off (provider: none in config/decisions.yaml)"
     if not read_api_key(config.root):
@@ -242,11 +273,33 @@ class JevView:
     error: str | None
     notes: dict[str, list[str]] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
+    asked: int = 0
+    answered: int = 0
+
+
+def _expected_kind(key: str) -> str | None:
+    if key.startswith("check__") or key == "restricted" or key in FLAG_FIELDS:
+        return "noul"
+    return "choice" if key in CHOICE_FIELDS else None
+
+
+def _usable(key: str, d: Any) -> bool:
+    """A stored answer of the kind its question expects, with a value of the right type."""
+    if not isinstance(d, dict) or d.get("kind") != _expected_kind(key):
+        return False
+    value = d.get("value")
+    if d["kind"] == "noul":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return isinstance(value, str) and isinstance(d.get("confidence"), (int, float))
 
 
 def interpret(record: dict[str, Any], extracted: ExtractedJob, cfg: DecisionsConfig) -> JevView:
     """Turn stored answers into per-field notes and posting warnings, using the two thresholds."""
-    decisions: dict[str, dict[str, Any]] = record.get("decisions") or {}
+    model = record.get("model")
+    decisions = {k: d for k, d in (record.get("decisions") or {}).items() if _usable(k, d)}
+    asked = int(record.get("asked") or 0)
+    if record.get("version") != QUESTIONS_VERSION:
+        return JevView(model, f"its answers were given to an older question set (version {record.get('version')})", asked=asked)
     notes: dict[str, list[str]] = {}
     warnings: list[str] = []
     yes, no = cfg.noul_flag_p, 1 - cfg.noul_flag_p
@@ -258,7 +311,7 @@ def interpret(record: dict[str, Any], extracted: ExtractedJob, cfg: DecisionsCon
         d = decisions.get(key)
         if not d:
             continue
-        confidence = d.get("confidence") or 0.0
+        confidence = float(d["confidence"])
         if confidence < cfg.choice_min_confidence:
             note(name, f"Jev is unsure (leans {d['value']}, confidence {confidence:.2f})")
         elif d["value"] != display(extracted.get(name).value):
@@ -289,9 +342,29 @@ def interpret(record: dict[str, Any], extracted: ExtractedJob, cfg: DecisionsCon
         d = decisions.get(f"check__{name}")
         if not d or d["value"] < yes:
             continue
-        if _is_empty(name, extracted.get(name).value):
-            note(name, f"Jev: the posting may state this (P={d['value']:.2f})")
+        if ExtractedJob.inner_type(name) is bool and extracted.get(name).value is not True:
+            note(name, f"Jev: this may be true: {FIELD_MEANINGS[name]} (P={d['value']:.2f})")
+        elif _is_empty(name, extracted.get(name).value):
+            note(name, f"Jev: the posting may state {FIELD_MEANINGS[name]} (P={d['value']:.2f})")
         else:
             note(name, f"Jev: the posting may not support this value (P={d['value']:.2f})")
 
-    return JevView(model=record.get("model"), error=record.get("error"), notes=notes, warnings=warnings)
+    return JevView(model, record.get("error"), notes, warnings, asked=asked, answered=len(decisions))
+
+
+def review_notes(job: Job, extracted: ExtractedJob, config: AppConfig) -> tuple[JevView | None, dict[str, list[str]]]:
+    """Jev's stored answers and the regex cross-checks as notes per field, for the web review and
+    ``ios confirm``. Nothing here is sent anywhere, and nothing it returns changes a value."""
+    view: JevView | None = None
+    record = latest_record(job)
+    if record is not None:
+        try:
+            view = interpret(record, extracted, load_decisions(config.root))
+        except ConfigError:
+            view = JevView(record.get("model"), "config/decisions.yaml is invalid")
+        except Exception:  # noqa: BLE001 - unreadable stored answers must not break the review
+            view = JevView(record.get("model"), "its stored answers could not be read")
+    notes = {name: list(items) for name, items in (view.notes if view else {}).items()}
+    for name, text in resolve.cross_check(job.raw_text or "", extracted).items():
+        notes.setdefault(name, []).append(text)
+    return view, notes

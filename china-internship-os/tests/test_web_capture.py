@@ -297,3 +297,32 @@ def test_review_shows_regex_cross_check_notes(capture_fixture, client, session):
     job.extracted = data
     session.commit()
     assert "The posting text reads as 4-6 months" in client.get(f"/jobs/{job.id}/review").text
+
+
+def test_review_says_jev_did_not_run_for_an_older_capture(capture_fixture, client, project_root):
+    job = capture_fixture("hangzhou_ai_app")
+    (project_root / "config" / "decisions.yaml").write_text("provider: typesafe\n", encoding="utf-8")
+    (project_root / ".env").write_text("TYPESAFE_API_KEY=apikey_test\n", encoding="utf-8")
+    assert "did not run for this posting" in client.get(f"/jobs/{job.id}/review").text
+
+
+def test_review_page_survives_an_invalid_decisions_file(capture_fixture, client, project_root):
+    job = capture_fixture("hangzhou_ai_app")
+    (project_root / "config" / "decisions.yaml").write_text("noul_flag_p: 7\n", encoding="utf-8")
+    response = client.get(f"/jobs/{job.id}/review")
+    assert response.status_code == 200 and "decisions.yaml is invalid" in response.text
+
+
+def test_review_shows_how_many_questions_jev_answered(client, session, monkeypatch):
+    from internship_os.decision_provider import Decision
+
+    _fake_jev(monkeypatch, {"degree": Decision("choice", "bachelor", 0.95, {})})
+    response = client.post("/capture", data={"text": load_jd("hangzhou_ai_app"), "source": "boss"})
+    assert "answered 1 of" in client.get(response.headers["location"]).text
+
+
+def test_confirm_without_the_start_timing_tick_is_400(capture_fixture, client):
+    job = capture_fixture("hangzhou_ai_app")
+    form = _review_form(job)
+    del form["confirm__start_timing"]
+    assert client.post(f"/jobs/{job.id}/review", data=form).status_code == 400
