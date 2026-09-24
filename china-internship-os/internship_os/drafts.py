@@ -177,6 +177,27 @@ def reclassify_duration_statement(st: Statement, lo: int, hi: int, duration_ids:
     return st
 
 
+# EV_MINDEF_DB may carry no figures, counts or statistics of any kind (SAF Act), in any language.
+_CN_NUMERAL = re.compile(r"[零〇一二两三四五六七八九十百千万亿]")
+_CN_NON_COUNT_WORDS = ("一个", "一套", "一起", "统一", "进一步", "唯一", "万一", "一些", "一直")
+_EN_NUMBER_WORD = re.compile(
+    r"\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|"
+    r"sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|"
+    r"hundreds?|thousands?|millions?|billions?|dozens?|twice|thrice|percent)\b",
+    re.IGNORECASE,
+)
+
+
+def contains_figure(text: str) -> bool:
+    """Digits, Chinese numerals outside a few common non-count words, or English number words."""
+    if re.search(r"\d", text):
+        return True
+    cleaned = text
+    for word in _CN_NON_COUNT_WORDS:
+        cleaned = cleaned.replace(word, "")
+    return bool(_CN_NUMERAL.search(cleaned) or _EN_NUMBER_WORD.search(text))
+
+
 def nonclaim_problem(text: str, *, programme_context: bool) -> str | None:
     if re.search(r"\d", text):
         return "nonclaim contains a number; facts must be user_claim or programme_fact with sources"
@@ -217,6 +238,10 @@ def validate_statements(
             ]
             if bad:
                 report.rejected.append(Rejection(text, f"invalid source_refs: {', '.join(bad)}"))
+                continue
+            no_figures = [r for r in st.source_refs if r in NO_DIGIT_EVIDENCE]
+            if no_figures and contains_figure(text):
+                report.rejected.append(Rejection(text, f"{no_figures[0]} statements may not contain numbers or counts"))
                 continue
         elif st.kind == "programme_fact":
             if not st.source_refs:
@@ -591,6 +616,8 @@ def validate_bullet(bullet: str, config: AppConfig) -> str | None:
         return f"unknown evidence id {ev_id}"
     if ev_id in NO_DIGIT_EVIDENCE and re.search(r"\d", text):
         return f"{ev_id} bullets may not contain any digit"
+    if ev_id in NO_DIGIT_EVIDENCE and contains_figure(text):
+        return f"{ev_id} bullets may not contain numbers or counts"
     problem = mandarin_problem(text, config.user_facts)
     if problem:
         return problem

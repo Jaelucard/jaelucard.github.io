@@ -306,3 +306,34 @@ def test_duration_nonclaim_is_reclassified_as_programme_fact(config):
     # Other numbers, or no month wording, stay nonclaims (and are then refused by the digit guard).
     assert reclassify_duration_statement(Statement(text="I led 5 engineers for 6 months.", kind="nonclaim"), 4, 6, ids).kind == "nonclaim"
     assert reclassify_duration_statement(Statement(text="Available from 4 to 6.", kind="nonclaim"), 4, 6, ids).kind == "nonclaim"
+
+
+# --------------------------------------------------------------------------------------
+# EV_MINDEF_DB: no figures of any kind, in bullets and in message statements
+# --------------------------------------------------------------------------------------
+
+
+def test_mindef_bullet_with_chinese_numeral_or_number_word_is_dropped(config):
+    reason = "EV_MINDEF_DB bullets may not contain numbers or counts"
+    assert validate_bullet("维护了三千条伤病记录 [EV_MINDEF_DB]", config) == reason
+    assert validate_bullet("Maintained three thousand service-injury records [EV_MINDEF_DB]", config) == reason
+    assert validate_bullet("Maintained dozens of records over two years [EV_MINDEF_DB]", config) == reason
+
+
+def test_mindef_bullet_with_common_non_count_words_is_kept(config):
+    assert validate_bullet("维护了一个伤病数据库，并搭建了一套Excel VBA工作流 [EV_MINDEF_DB]", config) is None
+    assert validate_bullet("Maintained a service-injury database and built an Excel VBA workflow [EV_MINDEF_DB]", config) is None
+
+
+def test_mindef_message_statements_with_figures_are_refused(config):
+    report = validate_statements(
+        [
+            Statement(text="At MINDEF I maintained 3,000 service-injury records.", source_refs=["EV_MINDEF_DB"], kind="user_claim"),
+            Statement(text="在MINDEF维护了三千条伤病记录。", source_refs=["EV_MINDEF_DB"], kind="user_claim"),
+            Statement(text="At MINDEF I maintained a service-injury database.", source_refs=["EV_MINDEF_DB"], kind="user_claim"),
+        ],
+        config,
+    )
+    assert [s.text for s in report.kept] == ["At MINDEF I maintained a service-injury database."]
+    assert all("EV_MINDEF_DB" in r.reason and "numbers or counts" in r.reason for r in report.rejected)
+    assert len(report.rejected) == 2
