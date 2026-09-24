@@ -20,6 +20,7 @@ dependencies = [
   "jinja2>=3.1,<4",
   "python-multipart>=0.0.9,<1",
   "typesafe-sdk==0.7.1",
+  "httpx2>=2.13,<3",
 ]
 
 [project.optional-dependencies]
