@@ -165,5 +165,25 @@
     "value": [],
     "confirmed": false,
     "source_span": null
+  },
+  "start_timing": {
+    "value": "named_month",
+    "confirmed": false,
+    "source_span": "2027年3月起可入职"
+  },
+  "pays_fee": {
+    "value": false,
+    "confirmed": false,
+    "source_span": null
+  },
+  "mostly_annotation": {
+    "value": false,
+    "confirmed": false,
+    "source_span": null
+  },
+  "mostly_sales": {
+    "value": false,
+    "confirmed": false,
+    "source_span": null
   }
 }

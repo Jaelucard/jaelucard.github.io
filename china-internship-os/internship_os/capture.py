@@ -31,6 +31,7 @@ from internship_os import llm
 from internship_os.config import AppConfig
 from internship_os.models import Company, Job, JobEvent
 from internship_os.schemas import (
+    ALWAYS_CONFIRM_FIELDS,
     EventKind,
     Extracted,
     ExtractedJob,
@@ -456,13 +457,14 @@ def apply_confirmation(
     """Walk every field, asking ``decide`` for the user's input, and return the confirmed job.
 
     ``decide(field_name, field, error)`` returns the raw input: empty string confirms, ``-``
-    sets null, ``a`` accepts the current and all remaining fields, anything else overrides.
+    sets null, ``a`` accepts the current and all remaining fields except the must-check fields
+    in ``ALWAYS_CONFIRM_FIELDS``, which are still asked; anything else overrides.
     """
     overrides: list[Override] = []
     accept_all = False
     for name in ExtractedJob.field_names():
         field = extracted.get(name)
-        if accept_all:
+        if accept_all and name not in ALWAYS_CONFIRM_FIELDS:
             field.confirmed = True
             continue
         error: str | None = None

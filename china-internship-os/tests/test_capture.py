@@ -21,7 +21,7 @@ from internship_os.capture import (
 from internship_os.cli import app
 from internship_os.models import Job
 from internship_os.pipeline import finalize_confirmation
-from internship_os.schemas import ExtractedJob, force_unconfirmed
+from internship_os.schemas import ALWAYS_CONFIRM_FIELDS, ExtractedJob, force_unconfirmed
 from tests.conftest import load_extracted, load_extracted_json, load_jd
 
 
@@ -220,7 +220,9 @@ def test_finalize_confirmation_links_company_and_sets_next_action(capture_fixtur
 def test_confirm_cli_accept_all(capture_fixture, engine, project_root):
     job = capture_fixture("suzhou_backend")
     runner = CliRunner()
-    result = runner.invoke(app, ["confirm", str(job.id)], input="a\n")
+    # 'a' accepts the rest but still asks each must-check field (ALWAYS_CONFIRM_FIELDS).
+    must_check = "a\n" * len(ALWAYS_CONFIRM_FIELDS)
+    result = runner.invoke(app, ["confirm", str(job.id)], input="a\n" + must_check)
     assert result.exit_code == 0, result.output
     assert "Created company" in result.output
     with engine.connect() as conn:
@@ -229,7 +231,7 @@ def test_confirm_cli_accept_all(capture_fixture, engine, project_root):
     result = runner.invoke(app, ["confirm", str(job.id)], input="a\n")
     assert "already confirmed" in result.output
     # Prompts show the current value literally; Rich must not eat [null]/[false] as markup.
-    result_step = runner.invoke(app, ["confirm", str(capture_fixture("hangzhou_ai_app").id)], input="\n\na\n")
+    result_step = runner.invoke(app, ["confirm", str(capture_fixture("hangzhou_ai_app").id)], input="\n\na\n" + must_check)
     assert "company_name_en [null]:" in result_step.output
     assert "confirmed extraction" not in result_step.output
 

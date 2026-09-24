@@ -286,8 +286,8 @@ def confirm(ctx: typer.Context, job_id: int) -> None:
     console.print(_extraction_table(extracted))
     out(
         "Enter = confirm shown value | typed value = override | '-' = null | 'a' = accept this "
-        "and all remaining. Lists: JSON list or comma-separated. Dates: YYYY-MM-DD. "
-        "Booleans: true/false."
+        "and all remaining except the must-check fields, which are still asked. Lists: JSON list "
+        "or comma-separated. Dates: YYYY-MM-DD. Booleans: true/false."
     )
 
     def decide(name: str, fld: Extracted[Any], error: str | None) -> str:

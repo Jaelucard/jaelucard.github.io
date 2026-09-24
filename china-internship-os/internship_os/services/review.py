@@ -27,19 +27,10 @@ from internship_os.capture import (
 from internship_os.config import AppConfig
 from internship_os.models import Company, Job
 from internship_os.pipeline import ConfirmationResult, TransitionResult, finalize_confirmation, transition
-from internship_os.schemas import ExtractedJob, JobStatus
+from internship_os.schemas import ALWAYS_CONFIRM_FIELDS, SENTINEL_FIELDS, ExtractedJob, JobStatus
 
-# Inputs of eligibility's hard-fail codes (degree, cohort, nationality/work authorisation,
-# role closed, deadline passed). Each needs its own tick on the review page.
-ALWAYS_CONFIRM: tuple[str, ...] = (
-    "degree_required",
-    "graduation_cohort_text",
-    "cohort_years",
-    "cohort_unrestricted",
-    "nationality_or_work_auth_restriction",
-    "role_closed",
-    "deadline",
-)
+# Each of these needs its own tick on the review page (see schemas.ALWAYS_CONFIRM_FIELDS).
+ALWAYS_CONFIRM: tuple[str, ...] = ALWAYS_CONFIRM_FIELDS
 LONG_TEXT_FIELDS = frozenset({"responsibilities_summary"})
 DISCARD_NOTE = "discarded at review"
 
@@ -82,10 +73,12 @@ def display(value: Any) -> str:
 
 def _widget(name: str) -> tuple[str, list[str] | None]:
     inner = ExtractedJob.inner_type(name)
+    # A field without a sentinel can be null; its select needs an empty option to show that.
+    blank = [] if name in SENTINEL_FIELDS else [""]
     if inner is bool:
-        return "select", ["false", "true"]
+        return "select", blank + ["false", "true"]
     if isinstance(inner, type) and issubclass(inner, StrEnum):
-        return "select", [m.value for m in inner]
+        return "select", blank + [m.value for m in inner]
     if inner is date:
         return "date", None
     if inner is int:

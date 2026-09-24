@@ -530,6 +530,13 @@ class ChineseLevel(StrEnum):
     native = "native"
 
 
+class StartTiming(StrEnum):
+    asap = "asap"
+    named_month = "named_month"
+    flexible = "flexible"
+    not_stated = "not_stated"
+
+
 class ResearchSignal(StrEnum):
     master_required = "master_required"
     phd_preferred = "phd_preferred"
@@ -573,6 +580,25 @@ _SENTINEL_DEFAULTS: dict[str, Any] = {
 }
 
 
+# Fields added with the Jev decision layer. A stored extraction from before they existed loads
+# them as confirmed nulls ("not captured"), so jobs confirmed earlier stay fully confirmed.
+ADDED_FIELDS: tuple[str, ...] = ("start_timing", "pays_fee", "mostly_annotation", "mostly_sales")
+SENTINEL_FIELDS: frozenset[str] = frozenset(_SENTINEL_DEFAULTS)
+
+# The inputs of eligibility's hard-fail codes, plus start_timing. Confirmation asks each of these
+# individually: the CLI's 'a' does not skip them and the web review needs an explicit tick.
+ALWAYS_CONFIRM_FIELDS: tuple[str, ...] = (
+    "degree_required",
+    "graduation_cohort_text",
+    "cohort_years",
+    "cohort_unrestricted",
+    "nationality_or_work_auth_restriction",
+    "role_closed",
+    "deadline",
+    "start_timing",
+)
+
+
 class ExtractedJob(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -607,6 +633,19 @@ class ExtractedJob(BaseModel):
     responsibilities_summary: Extracted[str] = Field(default_factory=Extracted)
     track_guess: Extracted[Track] = Field(default_factory=Extracted)
     research_signals: Extracted[list[ResearchSignal]] = Field(default_factory=Extracted)
+    start_timing: Extracted[StartTiming] = Field(default_factory=Extracted)
+    pays_fee: Extracted[bool] = Field(default_factory=Extracted)
+    mostly_annotation: Extracted[bool] = Field(default_factory=Extracted)
+    mostly_sales: Extracted[bool] = Field(default_factory=Extracted)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _added_fields_default_to_not_captured(cls, data: Any) -> Any:
+        if isinstance(data, dict) and any(name not in data for name in ADDED_FIELDS):
+            data = dict(data)
+            for name in ADDED_FIELDS:
+                data.setdefault(name, {"value": None, "confirmed": True, "source_span": None})
+        return data
 
     @model_validator(mode="after")
     def _fill_sentinels(self) -> ExtractedJob:

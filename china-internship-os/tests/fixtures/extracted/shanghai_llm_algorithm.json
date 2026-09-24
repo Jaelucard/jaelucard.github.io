@@ -169,5 +169,25 @@
     ],
     "confirmed": false,
     "source_span": "1. 硕士及以上学历在读，计算机、人工智能、数学等相关专业，2027届优先；\n2. 熟练掌握Python与PyTorch，熟悉Transformer结构与主流大模型训练流程；\n3. 有顶会论文（NeurIPS/ICML/ACL等）发表者优先；\n4. 熟悉CUDA编程或有大规模分布式训练经验者优先；"
+  },
+  "start_timing": {
+    "value": "not_stated",
+    "confirmed": false,
+    "source_span": null
+  },
+  "pays_fee": {
+    "value": false,
+    "confirmed": false,
+    "source_span": null
+  },
+  "mostly_annotation": {
+    "value": false,
+    "confirmed": false,
+    "source_span": null
+  },
+  "mostly_sales": {
+    "value": false,
+    "confirmed": false,
+    "source_span": null
   }
 }
