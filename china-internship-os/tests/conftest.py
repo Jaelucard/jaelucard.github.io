@@ -138,6 +138,16 @@ def _no_real_llm_providers(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(llm.subprocess, "run", _blocked)
     monkeypatch.setattr(llm.httpx, "post", _blocked)
     monkeypatch.setattr(llm, "_sleep", lambda s: pytest.fail(f"unexpected sleep({s})"))
+    # TypeSafe (Jev): no key from the developer's shell, and a transport that refuses to connect.
+    import httpx2
+
+    from internship_os import decision_provider
+
+    def _blocked_transport(_request):
+        raise AssertionError("test attempted to call TypeSafe")
+
+    monkeypatch.delenv(decision_provider.KEY_VAR, raising=False)
+    monkeypatch.setattr(decision_provider, "_transport", lambda: httpx2.MockTransport(_blocked_transport))
 
 
 @pytest.fixture
