@@ -12,3 +12,6 @@ __pycache__/
 .DS_Store
 *.egg-info/
 build/
+
+# real hand-labelled postings for scripts/eval_prefill.py
+data/labelled_postings.jsonl
