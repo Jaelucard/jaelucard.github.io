@@ -14,7 +14,8 @@
 - Single user-supplied URL GET only, with paste fallback.
 - Never delete jobs or companies; use terminal statuses.
 - config/user_facts.yaml, db.sqlite, db.sqlite-* and packs/ are gitignored.
-- LLM calls go through the Claude Code CLI on the user's subscription (provider claude_code) or local Ollama. No API keys; llm.py strips ANTHROPIC_API_KEY from the subprocess environment.
+- LLM calls go through the Claude Code CLI on the user's subscription (provider claude_code) or local Ollama. No API keys except TYPESAFE_API_KEY under the next rule; llm.py strips ANTHROPIC_API_KEY from the subprocess environment.
+- Exception for the Jev decision layer only: internship_os/decision_provider.py may call the TypeSafe API with TYPESAFE_API_KEY. The key lives only on the user's machine (the gitignored .env or the shell environment), never in a tracked file. Jev answers typed questions about the pasted posting text only; its answers are suggestions the user confirms, and no gate reads them.
 - Manual programme state such as SUTD approval and agreed employer dates must survive recompute.
 - ios recompute is deterministic and never calls an LLM.
 - Edit surgically.
