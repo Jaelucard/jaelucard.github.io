@@ -1,0 +1,10 @@
+# Jev (TypeSafe System One) decision layer. Its answers are suggestions on the review page only;
+# no eligibility, programme or tiering rule reads them.
+# The API key is never stored here: put TYPESAFE_API_KEY in the gitignored .env, or export it.
+# Without a key on this machine, Jev stays off and capture works exactly as before.
+provider: typesafe            # typesafe | none
+model: jev-1.13.0             # pinned; change deliberately and re-run scripts/eval_prefill.py
+timeout_seconds: 8            # per HTTP operation; no retries, so a capture never waits long
+connect_timeout_seconds: 3
+noul_flag_p: 0.7              # flag a check or warning that Jev answers "yes" with at least this probability
+choice_min_confidence: 0.6    # flag a Jev choice below this confidence

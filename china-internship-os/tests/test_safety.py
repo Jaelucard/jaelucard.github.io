@@ -114,3 +114,20 @@ def test_web_ui_is_local_and_script_free():
         assert "<script" not in src and "javascript:" not in src, f"{path.name} contains script"
         assert not re.search(r"\son[a-z]+\s*=", src), f"{path.name} has an inline event handler"
         assert "http://" not in src and "https://" not in src, f"{path.name} loads a remote asset"
+
+
+def test_typesafe_is_reached_only_through_the_decision_provider():
+    """The TypeSafe API key exception covers internship_os/decision_provider.py and nothing else."""
+    provider = PACKAGE / "decision_provider.py"
+    for path in MODULES + sorted((PROJECT / "scripts").glob("*.py")):
+        if path == provider:
+            continue
+        src = _source(path)
+        assert not re.search(r"^\s*(import|from)\s+typesafe_sdk\b", src, re.MULTILINE), f"{path.name} imports typesafe_sdk"
+        for marker in ("TypeSafeClient", "system_one", "api.typesafe.ai"):
+            assert marker not in src, f"{path.name} mentions {marker}"
+    src = _source(provider)
+    assert src.count("TypeSafeClient(") == 1
+    assert "base_url" not in src and "TYPESAFE_BASE_URL" not in src
+    # The key is passed to the client, never put into the process environment.
+    assert "putenv" not in src and not re.search(r"os\.environ\[[^\]]+\]\s*=|environ\.setdefault|environ\.update", src)
