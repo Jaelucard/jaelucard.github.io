@@ -47,8 +47,8 @@ WARNINGS = {
 CHECKED_FIELDS = ("graduation_cohort_text", "cohort_unrestricted", "role_closed", "internship_type", "research_signals")
 FIELD_MEANINGS = {
     "graduation_cohort_text": "the graduation cohorts (届) the posting accepts",
-    "cohort_unrestricted": "whether the posting explicitly accepts any graduation year (毕业时间不限)",
-    "role_closed": "whether the posting says the position is closed or already filled",
+    "cohort_unrestricted": "the posting explicitly accepts any graduation year (毕业时间不限)",
+    "role_closed": "the posting says the position is closed or already filled",
     "internship_type": "the internship type, such as 日常实习 or 暑期实习",
     "research_signals": "research signals: a required master's or PhD, publications, CUDA, large-scale training",
 }
@@ -119,10 +119,29 @@ def _is_empty(name: str, value: Any) -> bool:
 
 
 def check_questions(extracted: ExtractedJob) -> dict[str, dict[str, Any]]:
-    """One support check per field in CHECKED_FIELDS, phrased for a found or a missing value."""
+    """One support check per field in CHECKED_FIELDS, phrased for a found or a missing value.
+
+    Yes/no fields are asked as conditions ("does the posting say X?"), not as "is there information
+    about X?", which a posting listing its cohorts would answer yes for cohort_unrestricted.
+    """
     questions: dict[str, dict[str, Any]] = {}
     for name in CHECKED_FIELDS:
-        if _is_empty(name, extracted.get(name).value):
+        value = extracted.get(name).value
+        if ExtractedJob.inner_type(name) is bool:
+            if value is True:
+                questions[f"check__{name}"] = _noul(
+                    f"The extraction says this is true: `fields.{name}.meaning`. Is that unsupported by `posting`?",
+                    true="Unsupported: the posting does not say this",
+                    false="Supported: the posting says this",
+                )
+            else:
+                questions[f"check__{name}"] = _noul(
+                    f"Does `posting` say this: `fields.{name}.meaning`?",
+                    true="Yes, the posting states this",
+                    false="No, the posting does not state this",
+                )
+            continue
+        if _is_empty(name, value):
             questions[f"check__{name}"] = _noul(
                 f"Nothing was extracted for `fields.{name}.meaning`. Does `posting` state this information?",
                 true="The posting states this information",

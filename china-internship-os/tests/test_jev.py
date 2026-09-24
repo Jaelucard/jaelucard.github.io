@@ -38,6 +38,13 @@ def test_state_holds_posting_text_and_extracted_values_only(config):
         assert personal not in questions, personal
 
 
+def test_yes_no_fields_are_checked_as_conditions_not_as_information():
+    extracted = load_extracted("hangzhou_ai_app")  # cohort_unrestricted false: cohorts are listed
+    question = jev.check_questions(extracted)["check__cohort_unrestricted"]
+    assert "information" not in question["instructions"]
+    assert "any graduation year" in jev.build_state("text", extracted)["fields"]["cohort_unrestricted"]["meaning"]
+
+
 def test_support_checks_ask_about_found_and_missing_values():
     extracted = load_extracted("suzhou_backend")  # cohort_unrestricted true, role_closed false
     checks = jev.check_questions(extracted)
