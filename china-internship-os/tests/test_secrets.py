@@ -11,6 +11,8 @@ import pytest
 
 PROJECT = Path(__file__).resolve().parents[1]
 KEY_SHAPE = re.compile(r"apikey_[0-9a-f]{16,}")
+# Captured at import: the autouse LLM guard in conftest.py replaces subprocess.run during tests.
+_RUN = subprocess.run
 
 pytestmark = pytest.mark.skipif(
     shutil.which("git") is None or not (PROJECT.parent / ".git").exists() and not (PROJECT / ".git").exists(),
@@ -19,7 +21,7 @@ pytestmark = pytest.mark.skipif(
 
 
 def _git(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", *args], cwd=PROJECT, capture_output=True)
+    return _RUN(["git", *args], cwd=PROJECT, capture_output=True)
 
 
 def test_no_tracked_or_committable_file_contains_an_api_key():
