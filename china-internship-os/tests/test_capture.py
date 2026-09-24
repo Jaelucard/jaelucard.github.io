@@ -348,3 +348,28 @@ def test_cli_capture_reports_jev_status(project_root, engine, fake_llm, monkeypa
     result = CliRunner().invoke(app, ["capture", "--text-file", str(jd), "--source", "boss"])
     assert result.exit_code == 0, result.output
     assert "Jev: off (no TYPESAFE_API_KEY)" in result.output
+
+
+def test_cli_confirm_prints_jev_notes(capture_fixture, session, config, engine, fake_llm, project_root):
+    from internship_os import jev
+    from internship_os.decision_provider import Decision, FakeDecisionProvider
+
+    fake_llm["quality_checklist"] = '{"signals": []}'
+    job = capture_fixture("hangzhou_ai_app")
+    jev.record_suggestions(session, job, config, provider=FakeDecisionProvider({"degree": Decision("choice", "master", 0.9, {})}))
+    must_check = "a\n" * len(ALWAYS_CONFIRM_FIELDS)
+    result = CliRunner().invoke(app, ["confirm", str(job.id)], input="a\n" + must_check)
+    assert result.exit_code == 0, result.output
+    assert "Jev suggests master" in result.output
+
+
+def test_cli_capture_reports_a_single_answer_in_the_singular(project_root, engine, fake_llm, monkeypatch):
+    from internship_os import jev
+    from internship_os.decision_provider import Decision, FakeDecisionProvider
+
+    provider = FakeDecisionProvider({"degree": Decision("choice", "bachelor", 0.9, {})}, model="jev-test")
+    monkeypatch.setattr(jev, "get_provider", lambda config: provider)
+    jd = project_root / "jd.txt"
+    jd.write_text(load_jd("hangzhou_ai_app"), encoding="utf-8")
+    result = CliRunner().invoke(app, ["capture", "--text-file", str(jd), "--source", "boss"])
+    assert "Jev (jev-test): 1 answer stored" in result.output

@@ -237,3 +237,12 @@ def test_named_month_posting_keeps_the_plain_next_action(make_confirmed_job, ses
     job = make_confirmed_job("hangzhou_ai_app", run=False)
     finalize_confirmation(session, job, ExtractedJob.model_validate(job.extracted), job.company, [], config, today=today)
     assert job.next_action == "assess fit"
+
+
+def test_an_asap_posting_that_is_ineligible_gets_no_next_action(make_confirmed_job, session, config, today):
+    from internship_os.pipeline import finalize_confirmation
+    from internship_os.schemas import ExtractedJob
+
+    job = make_confirmed_job("shanghai_llm_algorithm", run=False, start_timing="asap")  # master required
+    finalize_confirmation(session, job, ExtractedJob.model_validate(job.extracted), job.company, [], config, today=today)
+    assert job.status == "INELIGIBLE" and job.next_action is None

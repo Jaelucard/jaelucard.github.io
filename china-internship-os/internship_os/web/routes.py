@@ -19,9 +19,8 @@ from internship_os.capture import (
     attach_to_existing,
     capture as capture_posting,
 )
-from internship_os import jev, resolve
+from internship_os import jev
 from internship_os.config import AppConfig
-from internship_os.decision_provider import load_decisions
 from internship_os.llm import LLMError
 from internship_os.models import Job
 from internship_os.pipeline import TransitionError, add_note
@@ -234,21 +233,11 @@ def capture_create(
 # --------------------------------------------------------------------------------------
 
 
-def review_notes(job: Job, extracted: ExtractedJob, config: AppConfig) -> tuple[jev.JevView | None, dict[str, list[str]]]:
-    """Jev's stored answers and the regex cross-checks, as notes per field. Nothing here is sent."""
-    record = jev.latest_record(job)
-    view = jev.interpret(record, extracted, load_decisions(config.root)) if record else None
-    notes: dict[str, list[str]] = {name: list(items) for name, items in (view.notes if view else {}).items()}
-    for name, text in resolve.cross_check(job.raw_text or "", extracted).items():
-        notes.setdefault(name, []).append(text)
-    return view, notes
-
-
 def review_view(request: Request, session: Session, job: Job, config: AppConfig, *, form: dict[str, str] | None = None,
                 errors: dict[str, str] | None = None, status_code: int = 200) -> Response:
     extracted = ExtractedJob.model_validate(job.extracted)
     exact, near = review_service.company_matches(session, extracted, form)
-    view, notes = review_notes(job, extracted, config)
+    view, notes = jev.review_notes(job, extracted, config)
     return page(
         request, "review.html", cli=f"ios confirm {job.id}", status_code=status_code,
         job=job,
