@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, Protocol
@@ -22,6 +23,7 @@ from internship_os.config import AppConfig, ConfigError, ConfigProblem, config_d
 KEY_VAR = "TYPESAFE_API_KEY"
 DECISIONS_FILE = "decisions.yaml"
 ENV_FILE = ".env"
+_ENV_LINE = re.compile(rf"^\s*(?:export\s+)?{KEY_VAR}\s*=\s*(.*)$")
 
 
 class DecisionsConfig(BaseModel):
@@ -52,22 +54,32 @@ def load_decisions(root: Path | str) -> DecisionsConfig:
         ) from exc
 
 
+def _env_value(raw: str) -> str:
+    raw = raw.strip()
+    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in "'\"":
+        return raw[1:-1]
+    return raw.split(" #", 1)[0].split("\t#", 1)[0].strip()  # an unquoted value may end in a comment
+
+
 def read_api_key(root: Path | str) -> str | None:
-    """``TYPESAFE_API_KEY`` from the environment, else from ``<root>/.env``. Never logged."""
-    value = os.environ.get(KEY_VAR)
+    """``TYPESAFE_API_KEY`` from the environment, else from ``<root>/.env``. Never logged.
+
+    In ``.env`` the last non-empty assignment wins, as with dotenv; an unreadable file means no key.
+    """
+    value = (os.environ.get(KEY_VAR) or "").strip()
     if value:
-        return value.strip()
+        return value
     path = Path(root) / ENV_FILE
-    if not path.is_file():
+    try:
+        text = path.read_text(encoding="utf-8-sig", errors="replace")
+    except OSError:
         return None
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line.startswith("export "):
-            line = line[len("export "):].strip()
-        name, sep, raw = line.partition("=")
-        if sep and name.strip() == KEY_VAR:
-            return raw.strip().strip("'\"") or None
-    return None
+    found = None
+    for line in text.splitlines():
+        match = _ENV_LINE.match(line)
+        if match and _env_value(match.group(1)):
+            found = _env_value(match.group(1))
+    return found
 
 
 # --------------------------------------------------------------------------------------
@@ -147,6 +159,7 @@ class TypeSafeProvider:
             retry=RetryPolicy(max_retries=0, timeout=timeout + connect_timeout),
             timeout=httpx2.Timeout(timeout, connect=connect_timeout),
             transport=transport if transport is not None else _transport(),
+            base_url="https://api.typesafe.ai",  # pinned: an environment override must not redirect the key
         )
 
     def ask(self, state: Any, questions: dict[str, dict[str, Any]]) -> DecisionBatch:

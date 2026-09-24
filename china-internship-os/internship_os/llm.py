@@ -5,7 +5,8 @@ Providers:
 * ``claude_code``: runs the official Claude Code CLI in print mode (``claude -p``) as a
   subprocess. It uses the user's logged-in Claude subscription; no API key is involved and the
   ``ANTHROPIC_API_KEY`` / ``ANTHROPIC_AUTH_TOKEN`` variables are stripped from the subprocess
-  environment so a stray key can never switch it to pay-per-token billing. Tools, hooks, MCP
+  environment so a stray key can never switch it to pay-per-token billing (``TYPESAFE_API_KEY``
+  is stripped too: the Jev key never leaves this process). Tools, hooks, MCP
   servers, project settings and session persistence are all disabled, so each call is a plain
   completion.
 * ``ollama``: POST to a local Ollama server.
@@ -62,7 +63,7 @@ CLAUDE_CODE_SYSTEM_PROMPT = (
 )
 CLAUDE_CODE_TIMEOUT_SECONDS = 900
 # Variables that would make the CLI bill an API account instead of using the subscription.
-STRIPPED_ENV_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+STRIPPED_ENV_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "TYPESAFE_API_KEY")
 # The CLI words subscription limits as "You've hit your <session|weekly|Opus|Sonnet|Fable|usage
 # credit> limit · resets <time>"; overloads as "<model> is experiencing high load".
 RATE_LIMIT_PATTERN = re.compile(

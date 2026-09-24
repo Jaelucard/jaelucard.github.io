@@ -144,7 +144,8 @@ def _no_real_llm_providers(monkeypatch: pytest.MonkeyPatch):
     from internship_os import decision_provider
 
     def _blocked_transport(_request):
-        raise AssertionError("test attempted to call TypeSafe")
+        # pytest.fail raises a BaseException, so the provider's `except Exception` cannot hide it.
+        pytest.fail("test attempted to call TypeSafe")
 
     monkeypatch.delenv(decision_provider.KEY_VAR, raising=False)
     monkeypatch.setattr(decision_provider, "_transport", lambda: httpx2.MockTransport(_blocked_transport))

@@ -50,7 +50,7 @@ def test_no_command_submits_or_sends_anything():
         if path != LLM_MODULE:
             assert not re.search(r"^\s*(import|from)\s+subprocess\b", _source(path), re.MULTILINE), f"{path.name} uses subprocess"
     assert '"--tools", ""' in llm_src and '"--no-session-persistence"' in llm_src
-    assert 'STRIPPED_ENV_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")' in llm_src
+    assert 'STRIPPED_ENV_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "TYPESAFE_API_KEY")' in llm_src
     assert 'OLLAMA_URL = "http://localhost:11434/api/generate"' in llm_src
     assert "httpx.post(OLLAMA_URL" in llm_src
 
@@ -128,6 +128,16 @@ def test_typesafe_is_reached_only_through_the_decision_provider():
             assert marker not in src, f"{path.name} mentions {marker}"
     src = _source(provider)
     assert src.count("TypeSafeClient(") == 1
-    assert "base_url" not in src and "TYPESAFE_BASE_URL" not in src
+    # The destination is pinned, so a TYPESAFE_BASE_URL in the environment cannot redirect the key.
+    assert src.count('base_url="https://api.typesafe.ai"') == 1 and "TYPESAFE_BASE_URL" not in src
+    # Only the Jev layer and the eval script reach the provider; only the CLI and web capture record.
+    callers = {PACKAGE / "decision_provider.py", PACKAGE / "jev.py", PROJECT / "scripts" / "eval_prefill.py"}
+    for path in MODULES + sorted((PROJECT / "scripts").glob("*.py")):
+        text = _source(path)
+        if path not in callers:
+            for marker in ("get_provider(", "ask_safely(", "TypeSafeProvider("):
+                assert marker not in text, f"{path.name} calls {marker}"
+        if path not in {PACKAGE / "jev.py", PACKAGE / "cli.py", PACKAGE / "web" / "routes.py"}:
+            assert "record_suggestions(" not in text, f"{path.name} records Jev suggestions"
     # The key is passed to the client, never put into the process environment.
     assert "putenv" not in src and not re.search(r"os\.environ\[[^\]]+\]\s*=|environ\.setdefault|environ\.update", src)

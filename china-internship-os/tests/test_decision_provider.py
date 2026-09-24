@@ -120,3 +120,89 @@ def test_fake_provider_returns_only_requested_keys():
     canned = {"a": dp.Decision("noul", 0.9, None, {}), "b": dp.Decision("noul", 0.1, None, {})}
     batch = dp.FakeDecisionProvider(canned).ask("text", {"a": {"type": "noul"}})
     assert set(batch.decisions) == {"a"}
+
+
+def test_committed_decisions_file_is_valid_and_pins_a_version():
+    import re
+
+    from tests.conftest import PROJECT_DIR
+
+    cfg = dp.load_decisions(PROJECT_DIR)
+    assert re.fullmatch(r"jev-\d+\.\d+\.\d+", cfg.model)
+
+
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        (b"TYPESAFE_API_KEY=apikey_a  # my key\n", "apikey_a"),
+        (b'TYPESAFE_API_KEY="apikey_b"\n', "apikey_b"),
+        (b"TYPESAFE_API_KEY=old\nTYPESAFE_API_KEY=new\n", "new"),
+        (b"TYPESAFE_API_KEY=\nTYPESAFE_API_KEY=real\n", "real"),
+        ("﻿TYPESAFE_API_KEY=bom\n".encode("utf-8"), "bom"),
+        (b"export\tTYPESAFE_API_KEY=tab\n", "tab"),
+        (b"TYPESAFE_API_KEY = spaced\r\n", "spaced"),
+        (b"\xe9 latin-1 junk\nTYPESAFE_API_KEY=survives\n", "survives"),
+        (b"# TYPESAFE_API_KEY=commented_out\n", None),
+    ],
+)
+def test_env_file_parsing(project_root, content, expected):
+    (project_root / ".env").write_bytes(content)
+    assert dp.read_api_key(project_root) == expected
+
+
+def test_whitespace_only_environment_key_is_ignored(project_root, monkeypatch):
+    (project_root / ".env").write_text("TYPESAFE_API_KEY=from_file\n", encoding="utf-8")
+    monkeypatch.setenv("TYPESAFE_API_KEY", "   ")
+    assert dp.read_api_key(project_root) == "from_file"
+
+
+def test_unreadable_env_file_means_no_key(project_root):
+    env = project_root / ".env"
+    env.write_text("TYPESAFE_API_KEY=k\n", encoding="utf-8")
+    env.chmod(0)
+    try:
+        assert dp.read_api_key(project_root) is None
+    finally:
+        env.chmod(0o600)
+
+
+def test_reading_the_key_never_puts_it_in_the_environment(config, project_root):
+    (project_root / "config" / "decisions.yaml").write_text("provider: typesafe\n", encoding="utf-8")
+    (project_root / ".env").write_text("TYPESAFE_API_KEY=apikey_test\n", encoding="utf-8")
+    dp.get_provider(config)
+    assert "TYPESAFE_API_KEY" not in os.environ
+
+
+def test_requests_always_go_to_api_typesafe_ai(monkeypatch):
+    monkeypatch.setenv("TYPESAFE_BASE_URL", "https://elsewhere.invalid")
+    hosts = []
+
+    def handler(request):
+        hosts.append(request.url.host)
+        return httpx2.Response(200, json={"model": "m", "usage": {"input_tokens": 1}, "answers": {}})
+
+    _mock(handler).ask("text", {"q": {"type": "noul", "instructions": "x"}})
+    assert hosts == ["api.typesafe.ai"]
+
+
+def test_debug_logging_never_records_the_posting_text(caplog):
+    caplog.set_level(logging.DEBUG, logger="typesafe_sdk")
+
+    def handler(request):
+        return httpx2.Response(200, json={"model": "m", "usage": {"input_tokens": 1}, "answers": {}})
+
+    _mock(handler).ask({"posting": "MARKER-POSTING-TEXT"}, {"q": {"type": "noul", "instructions": "x"}})
+    assert not any("MARKER-POSTING-TEXT" in record.getMessage() for record in caplog.records)
+
+
+def test_the_claude_subprocess_never_sees_the_typesafe_key(monkeypatch):
+    from internship_os import llm
+
+    monkeypatch.setenv("TYPESAFE_API_KEY", "apikey_exported")
+    assert "TYPESAFE_API_KEY" not in llm.subscription_env()
+
+
+def test_the_test_guard_stops_a_real_typesafe_call():
+    provider = dp.TypeSafeProvider(api_key="apikey_test", model="jev-1.13.0", timeout=1, connect_timeout=1)
+    with pytest.raises(pytest.fail.Exception):
+        provider.ask("text", {"q": {"type": "noul", "instructions": "x"}})
