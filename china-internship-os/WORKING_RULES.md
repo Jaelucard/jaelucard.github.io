@@ -27,6 +27,6 @@
 - Every POST redirects 303 to a GET, except a rejected form (400) or a possible duplicate awaiting a decision (409), which are shown again with the submitted values.
 - Jev (TypeSafe) output is a suggestion. It is stored only as a jev_suggestions job event and never feeds eligibility, programme, tiering or digest.
 - The must-check fields (schemas.ALWAYS_CONFIRM_FIELDS) always need explicit per-field confirmation, whatever Jev says.
-- Numbers, dates and durations are cross-checked in code (resolve.py); the model never sets them.
+- Jev never sets a value. resolve.py cross-checks duration, days per week and the start month against the posting text and only adds notes.
 - The Jev model is pinned in config/decisions.yaml. Changing it requires re-running scripts/eval_prefill.py.
 - Capture must work with Jev off or failing.

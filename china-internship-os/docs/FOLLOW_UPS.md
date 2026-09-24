@@ -99,8 +99,9 @@ Ideas and deviations recorded during Phase 1. Nothing here is implemented in Pha
   An ASAP start adds "ask HR whether a <intended_start> start works" to the next action at
   confirmation only.
 - `ios confirm`'s 'a' now still asks each must-check field (schemas.ALWAYS_CONFIRM_FIELDS).
-- Thresholds in config/decisions.yaml (noul_flag_p 0.7, choice_min_confidence 0.6) are starting
-  values. Label 40-60 real postings and run scripts/eval_prefill.py to tune them per question.
+- The two thresholds in config/decisions.yaml (noul_flag_p 0.7, choice_min_confidence 0.6) are
+  starting values. Label 40-60 real postings and run scripts/eval_prefill.py to tune them. The
+  script measures the posting questions only; the check__ support questions are not measured.
 - Not built: the draft overclaim checker (it would send drafts and evidence to TypeSafe), a
   database column for suggestions, Jev on the Job page after confirmation.
 - typesafe-sdk is pinned exactly (0.7.1); the SDK has shipped breaking releases weekly. It pulls

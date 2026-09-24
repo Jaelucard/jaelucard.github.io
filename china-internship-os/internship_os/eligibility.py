@@ -316,7 +316,7 @@ def run_eligibility(
             Reason(
                 "SUMMER_PROGRAMME_TIMING",
                 "internship_type",
-                "summer programme timing is likely outside the planned internship window",
+                "summer programme: check its dates against your planned internship window",
             )
         )
 

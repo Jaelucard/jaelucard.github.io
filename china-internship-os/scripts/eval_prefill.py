@@ -11,8 +11,10 @@ questions per posting as you like. Copy data/labelled_postings.example.jsonl to 
 file is gitignored.
 
 The script uses TypeSafe whenever a key is on this machine, even with provider: none, so you can
-measure Jev before switching it on. It prints accuracy per question and language, and accuracy
-among the answers that clear the thresholds in config/decisions.yaml.
+measure Jev before switching it on: one paid TypeSafe call per labelled posting. It prints accuracy
+per question and language, and accuracy among the answers that clear the thresholds in
+config/decisions.yaml. It measures the posting questions only; the check__ support questions,
+which need an extraction, are not measured here.
 """
 
 from __future__ import annotations
@@ -46,7 +48,7 @@ def validate_row(row: object) -> str | None:
             return f"unknown question {key!r}; use one of {', '.join(questions)}"
         if question["type"] == "noul" and not isinstance(gold, bool):
             return f"{key} needs true or false, got {gold!r}"
-        if question["type"] == "choice" and gold not in question["criteria"]:
+        if question["type"] == "choice" and (not isinstance(gold, str) or gold not in question["criteria"]):
             return f"{key} needs one of {', '.join(question['criteria'])}, got {gold!r}"
     return None
 

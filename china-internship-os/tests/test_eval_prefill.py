@@ -67,3 +67,9 @@ def test_eval_without_a_key_exits_with_one_line(config, project_root):
     with pytest.raises(SystemExit) as exc:
         module.main(["--data", str(data)])
     assert "TYPESAFE_API_KEY" in str(exc.value)
+
+
+@pytest.mark.parametrize("labels", [{"track": ["AI"]}, {"track": {"a": 1}}, {"restricted": 1}])
+def test_malformed_labels_are_reported_not_crashed_on(labels):
+    problem = _load().validate_row({"lang": "zh", "text": "岗位", "labels": labels})
+    assert problem is not None
