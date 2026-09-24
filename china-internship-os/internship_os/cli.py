@@ -20,7 +20,7 @@ from rich.text import Text
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from internship_os import __version__
+from internship_os import __version__, jev, resolve
 from internship_os.capture import (
     CaptureError,
     CaptureNeedsPaste,
@@ -34,6 +34,7 @@ from internship_os.capture import (
 )
 from internship_os.config import USER_FACTS_FILE, AppConfig, ConfigError, load_config
 from internship_os.db import database_url, get_engine, get_session, init_db
+from internship_os.decision_provider import load_decisions
 from internship_os.llm import LLMError
 from internship_os.models import Company, Job
 from internship_os.pipeline import finalize_confirmation
@@ -202,8 +203,18 @@ def capture(
     except LLMError as exc:
         err(f"extraction failed: {exc}")
         raise typer.Exit(code=1)
+    report_jev(jev.record_suggestions(session, job, cfg))
     out(f"Captured job {job.id}: {job.display_title} (status DISCOVERED, next: confirm extraction)")
     out(f"Run: ios confirm {job.id}")
+
+
+def report_jev(outcome: jev.Outcome) -> None:
+    if outcome.state == "on":
+        out(f"Jev ({outcome.model}): {outcome.answers} answers stored; they show as notes at confirmation")
+    elif outcome.state == "off":
+        out(f"Jev: off ({outcome.detail})")
+    else:
+        err(f"Jev unavailable ({outcome.detail}); confirm as usual")
 
 
 def _resolve_duplicate(
@@ -284,6 +295,18 @@ def confirm(ctx: typer.Context, job_id: int) -> None:
         raise typer.Exit(code=1)
     extracted = ExtractedJob.model_validate(job.extracted)
     console.print(_extraction_table(extracted))
+    record = jev.latest_record(job)
+    if record:
+        view = jev.interpret(record, extracted, load_decisions(cfg.root))
+        if view.error:
+            out(f"Jev could not check this posting ({view.error}).")
+        for warning in view.warnings:
+            out(f"Jev warning: {warning}")
+        for name, notes in view.notes.items():
+            for note in notes:
+                out(f"  {name}: {note}")
+    for name, note in resolve.cross_check(job.raw_text or "", extracted).items():
+        out(f"  {name}: {note}")
     out(
         "Enter = confirm shown value | typed value = override | '-' = null | 'a' = accept this "
         "and all remaining except the must-check fields, which are still asked. Lists: JSON list "
@@ -848,6 +871,7 @@ def llm_check(ctx: typer.Context) -> None:
     out(f"models: extraction={llm_cfg.models.extraction} ({', '.join(p for p, r in PROMPT_ROLES.items() if r == 'extraction')}); "
         f"drafting={llm_cfg.models.drafting} ({', '.join(p for p, r in PROMPT_ROLES.items() if r == 'drafting')})")
     out(f"rate-limit wait: {'until the limit resets' if llm_cfg.max_wait_minutes is None else str(llm_cfg.max_wait_minutes) + ' minutes'}")
+    out(f"jev: {jev.status(cfg)}")
     if llm_cfg.provider != "claude_code":
         out("ollama: POST http://localhost:11434/api/generate; make sure 'ollama serve' is running")
         return

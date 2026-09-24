@@ -19,7 +19,9 @@ from internship_os.capture import (
     attach_to_existing,
     capture as capture_posting,
 )
+from internship_os import jev, resolve
 from internship_os.config import AppConfig
+from internship_os.decision_provider import load_decisions
 from internship_os.llm import LLMError
 from internship_os.models import Job
 from internship_os.pipeline import TransitionError, add_note
@@ -223,6 +225,7 @@ def capture_create(
         return capture_again(request, form, status_code=400, error=f"Extraction failed: {exc}")
     except (CaptureError, ValueError) as exc:
         return capture_again(request, form, status_code=400, error=str(exc))
+    jev.record_suggestions(session, job, config)  # never raises; the review page shows the result
     return see_other(f"/jobs/{job.id}/review")
 
 
@@ -231,13 +234,27 @@ def capture_create(
 # --------------------------------------------------------------------------------------
 
 
-def review_view(request: Request, session: Session, job: Job, *, form: dict[str, str] | None = None,
+def review_notes(job: Job, extracted: ExtractedJob, config: AppConfig) -> tuple[jev.JevView | None, dict[str, list[str]]]:
+    """Jev's stored answers and the regex cross-checks, as notes per field. Nothing here is sent."""
+    record = jev.latest_record(job)
+    view = jev.interpret(record, extracted, load_decisions(config.root)) if record else None
+    notes: dict[str, list[str]] = {name: list(items) for name, items in (view.notes if view else {}).items()}
+    for name, text in resolve.cross_check(job.raw_text or "", extracted).items():
+        notes.setdefault(name, []).append(text)
+    return view, notes
+
+
+def review_view(request: Request, session: Session, job: Job, config: AppConfig, *, form: dict[str, str] | None = None,
                 errors: dict[str, str] | None = None, status_code: int = 200) -> Response:
     extracted = ExtractedJob.model_validate(job.extracted)
     exact, near = review_service.company_matches(session, extracted, form)
+    view, notes = review_notes(job, extracted, config)
     return page(
         request, "review.html", cli=f"ios confirm {job.id}", status_code=status_code,
         job=job,
+        jev_view=view,
+        jev_status=jev.status(config),
+        notes=notes,
         fields=review_service.review_fields(extracted, form, errors),
         exact=exact,
         near=near,
@@ -247,13 +264,18 @@ def review_view(request: Request, session: Session, job: Job, *, form: dict[str,
 
 
 @router.get("/jobs/{job_id}/review")
-def review_page(request: Request, job_id: int, session: Session = Depends(deps.get_db)) -> Response:
+def review_page(
+    request: Request,
+    job_id: int,
+    session: Session = Depends(deps.get_db),
+    config: AppConfig = Depends(deps.get_config),
+) -> Response:
     job = get_job(session, job_id)
     if job.confirmed_at is not None or job.is_terminal:
         return see_other(f"/jobs/{job.id}")
     if not job.extracted:
         raise HTTPException(status_code=404, detail=f"job {job.id} has no extraction to review")
-    return review_view(request, session, job)
+    return review_view(request, session, job, config)
 
 
 @router.post("/jobs/{job_id}/review")
@@ -274,7 +296,7 @@ async def review_confirm(
         # The confirmation may call the LLM for the quality checklist, so keep it off the event loop.
         result = await run_in_threadpool(review_service.confirm_job, session, job, form, config, today)
     except review_service.ReviewInvalid as exc:
-        return await run_in_threadpool(review_view, request, session, job, form=form, errors=exc.errors, status_code=400)
+        return await run_in_threadpool(review_view, request, session, job, config, form=form, errors=exc.errors, status_code=400)
     return see_other(f"/jobs/{job.id}?msg={'checklist_failed' if result.checklist_error else 'confirmed'}")
 
 

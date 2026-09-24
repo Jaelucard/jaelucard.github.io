@@ -247,3 +247,53 @@ def test_discarding_twice_does_not_add_a_second_close(capture_fixture, client, s
     response = client.post(f"/jobs/{job.id}/discard")
     assert response.headers["location"] == f"/jobs/{job.id}"
     assert [e.kind for e in _jobs(session)[0].events].count("closed") == 1
+
+
+# --------------------------------------------------------------------------------------
+# Jev on capture and review
+# --------------------------------------------------------------------------------------
+
+
+def _fake_jev(monkeypatch, decisions=None, raises=None):
+    from internship_os import jev
+    from internship_os.decision_provider import FakeDecisionProvider
+
+    provider = FakeDecisionProvider(decisions or {}, model="jev-test", raises=raises)
+    monkeypatch.setattr(jev, "get_provider", lambda config: provider)
+    return provider
+
+
+def test_capture_asks_jev_once_and_review_shows_its_notes(client, session, monkeypatch):
+    from internship_os.decision_provider import Decision
+
+    provider = _fake_jev(monkeypatch, {
+        "degree": Decision("choice", "master", 0.9, {}),
+        "pays_fee": Decision("noul", 0.95, None, {}),
+    })
+    response = client.post("/capture", data={"text": load_jd("hangzhou_ai_app"), "source": "boss"})
+    assert len(provider.calls) == 1
+    (job,) = _jobs(session)
+    assert [e.kind for e in job.events] == ["captured", "jev_suggestions"]
+    body = client.get(response.headers["location"]).text
+    assert "Jev suggests master" in body and "pay a fee" in body and "jev-test" in body
+
+
+def test_review_says_when_jev_is_off(capture_fixture, client):
+    job = capture_fixture("hangzhou_ai_app")
+    assert "Jev: off" in client.get(f"/jobs/{job.id}/review").text
+
+
+def test_a_jev_failure_does_not_stop_the_capture(client, session, monkeypatch):
+    _fake_jev(monkeypatch, raises=TimeoutError("slow"))
+    response = client.post("/capture", data={"text": load_jd("hangzhou_ai_app"), "source": "boss"})
+    assert response.status_code == 303
+    assert "could not check this posting (TimeoutError)" in client.get(response.headers["location"]).text
+
+
+def test_review_shows_regex_cross_check_notes(capture_fixture, client, session):
+    job = capture_fixture("hangzhou_ai_app")  # the posting says 4-6 months
+    data = dict(job.extracted)
+    data["duration_min_months"] = {**data["duration_min_months"], "value": 3}
+    job.extracted = data
+    session.commit()
+    assert "The posting text reads as 4-6 months" in client.get(f"/jobs/{job.id}/review").text

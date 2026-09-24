@@ -103,7 +103,7 @@
   <li><span class="mono note">{{ (e.at|local).strftime("%Y-%m-%d %H:%M") }}</span> <strong>{{ e.kind }}</strong>
     {% if e.detail is mapping %}
       {% if e.detail.note %}{{ e.detail.note }}{% endif %}
-      {% for k, v in e.detail.items() if k not in ("note", "raw_text", "overrides") and v is not none %}<span class="note">{{ k }}={{ v }}</span> {% endfor %}
+      {% for k, v in e.detail.items() if k not in ("note", "raw_text", "overrides", "decisions") and v is not none %}<span class="note">{{ k }}={{ v }}</span> {% endfor %}
       {% if e.detail.overrides %}<span class="note">overrides: {{ e.detail.overrides|map(attribute="field")|join(", ") }}</span>{% endif %}
     {% endif %}
   </li>
