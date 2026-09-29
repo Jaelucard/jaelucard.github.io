@@ -600,6 +600,7 @@ ALWAYS_CONFIRM_FIELDS: tuple[str, ...] = (
     "role_closed",
     "deadline",
     "start_timing",
+    "pays_fee",
 )
 
 

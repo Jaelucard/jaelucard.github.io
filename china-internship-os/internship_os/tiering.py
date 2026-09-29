@@ -1,7 +1,8 @@
 """Deterministic tiering and ordering. First matching tier rule wins.
 
 Role title wording never changes a tier. AI is not ranked above SWE; track preference is a
-within-tier sort key applied after deadline and host type.
+within-tier sort key applied after deadline and host type. Jobs whose eligibility reasons include
+UNPAID or REMOTE_ONLY sort last within their tier.
 """
 
 from __future__ import annotations
@@ -16,6 +17,8 @@ from internship_os.schemas import CityClass, Eligibility, Fit, ProgrammeStatus, 
 
 TIER_ORDER: list[str] = [Tier.T1.value, Tier.T2.value, Tier.T3.value, Tier.HOLD.value, Tier.NOT_RUN.value]
 ELIGIBLE_SET = frozenset({Eligibility.ELIGIBLE.value, Eligibility.LIKELY_ELIGIBLE.value})
+# Soft eligibility codes that move a job to the end of its tier (REMOTE_ONLY comes with work_mode).
+SORT_LAST_CODES = frozenset({"UNPAID", "REMOTE_ONLY"})
 
 
 def compute_tier(
@@ -67,8 +70,10 @@ def sort_key(job: Job, user_facts: UserFacts) -> tuple:
         if job.programme_overall in STATUS_ORDER
         else len(STATUS_ORDER) + 1
     )
+    sort_last = any(r.get("code") in SORT_LAST_CODES for r in (job.eligibility_reasons or []))
     return (
         TIER_ORDER.index(job.tier) if job.tier in TIER_ORDER else len(TIER_ORDER),
+        sort_last,
         deadline is None,
         deadline or date.max,
         _preference_index(host_type, user_facts.internship.host_type_preference),

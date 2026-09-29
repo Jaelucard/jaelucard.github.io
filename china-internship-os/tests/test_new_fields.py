@@ -52,3 +52,29 @@ def test_extraction_prompt_covers_every_field():
     for name in ExtractedJob.field_names():
         assert name in prompt, name
     assert f"all {len(ExtractedJob.field_names())} keys" in prompt
+
+
+# Reason codes that read the added fields. A job stored before the fields existed must get none of them.
+NEW_REASON_CODES = {"FEE_REQUIRED", "NOT_ENGINEERING_WORK", "UNPAID"}
+
+
+def test_a_job_confirmed_before_the_new_fields_recomputes_without_new_reasons(config, today):
+    from internship_os.models import Job
+    from internship_os.pipeline import recompute_job
+    from tests.conftest import load_jd
+
+    data = json.loads(load_extracted_json("hangzhou_ai_app"))
+    for name in ADDED_FIELDS:
+        data.pop(name, None)
+    for field in data.values():
+        field["confirmed"] = True
+    job = Job(source_channel="shixiseng", raw_text=load_jd("hangzhou_ai_app"), extracted=data,
+              next_action="assess fit", next_action_date=today)
+    recompute_job(job, config, today)
+    assert job.eligibility != "NOT_RUN"
+    assert not NEW_REASON_CODES & {r["code"] for r in job.eligibility_reasons}
+    assert ExtractedJob.model_validate(job.extracted).get("pays_fee").confirmed
+
+
+def test_pays_fee_is_a_must_check_field():
+    assert "pays_fee" in ALWAYS_CONFIRM_FIELDS

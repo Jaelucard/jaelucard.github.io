@@ -92,3 +92,19 @@ def test_within_tier_sort_uses_deadline_then_host_type_then_track(session, make_
     t2.tier = "T2"
     assert sort_jobs([t2, no_deadline_startup_ai], config.user_facts)[0].id == no_deadline_startup_ai.id
     assert late_startup_ai.deadline == date(2026, 10, 30)
+
+
+def test_unpaid_jobs_sort_last_within_their_tier(session, make_confirmed_job, config):
+    # The unpaid job has the lower id, is passed first and has the only deadline, so every other key
+    # puts it first: it sorts last only if the new key comes directly after the tier.
+    unpaid = make_confirmed_job("hangzhou_ai_app", yes_status="willing", salary_text="无薪", deadline="2026-10-01")
+    paid = make_confirmed_job("hangzhou_ai_app", yes_status="willing")
+    assert (unpaid.deadline, paid.deadline) == (date(2026, 10, 1), None)
+    assert "UNPAID" in {r["code"] for r in unpaid.eligibility_reasons}
+    for job in (unpaid, paid):
+        job.eligibility, job.fit, job.quality, job.tier = "ELIGIBLE", "strong", "ok", "T2"
+    session.commit()
+    assert [j.id for j in sort_jobs([unpaid, paid], config.user_facts)] == [paid.id, unpaid.id]
+    # The key sits inside the tier: an unpaid T1 job still sorts before a paid T2 job.
+    unpaid.tier = "T1"
+    assert [j.id for j in sort_jobs([paid, unpaid], config.user_facts)] == [unpaid.id, paid.id]

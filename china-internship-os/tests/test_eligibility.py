@@ -266,3 +266,49 @@ def test_negated_student_status_wording_is_not_a_hard_fail(make_confirmed_job, c
     status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
     assert status != "INELIGIBLE", text
     assert "EXPLICIT_STUDENT_STATUS_RESTRICTION" not in codes(reasons)
+
+
+# --------------------------------------------------------------------------------------
+# Fee, non-engineering work and unpaid postings (confirmed extracted fields, never Jev)
+# --------------------------------------------------------------------------------------
+
+NO_FLAGS = {"required_skills": ["Python"], "preferred_skills": []}  # the fixture variant with no reasons at all
+
+
+def test_fee_required_is_ineligible(make_confirmed_job, config, today):
+    job = make_confirmed_job("hangzhou_ai_app", pays_fee=True, **NO_FLAGS)
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert status == "INELIGIBLE" and codes(reasons) == ["FEE_REQUIRED"]
+    assert reasons[0].field == "pays_fee"
+
+
+def test_mostly_sales_or_annotation_is_a_soft_flag(make_confirmed_job, config, today):
+    job = make_confirmed_job("hangzhou_ai_app", mostly_sales=True, **NO_FLAGS)
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert status == "LIKELY_ELIGIBLE" and codes(reasons) == ["NOT_ENGINEERING_WORK"]
+    assert reasons[0].field == "mostly_sales"
+    job2 = make_confirmed_job("hangzhou_ai_app", mostly_annotation=True, mostly_sales=True, **NO_FLAGS)
+    _, reasons2 = run_eligibility(job2, config.user_facts, today, evidence=config.evidence)
+    assert [(r.code, r.field) for r in reasons2] == [
+        ("NOT_ENGINEERING_WORK", "mostly_annotation"),
+        ("NOT_ENGINEERING_WORK", "mostly_sales"),
+    ]
+    # On the plain fixture (which already carries skill-gap flags) the job stays LIKELY_ELIGIBLE.
+    job3 = make_confirmed_job("hangzhou_ai_app", mostly_sales=True)
+    status3, _ = run_eligibility(job3, config.user_facts, today, evidence=config.evidence)
+    assert status3 == "LIKELY_ELIGIBLE"
+
+
+@pytest.mark.parametrize("text", ["无薪", "不提供实习工资", "不提供薪资", "不提供补贴", "志愿者岗位", "Unpaid internship"])
+def test_unpaid_wording_is_a_soft_flag(make_confirmed_job, config, today, text):
+    job = make_confirmed_job("hangzhou_ai_app", salary_text=text, **NO_FLAGS)
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert status == "LIKELY_ELIGIBLE" and codes(reasons) == ["UNPAID"], text
+    assert reasons[0].field == "salary_text" and text in reasons[0].detail
+
+
+@pytest.mark.parametrize("text", ["薪资面议", "面议", "300-400元/天", "有薪实习", None])
+def test_negotiable_or_paid_salary_adds_nothing(make_confirmed_job, config, today, text):
+    job = make_confirmed_job("hangzhou_ai_app", salary_text=text, **NO_FLAGS)
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert status == "ELIGIBLE" and reasons == [], text

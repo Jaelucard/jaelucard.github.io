@@ -184,3 +184,11 @@ rules, with every point where the work departed from the alignment prompt and wh
   仅限中国大陆) as well as a student pattern, so they carry two hard codes; 仅限内地高校在读 carries
   only the nationality code because 内地 is not in the student patterns. The outcome is INELIGIBLE
   either way.
+- Checkpoint 4: `UNPAID_PATTERN` is the prompt's regex as written. It matches inside longer phrases
+  (无薪假期外均有薪资 matches 无薪) and misses 薪资：无; not widened.
+- Checkpoint 4: the comment on `jev.CHECKED_FIELDS` ("fields a gate reads that no question above
+  covers") drifts: `salary_text`, and `work_mode` from checkpoint 5, now feed eligibility with no
+  Jev support check. Jev's questions and `QUESTIONS_VERSION` are unchanged.
+- Checkpoint 4: `pays_fee` joins the must-check fields, so `ios confirm`'s 'a' still asks it and the
+  review page lists it in the must-check block at the top and needs its tick; nothing else in
+  confirmation changed.

@@ -50,6 +50,10 @@ DECISION_FIELDS = [
     "preferred_skills",
     "research_signals",
     "internship_type",
+    "pays_fee",
+    "mostly_annotation",
+    "mostly_sales",
+    "salary_text",
 ]
 
 HARD_FAIL_CODES = frozenset(
@@ -61,6 +65,7 @@ HARD_FAIL_CODES = frozenset(
         "EXPLICIT_STUDENT_STATUS_RESTRICTION",
         "ROLE_CLOSED",
         "DEADLINE_PASSED",
+        "FEE_REQUIRED",
     }
 )
 UNCERTAIN_CODES = frozenset(
@@ -144,6 +149,8 @@ STUDENT_STATUS_REVIEW_PATTERNS = [
 EXPERIENCE_PATTERNS = [
     re.compile(p, re.IGNORECASE) for p in (r"\d+\s*年(以上|及以上)?(工作|相关)?经验", r"年经验", r"\d+\+?\s*years?")
 ]
+# Compensation wording that says the internship is unpaid. 薪资面议 and 面议 (negotiable) do not match.
+UNPAID_PATTERN = re.compile(r"无薪|不提供(实习)?(工资|薪资|薪酬|补贴)|志愿者|unpaid", re.IGNORECASE)
 
 SKILL_MATCH_THRESHOLD = 0.85  # difflib ratio on normalised strings; documented, fixed
 _NON_ALNUM = re.compile(r"[_\-/]+")
@@ -311,6 +318,9 @@ def run_eligibility(
             Reason("DEADLINE_PASSED", "deadline", f"deadline {deadline.isoformat()} is before {when.isoformat()}")
         )
 
+    if v["pays_fee"] is True:
+        reasons.append(Reason("FEE_REQUIRED", "pays_fee", "pays_fee is true"))
+
     # ---- soft flags -------------------------------------------------------------------
     level = v["chinese_required_level"]
     if level == ChineseLevel.native:
@@ -354,6 +364,15 @@ def run_eligibility(
             reasons.append(
                 Reason("REQUIRED_SKILL_GAPS", "required_skills", "no evidence for: " + ", ".join(gaps))
             )
+
+    for name in ("mostly_annotation", "mostly_sales"):
+        if v[name] is True:
+            reasons.append(Reason("NOT_ENGINEERING_WORK", name, f"{name} is true"))
+
+    salary = v["salary_text"]
+    unpaid = UNPAID_PATTERN.search(salary) if salary else None
+    if unpaid:
+        reasons.append(Reason("UNPAID", "salary_text", f"matched '{unpaid.group(0)}' in: {salary}"))
 
     if v["internship_type"] == InternshipType.summer:
         reasons.append(
