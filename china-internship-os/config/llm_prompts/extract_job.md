@@ -38,7 +38,7 @@ Field rules:
 - application_method: how to apply, verbatim.
 - referral_info: any 内推 / referral wording, verbatim.
 - responsibilities_summary: at most five sentences summarising the responsibilities, in the JD's own language.
-- track_guess: AI, SWE, research, other or unknown. You may infer the role category from the title and responsibilities, but you may not invent job facts to justify it. Use "research" only for roles centred on algorithm research, papers or model training research.
+- track_guess: AI, AUTO, SWE, research, other or unknown. You may infer the role category from the title and responsibilities, but you may not invent job facts to justify it. Use "research" only for roles centred on algorithm research, papers or model training research. Use AUTO rather than AI or SWE for an automotive role (vehicles, ADAS, autonomous driving) whose main work is software or AI: perception, planning, simulation software, vehicle data, tooling. An automotive role centred on CAD, mechanical, structural, electrical or hardware work is "other".
 - research_signals: a list from master_required, phd_preferred, publications, cuda, large_scale_training, deep_math_ml. Include a signal only when explicit JD text supports it, and quote that text in source_span.
 - start_timing: asap for wording like 尽快到岗, 随时到岗, 立即入职, "ASAP", "start immediately"; named_month when the JD names a start month or date (2027年3月起, "start in March"); flexible for 到岗时间可协商 or "start date negotiable"; not_stated when the JD says nothing about when to start. Quote the start wording; source_span null for not_stated.
 - pays_fee: true only when the JD asks the applicant to pay money (培训费, 押金, 保证金, 服装费, "training fee", "deposit"); quote that text. Otherwise false.

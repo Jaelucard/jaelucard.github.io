@@ -20,7 +20,8 @@ def _cfg():
 
 def test_choice_questions_use_the_repo_vocabularies():
     questions = jev.posting_questions()
-    assert set(questions["track"]["criteria"]) == {t.value for t in Track if t != Track.unknown}
+    assert set(questions["track"]["criteria"]) == {t.value for t in Track if t not in (Track.unknown, Track.AUTO)}
+    assert "AUTO" not in questions["track"]["criteria"]  # Jev never suggests AUTO; see docs/FOLLOW_UPS.md
     assert set(questions["degree"]["criteria"]) == {d.value for d in Degree}
     assert set(questions["chinese_level"]["criteria"]) == {c.value for c in ChineseLevel}
     assert set(questions["start_timing"]["criteria"]) == {s.value for s in StartTiming}

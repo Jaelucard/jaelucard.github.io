@@ -23,7 +23,7 @@ internship:
   min_months: 4
   max_months: 6
   host_type_preference: [startup, subsidiary, large, mnc, unknown]
-  track_preference: [AI, SWE, other]
+  track_preference: [AI, AUTO, SWE, other]
   offer_deadline_personal: 2026-12-04
 
 timeline:

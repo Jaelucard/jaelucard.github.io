@@ -212,3 +212,15 @@ rules, with every point where the work departed from the alignment prompt and wh
   a confirmed null too, because the missing key is injected as confirmed; `work_mode` is not a
   must-check field, so `ios confirm`'s 'a' accepts it and the web review submits it blank. Set it by
   hand at review, or re-capture the lead, if remote-only wording matters for such a job.
+- Checkpoint 6: Jev's track question (`jev.posting_questions`) is unchanged and offers AI, SWE,
+  research and other only, so Jev never suggests AUTO. A job whose track_guess is AUTO therefore
+  draws a "Jev suggests AI/SWE/research/other" note at review whenever Jev ran and answered with
+  confidence (below the threshold it reads "Jev is unsure"), which the user may ignore; no gate
+  reads it. Adding AUTO to Jev needs the criteria edit in `jev.py`, a `QUESTIONS_VERSION` bump, a
+  re-run of `scripts/eval_prefill.py` (which today rejects an AUTO label) and reverting the AUTO
+  exclusion in `tests/test_jev.py`.
+- Checkpoint 6: `tests/test_jev.py::test_choice_questions_use_the_repo_vocabularies` asserted that
+  Jev's track criteria equal every Track value except unknown. With AUTO deliberately absent from
+  Jev, the assertion now excludes AUTO as well and asserts that AUTO is not offered.
+- Checkpoint 6: `config/user_facts.example.yaml` gained AUTO in track_preference
+  ([AI, AUTO, SWE, other]); no existing test depends on more than AI sorting before SWE.

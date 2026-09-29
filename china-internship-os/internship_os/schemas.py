@@ -44,6 +44,7 @@ class YesStatus(StrEnum):
 
 class Track(StrEnum):
     AI = "AI"
+    AUTO = "AUTO"  # automotive roles whose main work is software or AI
     SWE = "SWE"
     research = "research"
     other = "other"
