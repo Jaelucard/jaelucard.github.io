@@ -77,7 +77,7 @@ Every command validates `config/` first and prints one line per state change (ob
 |---|---|---|
 | `ios init` | create tables; copy user_facts from example if absent | `Initialised database: sqlite:///.../db.sqlite` |
 | `ios capture --text-file tests/fixtures/jds/hangzhou_ai_app.txt --source shixiseng` | LLM extraction, every field `confirmed: false` | `Captured job 1: AI应用开发实习生 (status DISCOVERED, next: confirm extraction)` |
-| `ios capture --paste --source boss` / `--url URL` | paste from stdin, or one GET of a public URL (paste fallback) | same |
+| `ios capture --paste --source boss` / `--url URL` | paste from stdin, or one GET of a public URL (paste fallback); login wording refuses the page only when its text is under 800 characters or does not read as a JD; the URL is stored normalised (see Lead scan) | same |
 | `ios confirm 1` | field-by-field confirmation, company link, eligibility, programme, tiering, quality checklist | `eligibility: LIKELY_ELIGIBLE \| programme: UNKNOWN \| tier: T3` |
 | `ios job show 1` / `ios job list [--tier T1] [--status X] [--track AI] [--city 杭州]` | details / sorted table | |
 | `ios job fit 1 strong` / `ios job quality 1 strong` | manual ratings, tier rerun | `job 1 quality: unknown -> strong; tier: T2 -> T1` |
@@ -90,6 +90,60 @@ Every command validates `config/` first and prints one line per state change (ob
 | `ios llm-check` | CLI presence, version and login state; configured models | `logged in: True \| auth: oauth_token \| provider: firstParty` |
 | `ios timeline [--job 1]` / `ios digest` / `ios constraints` | backward-planned dates; daily digest; constraint table and warnings | `CONTRACT MUST BE SIGNED BY 2027-01-10 (123 days). Placeholders in use: Z_VISA_EMBASSY_LEAD_TIME, ENTRY_PERMIT_LEAD_TIME, LOC_LEAD_TIME` |
 | `ios ui [--port 8765]` | local web UI on 127.0.0.1: Today, Jobs, Job, Capture, Review, Facts | `Internship OS UI: http://127.0.0.1:8765  (Ctrl-C to stop)` |
+
+## Eligibility reason codes
+
+`ios confirm`, `ios recompute` and the review page run the deterministic eligibility check over the
+confirmed fields and store one reason per finding (`ios job show` lists them). Any hard-fail code
+makes the job INELIGIBLE; otherwise any review code makes it UNCERTAIN (at best tier T3); soft flags
+alone make it LIKELY_ELIGIBLE, and a job with no reason is ELIGIBLE. While a field the check reads
+is unconfirmed the result is NOT_RUN, with the reason UNCONFIRMED_FIELDS.
+
+| Effect | Codes |
+|---|---|
+| INELIGIBLE | DEGREE_INELIGIBLE, GRADUATION_COHORT_INELIGIBLE, EXPLICIT_NATIONALITY_RESTRICTION, EXPLICIT_WORK_AUTHORIZATION_RESTRICTION, EXPLICIT_STUDENT_STATUS_RESTRICTION (postings limited to students of mainland Chinese universities, or to mainland hukou holders or residents), ROLE_CLOSED, DEADLINE_PASSED, FEE_REQUIRED (`pays_fee` confirmed true) |
+| UNCERTAIN | RESTRICTION_TEXT_PRESENT_REVIEW, STUDENT_STATUS_REVIEW (a 学信网 check, 国内学籍, a preference for domestic universities), CHINESE_LEVEL_REVIEW, COHORT_TEXT_UNPARSEABLE, USER_COHORT_UNPARSEABLE |
+| soft flag | GRADUATION_COHORT_PREFERRED, CHINESE_LEVEL_ABOVE_STATED, DAYS_PER_WEEK_HIGH, EXPERIENCE_YEARS_ASKED, PREFERRED_SKILL_GAPS, REQUIRED_SKILL_GAPS, NOT_ENGINEERING_WORK (`mostly_annotation` or `mostly_sales` confirmed true), UNPAID (`salary_text` contains 无薪, 不提供(实习)工资/薪资/薪酬/补贴, 志愿者 or unpaid), REMOTE_ONLY (`work_mode` confirmed remote), SUMMER_PROGRAMME_TIMING, RESEARCH_ROLE_SIGNALS |
+
+The must-check fields are the inputs of the hard-fail codes (`degree_required`,
+`graduation_cohort_text`, `cohort_years`, `cohort_unrestricted`,
+`nationality_or_work_auth_restriction`, `role_closed`, `deadline`, `pays_fee`) plus `start_timing`:
+`ios confirm`'s `a` still asks each of them and the review page needs their ticks. 中国国籍优先 is a
+preference, not a nationality restriction: on its own it gets RESTRICTION_TEXT_PRESENT_REVIEW, not a
+hard fail. Jobs flagged UNPAID or REMOTE_ONLY sort last within their tier in `ios job list`, the
+Jobs page and the recommendations in `ios digest` and on Today. Confirmed extracted fields feed
+these checks; Jev's suggestions never do.
+
+## Personal dates and tracks
+
+The `internship` section of `config/user_facts.yaml` holds the personal dates the programme check
+reads and the track order the job lists use (an excerpt, with the example file's values and
+`latest_end` set):
+
+```yaml
+internship:
+  intended_start: 2027-03-01
+  latest_end: 2027-08-31        # the internship must end by this date; null = no limit
+  track_preference: [AI, AUTO, SWE, other]
+```
+
+`latest_end` is optional and must be after `intended_start`. When it is set, DURATION_AND_DATES is
+AT_RISK for agreed dates that end after it, and for a posting whose start (or `intended_start`
+when the posting names none) plus its minimum duration ends after it. A posting that starts after
+`latest_end` is AT_RISK even when it states no minimum, but one that states no duration at all
+stays UNKNOWN until you agree dates (`ios job dates`). The end date is the start plus the months,
+so a 6-month internship from 1 March ends on 1 September and is AT_RISK against a `latest_end` of
+31 August. Programme rules themselves stay in `config/programme_constraints.yaml`.
+
+`AUTO` is the track for automotive roles (vehicles, ADAS, autonomous driving) whose main work is
+software or AI (perception, planning, simulation software, vehicle data, tooling); automotive roles
+centred on CAD, mechanical, structural, electrical or hardware work are `other`.
+`ios job list --track AUTO` and the web filter accept it, and like every track its position in
+`track_preference` orders jobs within a tier, after the deadline and host type. Jev never suggests
+AUTO, so an AUTO job may show a "Jev suggests" note for another track at review; no gate reads it.
+
+Extracted fields also include `work_mode` (onsite, hybrid, remote or not_stated); a confirmed
+`remote`, meaning the whole internship is remote, gives the REMOTE_ONLY flag.
 
 ## Web UI
 
@@ -104,7 +158,8 @@ The web UI is a local, single-user alternative to the terminal for daily use. It
 - **Today**: the digest (contract deadline, due and upcoming actions, deadlines, recommendations,
   counts, programme warnings) plus captures waiting for review.
 - **Capture**: paste a job description and pick its source. The URL box is stored for duplicate
-  matching and is never fetched from the browser; use `ios capture --url` for that.
+  matching, normalised as described under Lead scan (type it with `https://`: without a scheme its
+  query is kept), and is never fetched from the browser; use `ios capture --url` for that.
 - **Review**: the browser version of `ios confirm`. Each box shows the extracted value: leave it to
   confirm, change it to override, or empty it to set null. The fields that can make a job ineligible
   need an explicit tick. `ios confirm <id>` still works for the same jobs.
@@ -119,8 +174,9 @@ replaced by `ios ui`; sections 13 and 15 of `docs/WORKFLOW_GUIDE.pdf` still desc
 ## Jev decision layer (optional)
 
 Jev (TypeSafe's System One model) answers a few typed questions about each captured posting: the
-role track, minimum degree, Chinese level, start timing, a nationality or visa restriction, fees,
-data-labelling work and sales work, plus whether a few extracted values are supported by the text.
+role track (AI, SWE, research or other; Jev never suggests AUTO), minimum degree, Chinese level,
+start timing, a nationality or visa restriction, fees, data-labelling work and sales work, plus
+whether a few extracted values are supported by the text.
 Its answers are stored as a `jev_suggestions` job event and shown as notes and warnings on the
 review page and before `ios confirm`. They are suggestions only: no eligibility, programme or
 tiering rule reads them, and the must-check fields still need your tick.
@@ -137,6 +193,29 @@ tiering rule reads them, and the must-check fields still need your tick.
   (format: `data/labelled_postings.example.jsonl`; the real file is gitignored) and run
   `.venv/bin/python scripts/eval_prefill.py`. It makes one paid TypeSafe call per labelled
   posting, even with `provider: none`, and measures the posting questions only.
+
+## Lead scan
+
+A scheduled scan outside this tool (实习僧, the YES portal, web search) finds leads and sends you
+`ios capture --url <URL> --source shixiseng` commands (`--source yes_portal` for the YES portal,
+`--source other` for a web-search lead), which you run yourself. The tool never reads the scan's
+board; the command is the whole handoff. Each command is a single GET of that URL (following at
+most five redirects), and the captured job then goes through the same confirmation, eligibility,
+programme and tiering rules as any other capture.
+
+Login wording on the page (实习僧 headers, YES's "Please log in to apply") refuses it only when the
+extracted text is under 800 characters or does not read as a JD, so a full JD that merely links to
+login is captured, while a short login page, or one that does not read as a JD, is still refused (a
+long 实习僧 login page that mentions 职位 or 招聘 can get through; see `docs/FOLLOW_UPS.md`). When
+a page cannot be used the command exits with the reason; paste the text with
+`ios capture --paste --source <channel>` instead (the CLI stores no URL for pasted text, so that
+job cannot be matched by URL later; the web Capture page keeps its URL box).
+
+Source URLs are stored normalised: scheme and host lower-cased, fragment and trailing slash dropped,
+`www.` and the path's case kept, and the query dropped for shixiseng.com, businesschina.org.sg and
+their subdomains; other hosts keep it, and the GET itself uses the URL as typed. A lead captured
+again through a tracking link such as `…/inn_x?pcm=pc_SearchList` is therefore recognised as a
+duplicate of the job already captured from `…/inn_x`, whatever its status.
 
 ## Tests
 

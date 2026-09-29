@@ -115,6 +115,28 @@ Ideas and deviations recorded during Phase 1. Nothing here is implemented in Pha
 Changes made so that leads from the scheduled scan (`ios capture --url`) are judged by the scan's
 rules, with every point where the work departed from the alignment prompt and why.
 
+What changed, one commit per checkpoint (each also added its notes to this section):
+
+- Checkpoint 1, "capture: accept full JDs that link to login": `capture.py`,
+  `tests/test_capture.py`, `tests/conftest.py` and the saved YES posting fixture.
+- Checkpoint 2, "programme: check the internship ends by user_facts.latest_end": `programme.py`,
+  `schemas.py`, `config/user_facts.example.yaml`, `tests/test_programme.py`.
+- Checkpoint 3, "eligibility: student-status restrictions; 中国国籍优先 is a preference":
+  `eligibility.py`, `config/llm_prompts/extract_job.md`, `tests/test_eligibility.py`.
+- Checkpoint 4, "eligibility: fee, non-engineering and unpaid checks; unpaid sorts last":
+  `eligibility.py`, `schemas.py`, `tiering.py`, `WORKING_RULES.md`, and the eligibility, new-field
+  and tiering tests.
+- Checkpoint 5, "schemas: work_mode field; remote-only postings flagged and sorted last":
+  `schemas.py`, `eligibility.py`, the extraction prompt, three extracted-JD fixtures, and the
+  eligibility, new-field, review and tiering tests.
+- Checkpoint 6, "track: AUTO for automotive software and AI roles": `schemas.py`, the extraction
+  prompt, `config/user_facts.example.yaml`, `tests/test_track_auto.py`, `tests/test_jev.py`.
+- Checkpoint 7, "capture: normalise source URLs before duplicate matching": `capture.py`,
+  `tests/test_capture.py`, `tests/test_web_capture.py`.
+- Checkpoint 8, "docs: lead scan alignment": the docs commit, README.md and this file only.
+
+Departures from the prompt and open questions:
+
 - Checkpoint 1: the 实习僧 detail page (`https://www.shixiseng.com/intern/inn_qa5talgymf0o`) could
   not be downloaded from this machine: the host times out at the TCP/TLS handshake for both httpx
   and curl, while `yes.businesschina.org.sg` answers in two seconds. `tests/fixtures/html/
@@ -146,14 +168,16 @@ rules, with every point where the work departed from the alignment prompt and wh
 - Pushes: the prompt says "Do not push"; the user asked in the chat to push each checkpoint, so
   every checkpoint commit is pushed to `origin` as it lands.
 - Checkpoint 2: the posting-dates check adds the JD's `duration_min_months` to the JD start (or to
-  `intended_start`), exactly as the prompt says. When the JD states no minimum only the start is
-  checked: a start after `latest_end` is AT_RISK, a start in time adds nothing. `add_months(start,
-  n)` is the first day after an n-month stint (1 March + 6 months is 1 September), so a stint whose
-  last working day is 31 August is AT_RISK against `latest_end` 2027-08-31, as the prompt's own
-  example requires. Using the larger of the JD minimum and `SUTD_MIN_DURATION` (read through
-  `programme_interval`) would catch more: a JD of 3-6 months with a confirmed start of 2027-05-15 and `latest_end` 2027-08-31
-  is LIKELY under the prompt's rule, although the shortest internship the user may do (4 months)
-  ends 2027-09-15. The one-line change is `add_months(anchor, max(dmin or lo, lo))`.
+  `intended_start`), exactly as the prompt says. One step beyond the prompt: when the JD states no
+  minimum, the start alone is checked, so a start after `latest_end` is AT_RISK instead of the
+  "JD start ... is compatible" LIKELY a review found, and a start in time adds nothing.
+  `add_months(start, n)` is the first day after an n-month stint (1 March + 6 months is
+  1 September), so a stint whose last working day is 31 August is AT_RISK against `latest_end`
+  2027-08-31, as the prompt's own example requires. Using the larger of the JD minimum and
+  `SUTD_MIN_DURATION` (read through `programme_interval`) would catch more: a JD of 3-6 months with
+  a confirmed start of 2027-05-15 and `latest_end` 2027-08-31 is LIKELY under the prompt's rule,
+  although the shortest internship the user may do (4 months) ends 2027-09-15. The one-line change
+  is `add_months(anchor, max(dmin or lo, lo))`.
 - Checkpoint 2: `latest_end` is evaluated only after the earlier returns in `duration_and_dates`
   keep their statuses (a JD start before `intended_start`, a JD with no duration, a duration
   outside the programme interval). The agreed-dates branch checks it after the interval and the
@@ -243,3 +267,10 @@ rules, with every point where the work departed from the alignment prompt and wh
   Parsing `//` + value when the scheme is missing would fix that, in capture.py so routes stay
   thin. The result still has no scheme, so it would match the same job captured with a full URL
   only if `https` were assumed too.
+- Checkpoint 8: the README's reason-code table lists every code the check emits except
+  UNCONFIRMED_FIELDS (the NOT_RUN reason), not only the six new ones the prompt named, so each
+  code's effect is stated in one place.
+- Checkpoint 8, open question: 中国国籍优先 as the whole restriction text matches no pattern, so the
+  pre-existing rule for unmatched text gives RESTRICTION_TEXT_PRESENT_REVIEW: the job is UNCERTAIN
+  and at best T3. `tests/test_eligibility.py` only asserts that it is not INELIGIBLE. If a stated
+  preference should cost nothing, exempt 中国国籍优先 from that rule or give it a soft flag.
