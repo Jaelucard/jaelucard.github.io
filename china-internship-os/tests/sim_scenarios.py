@@ -613,21 +613,19 @@ SCENARIOS: list[Scenario] = [
         where=WHERE_ELIGIBILITY,
     ),
     scenario(
-        "S16", "全日制在校生",
+        # 全日制在校生 stays in the JD only: the extraction prompt says plain full-time-student wording is not
+        # a restriction, so the restriction field must be a confirmed null and no restriction code may
+        # appear (user decision). The phrase-in-the-field case is guarded by
+        # tests/test_eligibility.py::test_full_time_student_wording_matches_no_student_pattern.
+        "S16", "全日制在校生 (JD wording only, restriction field null)",
         company="杭州知远图谱科技有限公司", title="知识图谱实习生", title_en="Knowledge Graph Intern", email="hr@zhiyuan-example.com",
         district="西湖区", extra_lines=("全日制在校生，能保证实习时间",),
-        extra={"nationality_or_work_auth_restriction": ("全日制在校生", "全日制在校生")},
-        expected=Expected(not_ineligible=True, codes_exclude=RESTRICTION_CODES),
-        where=WHERE_ELIGIBILITY,
-        known_failure="unexpected code RESTRICTION_TEXT_PRESENT_REVIEW",
-        diagnosis=(
-            "expectation wrong, not the code: run_eligibility reviews any nationality_or_work_auth_restriction text "
-            "that matches no deterministic pattern (RESTRICTION_TEXT_PRESENT_REVIEW, UNCERTAIN) by design, so "
-            "全日制在校生 in that field is always reviewed and never INELIGIBLE; the row passes only under the reading "
-            "'no student-status, nationality or work-authorisation code' (the assertion of tests/test_eligibility.py "
-            "test_full_time_student_wording_matches_no_student_pattern) or with the wording kept out of the "
-            "restriction field; user decision"
+        expected=Expected(
+            not_ineligible=True,
+            codes_exclude=RESTRICTION_CODES,
+            confirmed_nulls=("nationality_or_work_auth_restriction",),
         ),
+        where=WHERE_ELIGIBILITY,
     ),
     scenario(
         "S17", "暑期实习 (internship_type summer)",
