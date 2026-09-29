@@ -224,3 +224,22 @@ rules, with every point where the work departed from the alignment prompt and wh
   Jev, the assertion now excludes AUTO as well and asserts that AUTO is not offered.
 - Checkpoint 6: `config/user_facts.example.yaml` gained AUTO in track_preference
   ([AI, AUTO, SWE, other]); no existing test depends on more than AI sorting before SWE.
+- Checkpoint 7: `normalise_source_url` keeps `www.` and the path's case, lower-cases the whole
+  host part, drops the fragment and trailing slash, and returns an unparseable string as typed.
+  Stored rows are normalised on comparison, so no migration was needed.
+- Checkpoint 7: `ios capture` accepts exactly one of --text-file, --paste and --url, so a lead
+  pasted by hand (for example when a host cannot be fetched) stores no URL and cannot be matched by
+  URL later; the web capture form does store its URL box. Consider letting --url accompany
+  --paste or --text-file as metadata.
+- Checkpoint 7, open question: dropping the whole query on businesschina.org.sg also merges
+  WordPress shortlinks into the site root, for example the saved posting's own shortlink
+  `https://yes.businesschina.org.sg/?p=11692`. Keeping `p` and `page_id`, or dropping only tracking
+  keys such as `pcm` and `utm_*`, is the user's call.
+- Checkpoint 7, open question: the fragment is dropped on every host, so a career portal that puts
+  the job id in a hash route (`#/jobs/123`) would merge its postings. Keeping fragments that start
+  with `/` or `!` is the alternative.
+- Checkpoint 7, open question: a URL typed into the web capture box without a scheme
+  (`www.shixiseng.com/intern/inn_x?pcm=...`) has no host for urlsplit, so its query is kept.
+  Parsing `//` + value when the scheme is missing would fix that, in capture.py so routes stay
+  thin. The result still has no scheme, so it would match the same job captured with a full URL
+  only if `https` were assumed too.

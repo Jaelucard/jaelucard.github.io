@@ -6,7 +6,9 @@ Rules enforced here:
   the request or has no usable job content fails with :class:`CaptureNeedsPaste`;
 * every extracted field is forced to ``confirmed: false`` after parsing, whatever the model said;
 * duplicates are never merged silently: :class:`DuplicateCaptureNeedsDecision` is raised and the
-  CLI asks the user what to do.
+  CLI asks the user what to do;
+* source URLs are stored and compared in the form :func:`normalise_source_url` gives, so a job
+  captured again through a tracking link (``?pcm=pc_SearchList``) is found whatever its status.
 
 This module never asks terminal questions itself.
 """
@@ -21,6 +23,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Any, get_args, get_origin
 from collections.abc import Callable, Iterable
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 import trafilatura
@@ -112,7 +115,7 @@ class DuplicateCaptureNeedsDecision(CaptureError):
         self.candidate_ids = candidate_ids
         self.extracted = extracted
         self.text = text
-        self.url = url
+        self.url = url  # as typed; capture() and attach_to_existing() normalise it again
         self.source_channel = source_channel
         ids = ", ".join(str(i) for i in candidate_ids)
         super().__init__(f"possible duplicate of existing job(s): {ids}")
@@ -202,6 +205,32 @@ def extract_job(text: str, config: AppConfig) -> ExtractedJob:
 _WS = re.compile(r"\s+")
 COMPANY_SUFFIXES = ("有限公司", "公司", "科技")
 NO_TITLE_KEY = "<no-title>"
+# Hosts whose query strings only carry list-position or tracking parameters (?pcm=pc_SearchList).
+QUERYLESS_HOSTS = ("shixiseng.com", "businesschina.org.sg")
+
+
+def normalise_source_url(url: str | None) -> str | None:
+    """The form a source URL is stored and compared in.
+
+    Lower-case scheme and host, no fragment, no trailing slash, and no query at all for
+    ``QUERYLESS_HOSTS``; other hosts keep their query. An unparseable string comes back as typed,
+    and blank or junk input gives None.
+    ``fetch_url_text`` always receives the URL exactly as the user typed it.
+    """
+    if url is None:
+        return None
+    url = url.strip()
+    if not url:
+        return None
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return url
+    host = (parts.hostname or "").lower()
+    queryless = any(host == h or host.endswith("." + h) for h in QUERYLESS_HOSTS)
+    return urlunsplit(
+        (parts.scheme.lower(), parts.netloc.lower(), parts.path.rstrip("/ \t"), "" if queryless else parts.query, "")
+    ).strip() or None
 
 
 def normalise_text(value: str | None) -> str:
@@ -274,10 +303,14 @@ def keys_for_job(job: Job) -> set[str]:
 
 
 def find_duplicate_ids(session: Session, source_url: str | None, keys: set[str]) -> list[int]:
-    """Existing job ids that share ``source_url`` (any status) or a key (non-terminal only)."""
+    """Existing job ids that share the normalised ``source_url`` (any status) or a key (non-terminal only).
+
+    Both sides are normalised here, so rows stored before normalisation need no migration.
+    """
+    wanted = normalise_source_url(source_url)
     found: list[int] = []
     for job in session.scalars(select(Job).order_by(Job.id)):
-        if source_url and job.source_url and job.source_url == source_url:
+        if wanted and job.source_url and normalise_source_url(job.source_url) == wanted:
             found.append(job.id)
             continue
         if keys and job.status in _NON_TERMINAL and keys & keys_for_job(job):
@@ -329,8 +362,9 @@ def capture(
     else:
         extracted = ExtractedJob.model_validate(force_unconfirmed(extracted.model_dump(mode="json")))
 
+    stored_url = normalise_source_url(url)
     if not force_new:
-        duplicates = find_duplicate_ids(session, url, keys_for_extracted(extracted))
+        duplicates = find_duplicate_ids(session, stored_url, keys_for_extracted(extracted))
         if duplicates:
             raise DuplicateCaptureNeedsDecision(
                 duplicates, extracted=extracted, text=text, url=url, source_channel=channel
@@ -339,7 +373,7 @@ def capture(
     when = today or date.today()
     job = Job(
         source_channel=channel,
-        source_url=url,
+        source_url=stored_url,
         raw_text=text,
         extracted=extracted.model_dump(mode="json"),
         # Candidate display titles only; deterministic modules ignore them until confirmation.
@@ -355,7 +389,7 @@ def capture(
         JobEvent(
             job_id=job.id,
             kind=EventKind.captured.value,
-            detail={"source_channel": channel, "source_url": url, "chars": len(text)},
+            detail={"source_channel": channel, "source_url": stored_url, "chars": len(text)},
         )
     )
     session.commit()
@@ -375,7 +409,7 @@ def attach_to_existing(
         detail={
             "note": "duplicate capture attached",
             "source_channel": source_channel,
-            "source_url": url,
+            "source_url": normalise_source_url(url),
             "raw_text": text,
         },
     )

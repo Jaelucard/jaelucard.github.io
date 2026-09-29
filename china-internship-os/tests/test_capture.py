@@ -15,7 +15,9 @@ from internship_os.capture import (
     capture,
     create_company_from_extraction,
     find_company_matches,
+    find_duplicate_ids,
     normalise_company,
+    normalise_source_url,
     parse_override,
 )
 from internship_os.cli import app
@@ -428,3 +430,90 @@ def test_url_capture_rejects_a_long_login_page_that_is_not_a_jd(monkeypatch, ses
     with pytest.raises(CaptureNeedsPaste) as excinfo:
         capture(None, "https://example.com/j", "boss", session=session, config=config, today=today)
     assert excinfo.value.reason == "the page appears to require login"
+
+
+# --------------------------------------------------------------------------------------
+# Source URL normalisation before duplicate matching
+# --------------------------------------------------------------------------------------
+
+
+def test_normalise_source_url_forms():
+    assert normalise_source_url("HTTPS://WWW.Shixiseng.com/intern/inn_x?pcm=pc_SearchList#top") == "https://www.shixiseng.com/intern/inn_x"
+    assert normalise_source_url("https://yes.businesschina.org.sg/internship/ai-intern/?utm=1") == "https://yes.businesschina.org.sg/internship/ai-intern"
+    # Other hosts keep their query; path case is kept; the fragment and trailing slash go.
+    assert normalise_source_url("https://example.com/Jobs/1/?id=2#frag") == "https://example.com/Jobs/1?id=2"
+    assert normalise_source_url("https://example.com/") == "https://example.com"
+    assert normalise_source_url("  https://example.com/j  ") == "https://example.com/j"
+    assert normalise_source_url(None) is None and normalise_source_url("   ") is None
+    assert normalise_source_url("http://[::1") == "http://[::1"  # unparseable: returned as typed, never raises
+    assert normalise_source_url("https://notshixiseng.com/x?q=1") == "https://notshixiseng.com/x?q=1"  # host labels, not suffix text
+    # Junk input gives None; spaces and repeated slashes at the end of the path go.
+    assert normalise_source_url("?") is None
+    assert normalise_source_url("#") is None
+    assert normalise_source_url("https://example.com/j//") == "https://example.com/j"
+    assert normalise_source_url("https://a.com/j #x") == "https://a.com/j"
+
+
+def test_tracking_link_of_a_closed_job_is_still_a_duplicate(capture_fixture, session, config, today):
+    from internship_os.pipeline import transition
+
+    bare = "https://www.shixiseng.com/intern/inn_x"
+    first = capture_fixture("hangzhou_ai_app", url=bare)
+    assert first.source_url == bare and first.events[0].detail["source_url"] == bare
+    transition(session, first, "CLOSED", next_action=None, due=None, stage=None, note=None, config=config, today=today)
+    assert first.status == "CLOSED"  # the company+title+city check skips terminal jobs; only the URL can find it
+    with pytest.raises(DuplicateCaptureNeedsDecision) as excinfo:
+        capture_fixture("hangzhou_ai_app", url=bare + "?pcm=pc_SearchList")
+    assert excinfo.value.candidate_ids == [first.id]
+    assert find_duplicate_ids(session, bare + "?pcm=pc_SearchList", set()) == [first.id]
+    assert find_duplicate_ids(session, bare, set()) == [first.id]
+
+
+def test_rows_stored_before_normalisation_need_no_migration(session):
+    raw = "https://www.shixiseng.com/intern/inn_old?pcm=pc_SearchList/"
+    job = Job(source_channel="shixiseng", source_url=raw, status="CLOSED")  # stored as typed, as before this change
+    session.add(job)
+    session.commit()
+    assert find_duplicate_ids(session, "https://www.shixiseng.com/intern/inn_old", set()) == [job.id]
+
+
+def test_yes_url_with_and_without_trailing_slash_matches(capture_fixture, session):
+    url = "https://yes.businesschina.org.sg/internship/artificial-intelligence-intern"
+    first = capture_fixture("hangzhou_ai_app", url=url + "/")
+    assert first.source_url == url
+    assert find_duplicate_ids(session, url, set()) == [first.id]
+    assert find_duplicate_ids(session, url + "/", set()) == [first.id]
+
+
+def test_other_hosts_keep_their_query_string(capture_fixture, session):
+    first = capture_fixture("suzhou_backend", url="https://example.com/j?id=1")
+    assert first.source_url == "https://example.com/j?id=1"
+    assert find_duplicate_ids(session, "https://example.com/j?id=2", set()) == []
+    assert find_duplicate_ids(session, "https://example.com/j?id=1#x", set()) == [first.id]
+    # URL-less and terminal: only a URL check without its guards could match this row.
+    session.add(Job(source_channel="boss", status="CLOSED"))
+    session.commit()
+    assert find_duplicate_ids(session, None, set()) == []  # URL-less captures never match by URL
+
+
+def test_attach_stores_the_normalised_url(capture_fixture, session):
+    first = capture_fixture("hangzhou_ai_app")
+    attach_to_existing(
+        session, first.id, text="dup", url="https://www.shixiseng.com/intern/inn_x?pcm=pc_SearchList", source_channel="shixiseng"
+    )
+    session.refresh(first)
+    assert first.events[-1].detail["source_url"] == "https://www.shixiseng.com/intern/inn_x"
+
+
+def test_fetch_url_text_receives_the_url_as_typed(monkeypatch, session, config, today, fake_llm):
+    typed = "HTTPS://WWW.Shixiseng.com/intern/inn_x/?pcm=pc_SearchList#top"
+    calls = []
+
+    def fake_get(url, **kwargs):
+        calls.append(url)
+        return httpx.Response(200, request=httpx.Request("GET", url), text=load_html("yes_posting"))
+
+    monkeypatch.setattr(capture_mod.httpx, "get", fake_get)
+    job = capture(None, typed, "shixiseng", session=session, config=config, today=today)
+    assert calls == [typed]
+    assert job.source_url == "https://www.shixiseng.com/intern/inn_x"

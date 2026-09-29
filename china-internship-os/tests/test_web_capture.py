@@ -52,6 +52,19 @@ def test_capture_records_the_url_without_fetching_it(client, session, monkeypatc
     assert job.source_url == "https://example.com/job/1"
 
 
+def test_capture_stores_the_url_box_normalised(client, session, monkeypatch):
+    import internship_os.capture as capture_module
+
+    monkeypatch.setattr(capture_module.httpx, "get", lambda *a, **k: pytest.fail("the web capture fetched a URL"))
+    client.post(
+        "/capture",
+        data={"text": load_jd("hangzhou_ai_app"), "source": "shixiseng", "url": "https://www.shixiseng.com/intern/inn_x?pcm=pc_SearchList"},
+    )
+    (job,) = _jobs(session)
+    assert job.source_url == "https://www.shixiseng.com/intern/inn_x"
+    assert job.events[0].detail["source_url"] == "https://www.shixiseng.com/intern/inn_x"
+
+
 def test_capture_requires_text_and_a_known_source(client, session):
     assert client.post("/capture", data={"text": "   ", "source": "shixiseng"}).status_code == 400
     assert client.post("/capture", data={"text": "岗位职责", "source": "carrier_pigeon"}).status_code == 400
