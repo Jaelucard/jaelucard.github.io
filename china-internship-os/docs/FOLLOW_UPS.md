@@ -165,3 +165,22 @@ rules, with every point where the work departed from the alignment prompt and wh
   end bound.
 - Checkpoint 2: the config-validation test sits in `tests/test_programme.py` because the prompt
   lists it there; `tests/test_config.py` would be its natural home.
+- Checkpoint 3: 全日制在校生 on its own matches none of the student-status lists, as required. If the
+  extractor still copies it into `nationality_or_work_auth_restriction`, the pre-existing rule
+  applies and the text yields `RESTRICTION_TEXT_PRESENT_REVIEW` (UNCERTAIN), as any unmatched text
+  did before; the extraction prompt now says plain full-time-student wording is not a restriction,
+  which keeps it out of the field at the source.
+- Checkpoint 3: the four student patterns carry `(?<![非不])` / `(?<![不仅])` lookbehinds and the
+  hukou pattern a `(?!不限|亦可|均可|皆可|也可)` lookahead, so 非大陆户籍亦可, 大陆户籍不限,
+  不限国内高校在读, 不仅限国内高校 and 港澳台及大陆居民均可 no longer hard-fail. The guard is local
+  to the match, so inclusive lists such as 大陆居民及外籍均可 or 非中国大陆户籍者亦可 still do, as
+  do negations a word earlier such as 不要求大陆户籍 or 不限大陆户籍. The older nationality pattern
+  `中国国籍(?!优先)` has the same weakness (非中国国籍亦可, 不要求中国国籍 and 无需中国国籍
+  hard-fail) and was left as it was.
+- Checkpoint 3: only the exact 中国国籍优先 is exempted from the nationality patterns. 仅限中国籍优先,
+  中国大陆籍优先, 中国国籍者优先 and 优先考虑中国国籍 still hard-fail through the older patterns; a
+  general "优先 anywhere" rule is a separate decision.
+- Checkpoint 3: 仅限大陆高校在读 and 仅限中国大陆高校在读 match a nationality pattern (仅限大陆,
+  仅限中国大陆) as well as a student pattern, so they carry two hard codes; 仅限内地高校在读 carries
+  only the nationality code because 内地 is not in the student patterns. The outcome is INELIGIBLE
+  either way.

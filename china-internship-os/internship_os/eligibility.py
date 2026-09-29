@@ -58,6 +58,7 @@ HARD_FAIL_CODES = frozenset(
         "GRADUATION_COHORT_INELIGIBLE",
         "EXPLICIT_NATIONALITY_RESTRICTION",
         "EXPLICIT_WORK_AUTHORIZATION_RESTRICTION",
+        "EXPLICIT_STUDENT_STATUS_RESTRICTION",
         "ROLE_CLOSED",
         "DEADLINE_PASSED",
     }
@@ -65,6 +66,7 @@ HARD_FAIL_CODES = frozenset(
 UNCERTAIN_CODES = frozenset(
     {
         "RESTRICTION_TEXT_PRESENT_REVIEW",
+        "STUDENT_STATUS_REVIEW",
         "CHINESE_LEVEL_REVIEW",
         "COHORT_TEXT_UNPARSEABLE",
         "USER_COHORT_UNPARSEABLE",
@@ -87,7 +89,7 @@ NATIONALITY_PATTERNS = [
     for p in (
         r"仅限中国籍",
         r"限中国籍",
-        r"中国国籍",
+        r"中国国籍(?!优先)",  # 中国国籍优先 states a preference, not a requirement
         r"仅限内地",
         r"仅限大陆",
         r"仅限中国大陆",
@@ -113,6 +115,30 @@ WORK_AUTH_PATTERNS = [
         r"不(提供|办理)工作许可",
         r"需(已)?持有(中国)?工作(许可|签证)",
         r"已具备(中国)?工作(许可|资格)",
+    )
+]
+# Postings open only to students of mainland Chinese universities, or to mainland hukou holders,
+# which exclude an exchange student from Singapore. Silence never matches anything here, and plain
+# full-time-student wording (全日制在校生) matches nothing. Negated or inclusive wording is not a
+# restriction (非大陆户籍亦可, 大陆户籍不限, 不限国内高校在读, 不仅限国内高校): the lookbehinds skip a
+# match right after 非 or 不 (不 or 仅 for the bare 限), and the hukou lookahead skips one right
+# before 不限/亦可/均可/皆可/也可.
+STUDENT_STATUS_PATTERNS = [
+    re.compile(p)
+    for p in (
+        r"(?<![非不])仅限(国内|中国大陆|大陆)(高校|院校|在校)",
+        r"(?<![不仅])限(国内|中国大陆|大陆)(高校|院校)在读",  # 仅限… is pattern 1's job; 不限… is not a restriction
+        r"(?<![非不])仅接受(国内|中国大陆|大陆)(高校|院校)",
+        r"(?<![非不])(中国)?大陆(户籍|居民)(?!不限|亦可|均可|皆可|也可)",
+    )
+]
+# Softer student-status wording (a 学信网 check, a preference for domestic universities): review, not a fail.
+STUDENT_STATUS_REVIEW_PATTERNS = [
+    re.compile(p)
+    for p in (
+        r"学信网",
+        r"(国内|中国大陆)(高校|院校)优先",
+        r"国内学籍",
     )
 ]
 EXPERIENCE_PATTERNS = [
@@ -233,6 +259,8 @@ def run_eligibility(
     if restriction:
         nat = _matches_any(NATIONALITY_PATTERNS, restriction)
         auth = _matches_any(WORK_AUTH_PATTERNS, restriction)
+        student = _matches_any(STUDENT_STATUS_PATTERNS, restriction)
+        student_review = None if student else _matches_any(STUDENT_STATUS_REVIEW_PATTERNS, restriction)
         if nat:
             reasons.append(
                 Reason(
@@ -249,7 +277,23 @@ def run_eligibility(
                     f"matched '{auth}' in: {restriction}",
                 )
             )
-        if not nat and not auth:
+        if student:
+            reasons.append(
+                Reason(
+                    "EXPLICIT_STUDENT_STATUS_RESTRICTION",
+                    "nationality_or_work_auth_restriction",
+                    f"matched '{student}' in: {restriction}",
+                )
+            )
+        elif student_review:
+            reasons.append(
+                Reason(
+                    "STUDENT_STATUS_REVIEW",
+                    "nationality_or_work_auth_restriction",
+                    f"matched '{student_review}' in: {restriction}",
+                )
+            )
+        if not nat and not auth and not student and not student_review:
             reasons.append(
                 Reason(
                     "RESTRICTION_TEXT_PRESENT_REVIEW",

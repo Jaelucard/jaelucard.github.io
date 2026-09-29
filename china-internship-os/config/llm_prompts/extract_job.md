@@ -33,7 +33,7 @@ Field rules:
 - salary_text: the compensation wording verbatim.
 - required_skills / preferred_skills: short skill or requirement phrases, one per list item, in the JD's language. Required = 任职要求 / must-have; preferred = 加分项 / 优先 / nice-to-have.
 - language_requirement: language wording verbatim. chinese_required_level: none_stated, basic, working, fluent, native. Use native only for wording like 母语 or "native Chinese"; fluent for 流利 / 精通; working for 可作为工作语言 / "working proficiency"; basic for 基础.
-- nationality_or_work_auth_restriction: copy any explicit nationality, citizenship, work-authorisation or visa-sponsorship wording verbatim (仅限中国籍, 不提供签证支持, "PRC nationals only"). Never infer a restriction from silence. Null when nothing is stated.
+- nationality_or_work_auth_restriction: copy any explicit nationality, citizenship, work-authorisation, visa-sponsorship or student-status wording verbatim (仅限中国籍, 不提供签证支持, "PRC nationals only", 仅限国内高校在读, 需学信网可查, 国内高校优先). Never infer a restriction from silence. Plain full-time-student wording on its own, with no institution or nationality limit (全日制在校生), is not a restriction. Null when nothing is stated.
 - role_closed: true only when the JD explicitly says the position is closed, filled or no longer hiring (已招满, 已关闭, "position closed").
 - application_method: how to apply, verbatim.
 - referral_info: any 内推 / referral wording, verbatim.

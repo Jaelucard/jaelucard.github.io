@@ -204,3 +204,65 @@ def test_open_ended_year_is_the_one_attached_to_the_wording(make_confirmed_job, 
     job = make_confirmed_job("hangzhou_ai_app", cohort_years=[2025, 2029], graduation_cohort_text="2025届、2029届及以后")
     status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
     assert "GRADUATION_COHORT_INELIGIBLE" in codes(reasons)
+
+
+# --------------------------------------------------------------------------------------
+# Student-status restrictions (postings limited to students of mainland Chinese universities)
+# --------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("text", ["仅限国内高校在读", "限国内高校在读", "仅接受国内院校", "大陆户籍", "中国大陆户籍"])
+def test_student_status_restriction_hard_fails(make_confirmed_job, config, today, text):
+    job = make_confirmed_job("hangzhou_ai_app", nationality_or_work_auth_restriction=text)
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert status == "INELIGIBLE", text
+    reason = next(r for r in reasons if r.code == "EXPLICIT_STUDENT_STATUS_RESTRICTION")
+    assert reason.field == "nationality_or_work_auth_restriction" and text in reason.detail
+    assert not {"STUDENT_STATUS_REVIEW", "RESTRICTION_TEXT_PRESENT_REVIEW"} & set(codes(reasons))
+
+
+@pytest.mark.parametrize("text", ["需学信网可查", "国内高校优先", "中国大陆院校优先", "需国内学籍"])
+def test_softer_student_status_wording_is_a_review_flag(make_confirmed_job, config, today, text):
+    job = make_confirmed_job("hangzhou_ai_app", nationality_or_work_auth_restriction=text)
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert status == "UNCERTAIN", text
+    reason = next(r for r in reasons if r.code == "STUDENT_STATUS_REVIEW")
+    assert reason.field == "nationality_or_work_auth_restriction" and text in reason.detail
+    assert not {
+        "EXPLICIT_STUDENT_STATUS_RESTRICTION",
+        "EXPLICIT_NATIONALITY_RESTRICTION",
+        "RESTRICTION_TEXT_PRESENT_REVIEW",
+    } & set(codes(reasons))
+
+
+def test_chinese_nationality_preferred_is_not_a_hard_fail(make_confirmed_job, config, today):
+    job = make_confirmed_job("hangzhou_ai_app", nationality_or_work_auth_restriction="中国国籍优先")
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert status != "INELIGIBLE"
+    assert "EXPLICIT_NATIONALITY_RESTRICTION" not in codes(reasons)
+    # The same words without the preference still hard-fail.
+    job2 = make_confirmed_job("hangzhou_ai_app", nationality_or_work_auth_restriction="要求中国国籍")
+    status2, reasons2 = run_eligibility(job2, config.user_facts, today, evidence=config.evidence)
+    assert status2 == "INELIGIBLE" and "EXPLICIT_NATIONALITY_RESTRICTION" in codes(reasons2)
+
+
+def test_full_time_student_wording_matches_no_student_pattern(make_confirmed_job, config, today):
+    # The user is a full-time student: 全日制在校生 on its own is not a restriction.
+    job = make_confirmed_job("hangzhou_ai_app", nationality_or_work_auth_restriction="全日制在校生")
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert status != "INELIGIBLE"
+    assert not {
+        "EXPLICIT_STUDENT_STATUS_RESTRICTION",
+        "STUDENT_STATUS_REVIEW",
+        "EXPLICIT_NATIONALITY_RESTRICTION",
+        "EXPLICIT_WORK_AUTHORIZATION_RESTRICTION",
+    } & set(codes(reasons))
+
+
+@pytest.mark.parametrize("text", ["非大陆户籍亦可", "大陆户籍不限", "不限国内高校在读", "不仅限国内高校", "非中国大陆居民也可"])
+def test_negated_student_status_wording_is_not_a_hard_fail(make_confirmed_job, config, today, text):
+    # Wording that says the posting is not limited to mainland students must not close the job.
+    job = make_confirmed_job("hangzhou_ai_app", nationality_or_work_auth_restriction=text)
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert status != "INELIGIBLE", text
+    assert "EXPLICIT_STUDENT_STATUS_RESTRICTION" not in codes(reasons)
