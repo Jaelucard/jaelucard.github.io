@@ -108,3 +108,18 @@ def test_unpaid_jobs_sort_last_within_their_tier(session, make_confirmed_job, co
     # The key sits inside the tier: an unpaid T1 job still sorts before a paid T2 job.
     unpaid.tier = "T1"
     assert [j.id for j in sort_jobs([paid, unpaid], config.user_facts)] == [unpaid.id, paid.id]
+
+
+def test_remote_only_jobs_sort_last_within_their_tier(session, make_confirmed_job, config):
+    remote = make_confirmed_job("hangzhou_ai_app", yes_status="willing", work_mode="remote", deadline="2026-10-01")
+    onsite = make_confirmed_job("hangzhou_ai_app", yes_status="willing")  # no deadline
+    assert (remote.deadline, onsite.deadline) == (date(2026, 10, 1), None)
+    assert "REMOTE_ONLY" in {r["code"] for r in remote.eligibility_reasons}
+    for job in (remote, onsite):
+        job.eligibility, job.fit, job.quality, job.tier = "ELIGIBLE", "ok", "strong", "T1"
+    session.commit()
+    # The earlier deadline would put the remote job first; REMOTE_ONLY outranks it within the tier.
+    assert [j.id for j in sort_jobs([remote, onsite], config.user_facts)] == [onsite.id, remote.id]
+    t2 = make_confirmed_job("hangzhou_ai_app", yes_status="willing")
+    t2.eligibility, t2.fit, t2.quality, t2.tier = "ELIGIBLE", "strong", "ok", "T2"
+    assert [j.id for j in sort_jobs([t2, remote, onsite], config.user_facts)] == [onsite.id, remote.id, t2.id]

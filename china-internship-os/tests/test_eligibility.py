@@ -312,3 +312,33 @@ def test_negotiable_or_paid_salary_adds_nothing(make_confirmed_job, config, toda
     job = make_confirmed_job("hangzhou_ai_app", salary_text=text, **NO_FLAGS)
     status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
     assert status == "ELIGIBLE" and reasons == [], text
+
+
+# --------------------------------------------------------------------------------------
+# work_mode: remote-only postings
+# --------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("mode", ["onsite", "hybrid", "not_stated", None])
+def test_non_remote_work_mode_adds_nothing(make_confirmed_job, config, today, mode):
+    job = make_confirmed_job("hangzhou_ai_app", work_mode=mode, **NO_FLAGS)
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert status == "ELIGIBLE" and reasons == [], mode
+
+
+def test_remote_only_posting_is_a_soft_flag(make_confirmed_job, config, today):
+    job = make_confirmed_job("hangzhou_ai_app", work_mode="remote", **NO_FLAGS)
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert status == "LIKELY_ELIGIBLE" and codes(reasons) == ["REMOTE_ONLY"]
+    assert reasons[0].field == "work_mode"
+
+
+def test_unconfirmed_work_mode_alone_gives_not_run(make_confirmed_job, config, today):
+    job = make_confirmed_job("hangzhou_ai_app", run=False)
+    data = dict(job.extracted)
+    data["work_mode"] = {**data["work_mode"], "confirmed": False}
+    job.extracted = data
+    status, reasons = run_eligibility(job, config.user_facts, today, evidence=config.evidence)
+    assert status == "NOT_RUN"
+    assert codes(reasons) == ["UNCONFIRMED_FIELDS"]
+    assert "work_mode" in reasons[0].detail

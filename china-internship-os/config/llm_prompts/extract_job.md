@@ -11,7 +11,7 @@ Rules for source_span:
 1. For a positively extracted value, copy the supporting text character for character. Do not paraphrase, translate, reorder or shorten words inside the excerpt.
 2. The excerpt may contain more than one sentence or bullet when the value depends on several lines. Keep them adjacent and verbatim.
 3. Never fabricate an excerpt. If you cannot point at JD text that supports the value, the value must be null.
-4. For values that represent absence, or a sentinel derived from silence, source_span must be null. Examples: degree_required = "none_stated", degree_preferred = "none_stated", cohort_unrestricted = false, role_closed = false, nationality_or_work_auth_restriction = null, track_guess = "unknown", internship_type = "unknown", chinese_required_level = "none_stated", start_timing = "not_stated", pays_fee = false, mostly_annotation = false, mostly_sales = false, empty lists.
+4. For values that represent absence, or a sentinel derived from silence, source_span must be null. Examples: degree_required = "none_stated", degree_preferred = "none_stated", cohort_unrestricted = false, role_closed = false, nationality_or_work_auth_restriction = null, track_guess = "unknown", internship_type = "unknown", chinese_required_level = "none_stated", start_timing = "not_stated", pays_fee = false, mostly_annotation = false, mostly_sales = false, work_mode = "not_stated", empty lists.
 
 Field rules:
 
@@ -44,6 +44,7 @@ Field rules:
 - pays_fee: true only when the JD asks the applicant to pay money (培训费, 押金, 保证金, 服装费, "training fee", "deposit"); quote that text. Otherwise false.
 - mostly_annotation: true when the main daily work is data labelling or annotation (数据标注, 标注员, AI训练师), even under an AI or algorithm title; quote the responsibility. Otherwise false.
 - mostly_sales: true when the main daily work is sales, promotion or customer acquisition (销售, 地推, 电话销售, 客户开发); quote the responsibility. Otherwise false.
+- work_mode: onsite when the posting requires working at its office or names a work address with no remote option (坐班, 现场办公); remote only when the posting says the whole internship is remote (远程实习); hybrid when it mixes office and remote days; not_stated when the posting says nothing about where the work happens. Quote the wording; source_span null for not_stated.
 
 Worked example. JD:
 
@@ -53,7 +54,7 @@ Worked example. JD:
 要求：2027届本科及以上；熟悉Go或Java；每周至少3天，实习不少于3个月。
 薪资：250元/天
 
-Correct output. This example omits some keys for brevity, but YOUR output must contain all 35 keys of the schema, each as a {value, confirmed, source_span} object; unstated fields have value null (or their sentinel), confirmed false and source_span null:
+Correct output. This example omits some keys for brevity, but YOUR output must contain all 36 keys of the schema, each as a {value, confirmed, source_span} object; unstated fields have value null (or their sentinel), confirmed false and source_span null:
 
 {"company_name_zh": {"value": "上海某某科技有限公司", "confirmed": false, "source_span": "上海某某科技有限公司"},
  "title_zh": {"value": "后端开发实习生", "confirmed": false, "source_span": "后端开发实习生"},
@@ -81,7 +82,8 @@ Correct output. This example omits some keys for brevity, but YOUR output must c
  "start_timing": {"value": "not_stated", "confirmed": false, "source_span": null},
  "pays_fee": {"value": false, "confirmed": false, "source_span": null},
  "mostly_annotation": {"value": false, "confirmed": false, "source_span": null},
- "mostly_sales": {"value": false, "confirmed": false, "source_span": null}}
+ "mostly_sales": {"value": false, "confirmed": false, "source_span": null},
+ "work_mode": {"value": "onsite", "confirmed": false, "source_span": "地点：上海 浦东新区"}}
 
 Now extract from this JD:
 

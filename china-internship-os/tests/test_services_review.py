@@ -232,3 +232,10 @@ def test_discard_refuses_a_job_that_is_already_closed(capture_fixture, session, 
     rv.discard_job(session, job, config, today)
     with pytest.raises(rv.ReviewInvalid):
         rv.discard_job(session, job, config, today)
+
+
+def test_work_mode_widget_is_a_select_wired_to_the_fixture():
+    by = {f.name: f for f in rv.review_fields(load_extracted("hangzhou_ai_app"))}
+    assert by["work_mode"].kind == "select"
+    assert by["work_mode"].options == ["", "onsite", "hybrid", "remote", "not_stated"]
+    assert by["work_mode"].value == "onsite" and by["work_mode"].source_span == "工作地点：杭州市 西湖区"

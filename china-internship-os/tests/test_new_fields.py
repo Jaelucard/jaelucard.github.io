@@ -1,4 +1,5 @@
-"""The four fields added for Jev: start_timing, pays_fee, mostly_annotation, mostly_sales."""
+"""The fields added after the first release: start_timing, pays_fee, mostly_annotation and mostly_sales
+(for Jev), then work_mode."""
 
 from __future__ import annotations
 
@@ -55,7 +56,7 @@ def test_extraction_prompt_covers_every_field():
 
 
 # Reason codes that read the added fields. A job stored before the fields existed must get none of them.
-NEW_REASON_CODES = {"FEE_REQUIRED", "NOT_ENGINEERING_WORK", "UNPAID"}
+NEW_REASON_CODES = {"FEE_REQUIRED", "NOT_ENGINEERING_WORK", "UNPAID", "REMOTE_ONLY"}
 
 
 def test_a_job_confirmed_before_the_new_fields_recomputes_without_new_reasons(config, today):
@@ -78,3 +79,16 @@ def test_a_job_confirmed_before_the_new_fields_recomputes_without_new_reasons(co
 
 def test_pays_fee_is_a_must_check_field():
     assert "pays_fee" in ALWAYS_CONFIRM_FIELDS
+
+
+def test_work_mode_is_captured_unconfirmed_and_loads_as_a_confirmed_null_on_old_rows(capture_fixture):
+    assert "work_mode" in ADDED_FIELDS
+    job = capture_fixture("hangzhou_ai_app")
+    extracted = ExtractedJob.model_validate(job.extracted)
+    assert extracted.work_mode.value == "onsite" and not extracted.work_mode.confirmed
+    data = json.loads(load_extracted_json("hangzhou_ai_app"))
+    del data["work_mode"]
+    for field in data.values():
+        field["confirmed"] = True
+    old = ExtractedJob.model_validate(data)
+    assert old.work_mode.value is None and old.work_mode.confirmed  # not captured, not "not_stated"

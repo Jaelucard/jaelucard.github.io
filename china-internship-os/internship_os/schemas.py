@@ -541,6 +541,13 @@ class StartTiming(StrEnum):
     not_stated = "not_stated"
 
 
+class WorkMode(StrEnum):
+    onsite = "onsite"
+    hybrid = "hybrid"
+    remote = "remote"
+    not_stated = "not_stated"
+
+
 class ResearchSignal(StrEnum):
     master_required = "master_required"
     phd_preferred = "phd_preferred"
@@ -584,9 +591,10 @@ _SENTINEL_DEFAULTS: dict[str, Any] = {
 }
 
 
-# Fields added with the Jev decision layer. A stored extraction from before they existed loads
-# them as confirmed nulls ("not captured"), so jobs confirmed earlier stay fully confirmed.
-ADDED_FIELDS: tuple[str, ...] = ("start_timing", "pays_fee", "mostly_annotation", "mostly_sales")
+# Fields added after the first release (the four Jev-era fields, then work_mode). A stored extraction
+# from before they existed loads them as confirmed nulls ("not captured"), so jobs confirmed earlier
+# stay fully confirmed. That is why work_mode has no sentinel: a stored null must stay null.
+ADDED_FIELDS: tuple[str, ...] = ("start_timing", "pays_fee", "mostly_annotation", "mostly_sales", "work_mode")
 SENTINEL_FIELDS: frozenset[str] = frozenset(_SENTINEL_DEFAULTS)
 
 # The inputs of eligibility's hard-fail codes, plus start_timing. Confirmation asks each of these
@@ -642,6 +650,7 @@ class ExtractedJob(BaseModel):
     pays_fee: Extracted[bool] = Field(default_factory=Extracted)
     mostly_annotation: Extracted[bool] = Field(default_factory=Extracted)
     mostly_sales: Extracted[bool] = Field(default_factory=Extracted)
+    work_mode: Extracted[WorkMode] = Field(default_factory=Extracted)
 
     @model_validator(mode="before")
     @classmethod

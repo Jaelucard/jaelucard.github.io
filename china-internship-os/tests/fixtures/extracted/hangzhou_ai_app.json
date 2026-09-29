@@ -185,5 +185,10 @@
     "value": false,
     "confirmed": false,
     "source_span": null
+  },
+  "work_mode": {
+    "value": "onsite",
+    "confirmed": false,
+    "source_span": "工作地点：杭州市 西湖区"
   }
 }

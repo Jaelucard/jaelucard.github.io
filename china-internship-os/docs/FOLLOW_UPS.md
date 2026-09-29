@@ -192,3 +192,23 @@ rules, with every point where the work departed from the alignment prompt and wh
 - Checkpoint 4: `pays_fee` joins the must-check fields, so `ios confirm`'s 'a' still asks it and the
   review page lists it in the must-check block at the top and needs its tick; nothing else in
   confirmation changed.
+- Checkpoint 5: `work_mode` is in `ADDED_FIELDS` but not in `_SENTINEL_DEFAULTS`, against the
+  prompt's letter. `_added_fields_default_to_not_captured` injects a confirmed null for a missing
+  added field and `_fill_sentinels` then replaces every null of a sentinel field, so a sentinel
+  would make every job confirmed before this change load `work_mode` as a confirmed `not_stated`.
+  The prompt itself requires, twice, that such jobs load it as a confirmed null, and
+  `test_old_extraction_without_the_new_fields_stays_fully_confirmed` asserts exactly that;
+  `start_timing`, which also has a `not_stated` member, is the precedent. Consequences: the review
+  select offers a blank (null) option and eligibility treats null like `not_stated`. To flip it,
+  add `"work_mode": WorkMode.not_stated` to `_SENTINEL_DEFAULTS`, relax the null assertions for
+  `work_mode` in `tests/test_new_fields.py` and drop the blank option from the options assertion in
+  `tests/test_services_review.py::test_work_mode_widget_is_a_select_wired_to_the_fixture` (a
+  sentinel field gets no blank option).
+- Checkpoint 5: the prompt defines remote, hybrid and not_stated; onsite was defined here as
+  "requires working at its office or names a work address with no remote option", which is how the
+  three fixtures (each with a 工作地点 line) are labelled onsite.
+- Checkpoint 5: Jev asks nothing about `work_mode`; the review page shows the field without a note.
+- Checkpoint 5: captures stored before this change and still waiting for review load `work_mode` as
+  a confirmed null too, because the missing key is injected as confirmed; `work_mode` is not a
+  must-check field, so `ios confirm`'s 'a' accepts it and the web review submits it blank. Set it by
+  hand at review, or re-capture the lead, if remote-only wording matters for such a job.

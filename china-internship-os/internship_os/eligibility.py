@@ -22,6 +22,7 @@ from internship_os.schemas import (
     SkillEvidenceSet,
     UnconfirmedField,
     UserFacts,
+    WorkMode,
 )
 
 
@@ -54,6 +55,7 @@ DECISION_FIELDS = [
     "mostly_annotation",
     "mostly_sales",
     "salary_text",
+    "work_mode",
 ]
 
 HARD_FAIL_CODES = frozenset(
@@ -373,6 +375,9 @@ def run_eligibility(
     unpaid = UNPAID_PATTERN.search(salary) if salary else None
     if unpaid:
         reasons.append(Reason("UNPAID", "salary_text", f"matched '{unpaid.group(0)}' in: {salary}"))
+
+    if v["work_mode"] == WorkMode.remote:
+        reasons.append(Reason("REMOTE_ONLY", "work_mode", "work_mode is remote"))
 
     if v["internship_type"] == InternshipType.summer:
         reasons.append(
