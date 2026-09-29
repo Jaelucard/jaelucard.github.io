@@ -48,6 +48,9 @@ USER_AGENT = (
 FETCH_TIMEOUT_SECONDS = 10.0
 MAX_REDIRECTS = 5
 MIN_USEFUL_CHARS = 300
+# A login marker on a page at least this long that reads as a JD is a link in the page chrome
+# (实习僧 headers, YES's "Please log in to apply"), not a wall in front of the text.
+LOGIN_WALL_MAX_CHARS = 800
 PASTE_INSTRUCTION = "Paste the job description text instead: ios capture --paste --source <channel>"
 INITIAL_NEXT_ACTION = "confirm extraction"
 POST_CONFIRM_NEXT_ACTION = "assess fit"
@@ -166,7 +169,9 @@ def fetch_url_text(url: str) -> str:
     text = text.strip()
     if not text:
         raise CaptureNeedsPaste("no readable text could be extracted from the page")
-    if looks_like_login_wall(text):
+    if looks_like_login_wall(text) and (
+        len(text) < LOGIN_WALL_MAX_CHARS or not looks_like_job_description(text)
+    ):
         raise CaptureNeedsPaste("the page appears to require login")
     if len(text) < MIN_USEFUL_CHARS:
         raise CaptureNeedsPaste(

@@ -99,6 +99,11 @@ def load_extracted_json(name: str) -> str:
     return (FIXTURES_DIR / "extracted" / f"{name}.json").read_text(encoding="utf-8")
 
 
+def load_html(name: str) -> str:
+    """A page saved under tests/fixtures/html as ``response.text`` of the tool's own GET."""
+    return (FIXTURES_DIR / "html" / f"{name}.html").read_text(encoding="utf-8")
+
+
 def load_extracted(name: str, *, confirmed: bool = False) -> ExtractedJob:
     data = json.loads(load_extracted_json(name))
     if confirmed:

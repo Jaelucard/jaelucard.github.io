@@ -22,7 +22,7 @@ from internship_os.cli import app
 from internship_os.models import Job
 from internship_os.pipeline import finalize_confirmation
 from internship_os.schemas import ALWAYS_CONFIRM_FIELDS, ExtractedJob, force_unconfirmed
-from tests.conftest import load_extracted, load_extracted_json, load_jd
+from tests.conftest import load_extracted, load_extracted_json, load_html, load_jd
 
 
 def test_extracted_fields_default_unconfirmed(capture_fixture, session):
@@ -373,3 +373,58 @@ def test_cli_capture_reports_a_single_answer_in_the_singular(project_root, engin
     jd.write_text(load_jd("hangzhou_ai_app"), encoding="utf-8")
     result = CliRunner().invoke(app, ["capture", "--text-file", str(jd), "--source", "boss"])
     assert "Jev (jev-test): 1 answer stored" in result.output
+
+
+# --------------------------------------------------------------------------------------
+# URL capture: pages that link to login but hold a full JD, and pages that really need login
+# --------------------------------------------------------------------------------------
+
+
+def _serve(monkeypatch, body: str) -> None:
+    """Make the one GET in fetch_url_text answer 200 with ``body`` (same fake as the network test)."""
+
+    def fake_get(url, **kwargs):
+        return httpx.Response(200, request=httpx.Request("GET", url), text=body)
+
+    monkeypatch.setattr(capture_mod.httpx, "get", fake_get)
+
+
+def test_url_capture_accepts_yes_posting_page(monkeypatch, session, config, today, fake_llm):
+    # The saved YES posting ends with "Please log in to apply" (a LOGIN_WALL_MARKERS hit) yet holds
+    # the whole JD: 1730 extracted characters and the JD markers "intern" and "requirement", which
+    # is the minimum looks_like_job_description accepts (numbers from trafilatura 2.2.0, the version
+    # installed when the fixture was saved; a different version could change them).
+    _serve(monkeypatch, load_html("yes_posting"))
+    url = "https://yes.businesschina.org.sg/internship/artificial-intelligence-intern"
+    job = capture(None, url, "yes_portal", session=session, config=config, today=today)
+    assert job.id is not None and job.source_url == url
+    assert "RMB225 per day" in job.raw_text and "no less than six months" in job.raw_text
+    assert "Please log in to apply" in job.raw_text  # the login link is text on the page, not a wall
+    assert "<html" not in job.raw_text.lower()
+    assert len(job.raw_text) >= capture_mod.LOGIN_WALL_MAX_CHARS
+
+
+def test_url_capture_rejects_short_login_page(monkeypatch, session, config, today, fake_llm):
+    _serve(monkeypatch, "<html><body><p>请登录后查看</p></body></html>")
+    with pytest.raises(CaptureNeedsPaste) as excinfo:
+        capture(None, "https://example.com/j", "boss", session=session, config=config, today=today)
+    assert excinfo.value.reason == "the page appears to require login"
+    assert session.scalar(select(func.count()).select_from(Job)) == 0
+
+
+def test_url_capture_rejects_a_short_jd_teaser_behind_a_login_link(monkeypatch, session, config, today, fake_llm):
+    # Reads as a JD (实习, 岗位, 职责...) but is under LOGIN_WALL_MAX_CHARS: a teaser, still a wall.
+    body = "<html><body><p>登录/注册</p><p>" + "AI应用开发实习生 岗位职责：参与大模型应用开发。任职要求：熟悉Python。" * 12 + "</p></body></html>"
+    _serve(monkeypatch, body)
+    with pytest.raises(CaptureNeedsPaste) as excinfo:
+        capture(None, "https://example.com/j", "boss", session=session, config=config, today=today)
+    assert excinfo.value.reason == "the page appears to require login"
+
+
+def test_url_capture_rejects_a_long_login_page_that_is_not_a_jd(monkeypatch, session, config, today, fake_llm):
+    # Over LOGIN_WALL_MAX_CHARS but without JD wording: length alone does not make it a JD.
+    body = "<html><body><p>" + "请先登录，然后可以查看更多内容。本站提供各类信息服务。" * 40 + "</p></body></html>"
+    _serve(monkeypatch, body)
+    with pytest.raises(CaptureNeedsPaste) as excinfo:
+        capture(None, "https://example.com/j", "boss", session=session, config=config, today=today)
+    assert excinfo.value.reason == "the page appears to require login"

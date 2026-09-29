@@ -109,3 +109,39 @@ Ideas and deviations recorded during Phase 1. Nothing here is implemented in Pha
 - Separate fixes made alongside: EV_MINDEF_DB now refuses Chinese numerals and number words in
   bullets and message statements; "X届及以后" no longer hard-fails later cohorts and "X届优先" is a
   soft flag; summer programmes get the soft SUMMER_PROGRAMME_TIMING flag.
+
+## Recorded for the lead scan alignment
+
+Changes made so that leads from the scheduled scan (`ios capture --url`) are judged by the scan's
+rules, with every point where the work departed from the alignment prompt and why.
+
+- Checkpoint 1: the 实习僧 detail page (`https://www.shixiseng.com/intern/inn_qa5talgymf0o`) could
+  not be downloaded from this machine: the host times out at the TCP/TLS handshake for both httpx
+  and curl, while `yes.businesschina.org.sg` answers in two seconds. `tests/fixtures/html/
+  shixiseng_detail.html`, `test_url_capture_accepts_shixiseng_detail_page` and the font-hidden text
+  check wait for a copy saved from the browser (Save Page As, "Webpage, HTML Only", logged out).
+- Checkpoint 1: trafilatura drops private-use characters (U+E000 to U+F8FF) during extraction; a
+  JD whose digits are such glyphs comes out with the digits missing, not with the glyphs. The
+  prompt's check ("3 or more private-use characters in the extracted text") would therefore never
+  fire. When the check is added it must count the characters in the raw page text
+  (`response.text`) before extraction.
+- Checkpoint 1: a login marker now refuses the page only when the extracted text is under
+  `LOGIN_WALL_MAX_CHARS` (800) or does not read as a JD. The YES fixture passes
+  `looks_like_job_description` with exactly two markers (`intern`, `requirement`), the minimum, so
+  a YES posting without "requirement"/"qualification"/"responsibilities" wording would still be
+  refused with the login reason. Extend `JD_MARKERS` (for example `per day`, `internship period`)
+  if that happens.
+- Checkpoint 1: with a login marker present, the JD test is the ordinary
+  `looks_like_job_description` (any two `JD_MARKERS` substrings). On 实习僧 the site name contains
+  实习 and the navigation contains 职位/招聘, so a login interstitial whose extracted chrome reaches
+  800 characters would be forwarded to extraction rather than refused (reviewer's example: 80 x
+  "请登录后查看职位详情。招聘"). Nothing behind the wall is fetched and the user still reviews the
+  extraction, so the effect is a junk capture, not a scrape. Re-check with the saved 实习僧 page; if
+  needed, require a body marker (职责, 任职, 要求, responsibilities, requirement, qualification) when a
+  login marker is present.
+- Checkpoint 1: committed as "capture: accept full JDs that link to login" instead of the prompt's
+  message, because the font-hidden half is not shipped. `tests/fixtures/html/yes_posting.html` is
+  the public posting saved verbatim; the repository is public, so the page is published with it (it
+  holds no contact details or keys).
+- Pushes: the prompt says "Do not push"; the user asked in the chat to push each checkpoint, so
+  every checkpoint commit is pushed to `origin` as it lands.
