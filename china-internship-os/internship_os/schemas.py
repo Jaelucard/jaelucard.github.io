@@ -244,6 +244,7 @@ class ExchangeFacts(StrictModel):
 
 class InternshipFacts(StrictModel):
     intended_start: _lax(date)
+    latest_end: _lax(date | None) = None  # the internship must end by this date; null = no limit
     min_months: int = Field(ge=1)
     max_months: int = Field(ge=1)
     host_type_preference: list[_lax(HostType)] = Field(min_length=1)
@@ -251,9 +252,11 @@ class InternshipFacts(StrictModel):
     offer_deadline_personal: _lax(date)
 
     @model_validator(mode="after")
-    def _months_ordered(self) -> InternshipFacts:
+    def _ranges_ordered(self) -> InternshipFacts:
         if self.min_months > self.max_months:
             raise ValueError("min_months must not exceed max_months")
+        if self.latest_end is not None and self.latest_end <= self.intended_start:
+            raise ValueError("latest_end must be after intended_start")
         return self
 
 

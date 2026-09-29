@@ -145,3 +145,23 @@ rules, with every point where the work departed from the alignment prompt and wh
   holds no contact details or keys).
 - Pushes: the prompt says "Do not push"; the user asked in the chat to push each checkpoint, so
   every checkpoint commit is pushed to `origin` as it lands.
+- Checkpoint 2: the posting-dates check adds the JD's `duration_min_months` to the JD start (or to
+  `intended_start`), exactly as the prompt says. When the JD states no minimum only the start is
+  checked: a start after `latest_end` is AT_RISK, a start in time adds nothing. `add_months(start,
+  n)` is the first day after an n-month stint (1 March + 6 months is 1 September), so a stint whose
+  last working day is 31 August is AT_RISK against `latest_end` 2027-08-31, as the prompt's own
+  example requires. Using the larger of the JD minimum and `SUTD_MIN_DURATION` (read through
+  `programme_interval`) would catch more: a JD of 3-6 months with a confirmed start of 2027-05-15 and `latest_end` 2027-08-31
+  is LIKELY under the prompt's rule, although the shortest internship the user may do (4 months)
+  ends 2027-09-15. The one-line change is `add_months(anchor, max(dmin or lo, lo))`.
+- Checkpoint 2: `latest_end` is evaluated only after the earlier returns in `duration_and_dates`
+  keep their statuses (a JD start before `intended_start`, a JD with no duration, a duration
+  outside the programme interval). The agreed-dates branch checks it after the interval and the
+  early-start checks, before CONFIRMED.
+- Checkpoint 2: only the programme module reads `latest_end`. Drafts do not show it to the model
+  (`drafts._user_facts_json` lists the keys the prompts see), although a statement citing
+  `user_facts.internship.latest_end` passes `validate_statements` because the key exists on the
+  model, as for every other user_facts key; the timeline anchor ignores it, so the timeline has no
+  end bound.
+- Checkpoint 2: the config-validation test sits in `tests/test_programme.py` because the prompt
+  lists it there; `tests/test_config.py` would be its natural home.

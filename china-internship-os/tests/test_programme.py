@@ -9,7 +9,7 @@ from internship_os.pipeline import (
     set_agreed_dates,
     transition,
 )
-from internship_os.programme import constraint_warnings, run_programme, worst
+from internship_os.programme import add_months, constraint_warnings, duration_and_dates, run_programme, worst
 
 
 def dims_of(job, config, today):
@@ -246,3 +246,106 @@ def test_an_asap_posting_that_is_ineligible_gets_no_next_action(make_confirmed_j
     job = make_confirmed_job("shanghai_llm_algorithm", run=False, start_timing="asap")  # master required
     finalize_confirmation(session, job, ExtractedJob.model_validate(job.extracted), job.company, [], config, today=today)
     assert job.status == "INELIGIBLE" and job.next_action is None
+
+
+# --------------------------------------------------------------------------------------
+# user_facts.internship.latest_end: the internship must end by this date
+# --------------------------------------------------------------------------------------
+
+
+def _facts(config, *, intended_start=date(2027, 2, 15), latest_end=date(2027, 8, 31)):
+    """The test config with the personal dates set explicitly (the example file has no latest_end)."""
+    facts = config.user_facts.model_copy(deep=True)
+    facts.internship.intended_start = intended_start
+    facts.internship.latest_end = latest_end
+    return facts
+
+
+def test_add_months_clamps_to_the_last_day_of_the_target_month():
+    assert add_months(date(2027, 1, 31), 1) == date(2027, 2, 28)  # non-leap year
+    assert add_months(date(2028, 1, 31), 1) == date(2028, 2, 29)  # leap year
+    assert add_months(date(2027, 2, 15), 6) == date(2027, 8, 15)
+    assert add_months(date(2027, 12, 15), 3) == date(2028, 3, 15)  # year rollover
+    assert add_months(date(2027, 3, 1), 6) == date(2027, 9, 1)
+
+
+def test_agreed_dates_ending_after_latest_end_are_at_risk(make_confirmed_job, config, today):
+    job = make_confirmed_job("hangzhou_ai_app", yes_status="willing")
+    job.agreed_start_date, job.agreed_duration_months = date(2027, 3, 1), 6  # ends 2027-09-01
+    dd = duration_and_dates(job, config.constraints, _facts(config))
+    assert dd["status"] == "AT_RISK"
+    assert "2027-09-01" in dd["note"] and "2027-08-31" in dd["note"] and "latest_end" in dd["note"]
+    dims, _ = run_programme(job, job.company, config.constraints, _facts(config), today)
+    assert dims["DURATION_AND_DATES"]["status"] == "AT_RISK"
+    # The same agreement with latest_end unset behaves as before this check existed.
+    assert duration_and_dates(job, config.constraints, _facts(config, latest_end=None))["status"] == "CONFIRMED"
+
+
+def test_agreed_dates_ending_by_latest_end_are_confirmed(make_confirmed_job, config):
+    job = make_confirmed_job("hangzhou_ai_app", yes_status="willing")
+    job.agreed_start_date, job.agreed_duration_months = date(2027, 2, 15), 6  # ends 2027-08-15
+    assert duration_and_dates(job, config.constraints, _facts(config))["status"] == "CONFIRMED"
+    # Ending on latest_end itself is not "after" it.
+    job.agreed_start_date = date(2027, 3, 1)
+    on_the_day = _facts(config, latest_end=date(2027, 9, 1))
+    assert duration_and_dates(job, config.constraints, on_the_day)["status"] == "CONFIRMED"
+
+
+def test_posting_start_plus_minimum_after_latest_end_is_at_risk(make_confirmed_job, config):
+    job = make_confirmed_job(
+        "hangzhou_ai_app", yes_status="willing", start_date="2027-04-01", duration_min_months=5, duration_max_months=6
+    )
+    dd = duration_and_dates(job, config.constraints, _facts(config))  # 2027-04-01 + 5 = 2027-09-01
+    assert dd["status"] == "AT_RISK"
+    assert "2027-09-01" in dd["note"] and "latest_end" in dd["note"] and "negotiable" in dd["note"]
+    # latest_end unset: the existing LIKELY outcome is unchanged.
+    assert duration_and_dates(job, config.constraints, _facts(config, latest_end=None))["status"] == "LIKELY"
+    # Ending on latest_end itself is not "after" it.
+    assert duration_and_dates(job, config.constraints, _facts(config, latest_end=date(2027, 9, 1)))["status"] == "LIKELY"
+
+
+def test_posting_check_uses_the_minimum_duration_not_the_maximum(make_confirmed_job, config):
+    job = make_confirmed_job("hangzhou_ai_app", yes_status="willing", start_date="2027-04-01")  # fixture: 4-6 months
+    # 2027-04-01 + 4 = 2027-08-01 fits; the maximum (2027-10-01) would not.
+    assert duration_and_dates(job, config.constraints, _facts(config))["status"] == "LIKELY"
+
+
+def test_posting_start_after_latest_end_is_at_risk_even_without_a_minimum(make_confirmed_job, config):
+    job = make_confirmed_job(
+        "hangzhou_ai_app", yes_status="willing", start_date="2027-09-15", duration_min_months=None, duration_max_months=6
+    )
+    dd = duration_and_dates(job, config.constraints, _facts(config))
+    assert dd["status"] == "AT_RISK" and "2027-09-15" in dd["note"] and "latest_end" in dd["note"]
+    # With no minimum and a start in time, nothing is added: the length is unknown.
+    early = make_confirmed_job(
+        "hangzhou_ai_app", yes_status="willing", start_date="2027-07-01", duration_min_months=None, duration_max_months=6
+    )
+    assert duration_and_dates(early, config.constraints, _facts(config))["status"] == "LIKELY"
+
+
+def test_posting_without_a_start_is_anchored_on_intended_start(make_confirmed_job, config):
+    job = make_confirmed_job(
+        "hangzhou_ai_app", yes_status="willing", start_date=None, duration_min_months=6, duration_max_months=None
+    )
+    assert duration_and_dates(job, config.constraints, _facts(config))["status"] == "LIKELY"  # 2027-02-15 + 6 = 2027-08-15
+    late = duration_and_dates(job, config.constraints, _facts(config, intended_start=date(2027, 3, 15)))  # ends 2027-09-15
+    assert late["status"] == "AT_RISK" and "intended start 2027-03-15" in late["note"]
+
+
+def test_latest_end_before_intended_start_is_a_config_error(project_root):
+    from internship_os.config import ConfigError, load_config
+
+    with open(project_root / "n.log", "w") as fh:
+        load_config(project_root, notice_stream=fh)  # creates user_facts.yaml from the example
+    uf = project_root / "config" / "user_facts.yaml"
+    uf.write_text(uf.read_text(encoding="utf-8").replace("latest_end: null", "latest_end: 2027-01-31"), encoding="utf-8")
+    with open(project_root / "n.log", "w") as fh, pytest.raises(ConfigError) as excinfo:
+        load_config(project_root, notice_stream=fh)
+    (problem,) = excinfo.value.problems
+    assert problem.file.endswith("user_facts.yaml") and problem.path == "internship"
+    assert "latest_end" in problem.problem and "intended_start" in problem.problem
+    assert "key:     internship" in excinfo.value.format()
+
+
+def test_example_config_leaves_latest_end_unset(config):
+    assert config.user_facts.internship.latest_end is None

@@ -6,6 +6,7 @@ All programme values (durations, lead times, eligibility rules) are read from
 
 from __future__ import annotations
 
+import calendar
 from datetime import date
 from typing import Any
 
@@ -74,6 +75,13 @@ def _apply_stale(status: str, note: str, constraints: list[ProgrammeConstraint],
             note = f"{note} Downgraded {status} -> {new_status}: verification date past for {', '.join(stale)}."
             status = new_status
     return dim(status, note)
+
+
+def add_months(d: date, n: int) -> date:
+    """``d`` plus ``n`` calendar months, the day clamped to the target month's last day."""
+    index = d.month - 1 + n
+    year, month = d.year + index // 12, index % 12 + 1
+    return date(year, month, min(d.day, calendar.monthrange(year, month)[1]))
 
 
 def programme_interval(constraints: ProgrammeConstraints) -> tuple[int, int]:
@@ -179,6 +187,7 @@ def sutd_approval(job: Job, constraints: ProgrammeConstraints, today: date) -> D
 def duration_and_dates(job: Job, constraints: ProgrammeConstraints, user_facts: UserFacts) -> Dimension:
     lo, hi = programme_interval(constraints)
     intended = user_facts.internship.intended_start
+    latest_end = user_facts.internship.latest_end
 
     if job.agreed_start_date is not None and job.agreed_duration_months is not None:
         months = job.agreed_duration_months
@@ -194,6 +203,14 @@ def duration_and_dates(job: Job, constraints: ProgrammeConstraints, user_facts: 
                 f"Agreed start {job.agreed_start_date.isoformat()} is before the intended start "
                 f"{intended.isoformat()}.",
             )
+        if latest_end is not None:
+            end = add_months(job.agreed_start_date, months)
+            if end > latest_end:
+                return dim(
+                    ProgrammeStatus.AT_RISK,
+                    f"Agreed start {job.agreed_start_date.isoformat()} for {months} months ends "
+                    f"{end.isoformat()}, after user_facts.internship.latest_end {latest_end.isoformat()}.",
+                )
         return dim(
             ProgrammeStatus.CONFIRMED,
             f"Agreed start {job.agreed_start_date.isoformat()} and duration {months} months "
@@ -237,6 +254,25 @@ def duration_and_dates(job: Job, constraints: ProgrammeConstraints, user_facts: 
             f"JD duration {jd_text} months exceeds the YES maximum of {hi} months "
             f"({YES_MAX}={hi}); the minimum may be negotiable with the employer.",
         )
+    if latest_end is not None:
+        anchor = start if start is not None else intended
+        anchor_name = "JD start" if start is not None else "intended start"
+        if dmin is not None:
+            end = add_months(anchor, dmin)
+            if end > latest_end:
+                return dim(
+                    ProgrammeStatus.AT_RISK,
+                    f"JD duration {jd_text} months from {anchor_name} {anchor.isoformat()} ends "
+                    f"{end.isoformat()}, after user_facts.internship.latest_end {latest_end.isoformat()}; "
+                    "the start or length may be negotiable.",
+                )
+        elif anchor > latest_end:
+            # No minimum to add, but a start after latest_end cannot end in time whatever the length.
+            return dim(
+                ProgrammeStatus.AT_RISK,
+                f"{anchor_name} {anchor.isoformat()} is after user_facts.internship.latest_end "
+                f"{latest_end.isoformat()}; the start or length may be negotiable.",
+            )
     return dim(
         ProgrammeStatus.LIKELY,
         f"JD duration {jd_text} months overlaps the programme interval {lo}-{hi} months"

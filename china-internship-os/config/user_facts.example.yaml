@@ -19,6 +19,7 @@ exchange:
 
 internship:
   intended_start: 2027-03-01
+  latest_end: null              # latest day the internship may end, e.g. 2027-08-31; null = no limit
   min_months: 4
   max_months: 6
   host_type_preference: [startup, subsidiary, large, mnc, unknown]
