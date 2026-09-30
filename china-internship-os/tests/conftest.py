@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from internship_os.config import (
     CITIES_FILE,
     PROGRAMME_CONSTRAINTS_FILE,
-    SKILL_EVIDENCE_FILE,
+    SKILL_EVIDENCE_EXAMPLE_FILE,
     USER_FACTS_EXAMPLE_FILE,
     AppConfig,
     load_config,
@@ -44,7 +44,7 @@ def project_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     for name in (
         USER_FACTS_EXAMPLE_FILE,
         PROGRAMME_CONSTRAINTS_FILE,
-        SKILL_EVIDENCE_FILE,
+        SKILL_EVIDENCE_EXAMPLE_FILE,
         CITIES_FILE,
     ):
         shutil.copyfile(CONFIG_SRC / name, cfg / name)

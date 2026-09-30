@@ -48,8 +48,9 @@ directory unless `IOS_ROOT` is set). On Windows, `ios capture --paste` ends inpu
 Enter on an empty line; on macOS/Linux with Ctrl-D.
 
 `ios init` creates `db.sqlite` in the current directory and, if `config/user_facts.yaml` is absent,
-copies `config/user_facts.example.yaml` to it. An existing `user_facts.yaml` is never overwritten.
-Edit `config/user_facts.yaml` with your own facts; it is gitignored.
+copies `config/user_facts.example.yaml` to it. `config/skill_evidence.yaml` is created from
+`config/skill_evidence.example.yaml` the same way. Existing files are never overwritten. Edit both
+with your own facts; they are gitignored, and the committed examples describe a made-up student.
 
 Both invocations work after `pip install -e .`:
 
@@ -64,7 +65,7 @@ non-zero with `file / key / problem` lines if anything is invalid.
 ## Layout
 
 - `config/` — user facts (personal, gitignored), programme constraints, skill evidence, cities.
-- `docs/phase0/` — Phase 0 design documents. Read-only during Phase 1.
+- `docs/phase0/` — Phase 0 design documents, kept locally and gitignored because they hold personal details.
 - `internship_os/` — the package. `ios` and `python -m internship_os` both run `internship_os.cli:app`.
 - `tests/` — pytest suite. Tests use a temporary SQLite database and never call an LLM or the network.
 - `packs/` — generated application material per job (gitignored).
@@ -169,7 +170,7 @@ The web UI is a local, single-user alternative to the terminal for daily use. It
 
 Fit, quality, SUTD approval, agreed dates, company settings, recompute and drafting stay in the
 terminal; the Job page shows the commands. The Streamlit dashboard (`streamlit run app.py`) was
-replaced by `ios ui`; sections 13 and 15 of `docs/WORKFLOW_GUIDE.pdf` still describe it.
+replaced by `ios ui`; sections 13 and 15 of the local, gitignored `docs/WORKFLOW_GUIDE.pdf` still describe it.
 
 ## Jev decision layer (optional)
 

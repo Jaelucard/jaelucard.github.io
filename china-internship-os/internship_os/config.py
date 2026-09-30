@@ -29,6 +29,7 @@ USER_FACTS_FILE = "user_facts.yaml"
 USER_FACTS_EXAMPLE_FILE = "user_facts.example.yaml"
 PROGRAMME_CONSTRAINTS_FILE = "programme_constraints.yaml"
 SKILL_EVIDENCE_FILE = "skill_evidence.yaml"
+SKILL_EVIDENCE_EXAMPLE_FILE = "skill_evidence.example.yaml"
 CITIES_FILE = "cities.yaml"
 PROMPTS_DIRNAME = "llm_prompts"
 
@@ -108,28 +109,38 @@ def _validate(model: type[T], data: Any, path: Path) -> T:
         raise ConfigError(problems) from exc
 
 
-def ensure_user_facts(cfg_dir: Path) -> bool:
-    """Create ``user_facts.yaml`` from the example when absent. Never overwrites.
+def _ensure_from_example(cfg_dir: Path, filename: str, example_name: str) -> bool:
+    """Create ``filename`` from its example when absent. Never overwrites.
 
     Returns True when a copy was made.
     """
-    target = cfg_dir / USER_FACTS_FILE
+    target = cfg_dir / filename
     if target.exists():
         return False
-    example = cfg_dir / USER_FACTS_EXAMPLE_FILE
+    example = cfg_dir / example_name
     if not example.exists():
         raise ConfigError(
             [
                 ConfigProblem(
                     str(target),
                     "",
-                    f"file not found and {USER_FACTS_EXAMPLE_FILE} is also missing, so it "
+                    f"file not found and {example_name} is also missing, so it "
                     "cannot be created",
                 )
             ]
         )
     shutil.copyfile(example, target)
     return True
+
+
+def ensure_user_facts(cfg_dir: Path) -> bool:
+    """Create ``user_facts.yaml`` from the example when absent. Never overwrites."""
+    return _ensure_from_example(cfg_dir, USER_FACTS_FILE, USER_FACTS_EXAMPLE_FILE)
+
+
+def ensure_skill_evidence(cfg_dir: Path) -> bool:
+    """Create ``skill_evidence.yaml`` from the example when absent. Never overwrites."""
+    return _ensure_from_example(cfg_dir, SKILL_EVIDENCE_FILE, SKILL_EVIDENCE_EXAMPLE_FILE)
 
 
 @dataclass(frozen=True)
@@ -148,8 +159,9 @@ class AppConfig:
 def load_config(root: Path | str | None = None, *, notice_stream=None) -> AppConfig:
     """Load and validate every configuration file.
 
-    If ``config/user_facts.yaml`` is absent it is copied from the example file, one concise
-    notice is printed to ``notice_stream`` (default stderr), and loading continues.
+    If ``config/user_facts.yaml`` or ``config/skill_evidence.yaml`` is absent it is copied from
+    its example file, one concise notice per file is printed to ``notice_stream`` (default
+    stderr), and loading continues.
     Raises :class:`ConfigError` listing every problem found in a file.
     """
     resolved_root = project_root(root)
@@ -157,13 +169,17 @@ def load_config(root: Path | str | None = None, *, notice_stream=None) -> AppCon
     if not cfg_dir.is_dir():
         raise ConfigError([ConfigProblem(str(cfg_dir), "", "config directory not found")])
 
-    if ensure_user_facts(cfg_dir):
-        stream = notice_stream if notice_stream is not None else sys.stderr
-        print(
-            f"Created {cfg_dir / USER_FACTS_FILE} from {USER_FACTS_EXAMPLE_FILE}; "
-            "edit it with your own facts.",
-            file=stream,
-        )
+    stream = notice_stream if notice_stream is not None else sys.stderr
+    for created, filename, example_name in (
+        (ensure_user_facts(cfg_dir), USER_FACTS_FILE, USER_FACTS_EXAMPLE_FILE),
+        (ensure_skill_evidence(cfg_dir), SKILL_EVIDENCE_FILE, SKILL_EVIDENCE_EXAMPLE_FILE),
+    ):
+        if created:
+            print(
+                f"Created {cfg_dir / filename} from {example_name}; "
+                "edit it with your own facts.",
+                file=stream,
+            )
 
     user_facts_path = cfg_dir / USER_FACTS_FILE
     constraints_path = cfg_dir / PROGRAMME_CONSTRAINTS_FILE
