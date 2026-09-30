@@ -1,6 +1,6 @@
 # China Internship OS - working rules
 
-- Phase 0 design docs live in docs/phase0/. ARCHITECTURE_RECOMMENDATION.md is the design authority; the Phase 1 prompt overrides it where they differ.
+- Phase 0 design docs live in docs/phase0/ (local only, gitignored). ARCHITECTURE_RECOMMENDATION.md is the design authority; the Phase 1 prompt overrides it where they differ.
 - Do not edit docs/phase0/ during Phase 1.
 - Programme rules live only in config/programme_constraints.yaml. Never hard-code a programme rule, programme duration, or programme lead-time value.
 - Personal planning buffers may live in user_facts.yaml.

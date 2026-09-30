@@ -1,5 +1,8 @@
 # personal data stays local
 config/user_facts.yaml
+config/skill_evidence.yaml
+docs/phase0/
+docs/WORKFLOW_GUIDE.pdf
 db.sqlite
 db.sqlite-*
 .env*
