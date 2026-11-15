@@ -68,8 +68,9 @@ src/
     contact/
       ContactSection.tsx             Contact text, email and availability
     spotify/
-      SpotifySection.tsx            Broadcast tracker, polling and interaction
+      SpotifySection.tsx            Broadcast tracker and interaction
       playback.ts                    Playback validation and time formatting
+      polling.ts                     Automatic playback checks and page-return refresh
       spotify.css                    Broadcast styling and decorative synth motion
       spotify-logo-white.svg         Spotify attribution graphic
     radio-quotes/

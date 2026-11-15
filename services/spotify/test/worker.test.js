@@ -64,6 +64,31 @@ test('coalesces concurrent requests, caches data and never exposes credentials',
   assert.equal(calls.length, 2);
 });
 
+test('serves cached playback for ten seconds, then fetches a changed track', async (t) => {
+  let now = initialNow;
+  t.mock.method(Date, 'now', () => now);
+  let playbackCalls = 0;
+  mockSpotify(t, { playback: () => {
+    playbackCalls++;
+    return json(playbackCalls === 1 ? track : {
+      ...track,
+      item: { ...track.item, name: 'Next track', external_urls: { spotify: 'https://open.spotify.com/track/next' } },
+    });
+  } });
+  const { session, storage } = makeSession();
+
+  assert.equal((await runSession(session)).track.title, 'Example');
+  now += 9_999;
+  assert.equal((await runSession(session)).track.title, 'Example');
+  assert.equal(playbackCalls, 1, 'the cache prevents early Spotify requests');
+  assert.equal((await storage.get('spotify-session')).nextPollAt, initialNow + 10_000);
+  now++;
+  const next = await runSession(session);
+  assert.equal(next.track.title, 'Next track');
+  assert.equal(next.fetchedAt, new Date(now).toISOString());
+  assert.equal(playbackCalls, 2, 'the changed track is fetched at the deadline');
+});
+
 test('persists replacement refresh token before querying playback', async (t) => {
   t.mock.method(Date, 'now', () => initialNow);
   const { session, storage } = makeSession();
@@ -105,7 +130,7 @@ test('cold restart observes persisted deadline, then refetches with the rotated 
   assert.deepEqual(await runSession(restarted), { status: 'unavailable' }, 'a cold object cannot serve the lost cache');
   assert.equal(calls.length, 2, 'a cold object must not re-poll before the deadline');
   assert.equal((await storage.get('spotify-session')).cache, undefined, 'Spotify content is not persisted');
-  now += 21000;
+  now += 10000;
   assert.equal((await runSession(restarted)).status, 'playing');
   assert.deepEqual(observedTokens, ['refresh-token-private', 'replacement-private']);
   assert.equal(calls.length, 4, 'a new object refreshes once after the deadline');
@@ -146,7 +171,7 @@ test('rate-limited responses respect persisted backoff and never expose the old 
   } });
   const { session, storage } = makeSession();
   assert.equal((await runSession(session)).status, 'playing');
-  now += 21000;
+  now += 10000;
   assert.deepEqual(await runSession(session), { status: 'unavailable' });
   now += 35000;
   assert.deepEqual(await runSession(makeSession(env(), storage).session), { status: 'unavailable' });

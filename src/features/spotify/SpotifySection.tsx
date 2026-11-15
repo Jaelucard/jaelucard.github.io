@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Playback } from './playback';
 import { fetchPlayback, formatTime, isStale } from './playback';
+import { startPlaybackPolling } from './polling';
 import spotifyLogo from './spotify-logo-white.svg';
 import './spotify.css';
 
 const unavailable: Playback = { status: 'unavailable' };
-const pollMs = 30_000;
 const staleMs = 90_000;
 
 function usePlayback() {
@@ -16,31 +16,16 @@ function usePlayback() {
     const endpoint = import.meta.env.VITE_SPOTIFY_STATUS_URL;
     const fallback = import.meta.env.VITE_SPOTIFY_FALLBACK_URL;
     if (!endpoint) return;
-    let stopped = false;
-    let pollTimer: ReturnType<typeof setTimeout>;
-    let controller: AbortController | undefined;
-
-    async function update() {
-      controller = new AbortController();
-      try {
-        const parsed = await fetchPlayback(endpoint, fallback, controller.signal);
-        if (!stopped) {
-          const currentTime = Date.now();
-          setPlayback(parsed ?? unavailable);
-          setNow(currentTime);
-        }
-      } catch {
-        if (!stopped) setPlayback(unavailable);
-      } finally {
-        if (!stopped) pollTimer = setTimeout(update, pollMs);
-      }
-    }
-    void update();
+    const stopPolling = startPlaybackPolling(
+      (signal) => fetchPlayback(endpoint, fallback, signal),
+      (parsed) => {
+        setPlayback(parsed ?? unavailable);
+        setNow(Date.now());
+      },
+    );
     const ticker = setInterval(() => setNow(Date.now()), 1000);
     return () => {
-      stopped = true;
-      controller?.abort();
-      clearTimeout(pollTimer);
+      stopPolling();
       clearInterval(ticker);
     };
   }, []);

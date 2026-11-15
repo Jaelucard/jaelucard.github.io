@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { getCurrentlyPlaying, refreshAccessToken } from './spotify.js';
 
-const CACHE_MS = 20_000;
+const CACHE_MS = 10_000;
 const FAILURE_BACKOFF_MS = 30_000;
 const MAX_BACKOFF_MS = 86_400_000;
 const RECORD_KEY = 'spotify-session';
