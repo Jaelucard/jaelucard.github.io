@@ -1,0 +1,475 @@
+/* ============ RESET & TOKENS ============ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root{
+  --rosso: #E8112D;
+  --rosso-deep: #B50E22;
+  --paper: #F5F2EC;
+  --white: #FFFFFF;
+  --carbon: #141212;
+
+  --line-dark: rgba(20,18,18,.28);
+  --line-soft: rgba(20,18,18,.14);
+  --line-light: rgba(255,255,255,.32);
+
+  --radius-lg: 22px;
+  --radius-md: 14px;
+
+  --font-sans: "Archivo","Helvetica Neue",Arial,sans-serif;
+  --font-mono: "IBM Plex Mono",ui-monospace,monospace;
+
+  --wrap: 1180px;
+  --pad: clamp(20px, 4vw, 48px);
+}
+
+html { scroll-behavior: smooth; }
+
+body{
+  font-family: var(--font-sans);
+  font-weight: 400;
+  background: var(--paper);
+  color: var(--carbon);
+  border-top: 4px solid var(--rosso);
+  line-height: 1.6;
+  overflow-x: clip;   /* .quali-title is 110% wide and would force a sideways scrollbar */
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection{ background: var(--rosso); color: var(--white); }
+
+a{ color: inherit; text-decoration: none; }
+img{ max-width: 100%; display: block; }
+
+:focus-visible{
+  outline: 2px solid var(--rosso);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.wrap{ max-width: var(--wrap); margin: 0 auto; padding-inline: var(--pad); }
+
+/* ============ TYPE ROLES ============ */
+.display{
+  font-weight: 900;
+  font-stretch: 125%;
+  text-transform: uppercase;
+  line-height: .92;
+  letter-spacing: -0.015em;
+}
+
+.eyebrow{
+  font-size: 11px;
+  font-weight: 650;
+  font-stretch: 105%;
+  text-transform: uppercase;
+  letter-spacing: .32em;
+}
+
+.mono{
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+/* ============ NAV ============ */
+.nav{
+  position: fixed; inset: 0 0 auto 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; row-gap: 8px;
+  gap: 16px;
+  padding: 14px var(--pad);
+  transition: background .3s, box-shadow .3s;
+}
+.nav.scrolled{
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 var(--line-soft);
+}
+.nav-brand{ font-size: 13px; font-weight: 800; font-stretch: 120%;
+  text-transform: uppercase; letter-spacing: .22em; }
+.nav-brand em{ font-style: normal; color: var(--rosso); }
+.nav-links{ display: flex; align-items: center; flex-wrap: wrap;
+  justify-content: flex-end; gap: clamp(14px, 2.5vw, 30px); list-style: none; }
+.nav-links a{
+  font-size: 11px; font-weight: 650; text-transform: uppercase;
+  letter-spacing: .18em; padding: 6px 2px;
+  border-bottom: 1px solid transparent;
+  transition: color .2s, border-color .2s;
+}
+.nav-links a:hover{ color: var(--rosso); border-color: var(--rosso); }
+.nav-cta{
+  border: 1px solid var(--carbon); border-radius: 999px;
+  padding: 8px 18px !important;
+  transition: background .2s, color .2s, border-color .2s;
+}
+.nav-cta:hover{ background: var(--rosso); border-color: var(--rosso) !important; color: var(--white) !important; }
+
+/* ============ HERO — POSTER FRAME ============ */
+.hero{
+  min-height: 100svh;
+  display: grid; place-items: center;
+  /* definite track so the poster's min(900px, 100%) resolves against the
+     viewport, not the poster's content width (which overflows on phones) */
+  grid-template-columns: 100%;
+  padding: 120px var(--pad) 72px;
+  position: relative;
+  background:
+    radial-gradient(120% 70% at 50% -10%, rgba(232,17,45,.05), transparent 60%),
+    var(--paper);
+}
+
+.poster{
+  position: relative;
+  container-type: inline-size;
+  width: min(900px, 100%);
+  border: 1px solid var(--line-dark);
+  border-radius: var(--radius-lg);
+  padding: clamp(28px, 5vw, 52px) 0 0;
+  text-align: center;
+}
+.poster-eyebrow{ padding-inline: 24px; text-indent: .32em; }
+
+/* hero title: scales with the frame width so it always fits inside it.
+   Measured: "JARROD" at wght 900 / wdth 125 is 5.47em wide, so
+   15.5cqw makes it span ~85% of the frame with even margins either side.
+   If you change the text, recompute: font-size = 85 / (text width in em). */
+.poster-title{
+  font-size: clamp(44px, 12.5vw, 140px); /* fallback for older browsers */
+  font-size: 15.5cqw;
+  margin: clamp(16px, 3vw, 30px) auto;
+  color: var(--carbon);
+}
+
+.cells{
+  display: grid;
+  /* minmax(0,1fr) so a wide value (HANGZHOU) can't push its column
+     past the poster frame on narrow screens */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--line-dark);
+}
+.cell{
+  padding: 18px 12px 16px;
+  border-right: 1px solid var(--line-dark);
+  display: grid; gap: 4px; justify-items: center;
+  min-width: 0;   /* grid items default to min-width:auto and refuse to shrink */
+}
+.cell:last-child{ border-right: 0; }
+.cell-label{ font-size: 10px; font-weight: 650; letter-spacing: .3em;
+  text-transform: uppercase; text-indent: .3em; opacity: .75; }
+.cell-value{
+  font-weight: 900; font-stretch: 120%;
+  /* 3.7cqw scales with the poster frame: "HANGZHOU" is 7.59em wide, so at
+     the 900px frame it renders 253px inside a 276px cell. A vw-based size
+     overflowed the cell border. */
+  font-size: clamp(18px, 3.7cqw, 34px);
+  max-width: 100%;
+  line-height: 1; text-transform: uppercase;
+}
+/* the ∞ glyph sits at x-height, so scale it up to match the caps/figures;
+   line-height compensates so the cell stays the same height as its siblings */
+.cell-value-inf{ font-size: clamp(24px, 4.9cqw, 45px); line-height: .77; }
+
+/* when the poster frame is narrow, scale the stat strip with it */
+@container (max-width: 620px){
+  /* labels may wrap to 2 lines; 1fr label row keeps the values
+     bottom-aligned across all three cells */
+  .cell{ padding: 14px 8px 12px; grid-template-rows: 1fr auto; align-items: end; }
+  .cell-label{ letter-spacing: .18em; text-indent: .18em; }
+  .cell-value{ font-size: clamp(10px, 3.6cqw, 26px); }
+  .cell-value-inf{ font-size: clamp(14px, 5.1cqw, 34px); }
+}
+
+.poster-desc{
+  border-top: 1px solid var(--line-dark);
+  padding: 22px clamp(24px, 6vw, 64px) 28px;
+  /* keep the hairline full-width but cap the text measure at ~62ch */
+  padding-inline: max(clamp(24px, 6vw, 64px), calc((100% - 62ch) / 2));
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: rgba(20,18,18,.78);
+  text-wrap: balance;
+}
+
+.hero-scroll{
+  position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
+  color: rgba(20,18,18,.55);
+  transition: color .2s;
+}
+.hero-scroll:hover{ color: var(--rosso); }
+
+/* ============ TICKER ============ */
+.ticker{
+  background: var(--rosso); color: var(--white);
+  overflow: hidden; white-space: nowrap;
+  border-block: 1px solid var(--rosso-deep);
+}
+.ticker-track{
+  display: inline-flex; gap: 0;
+  padding: 10px 0;
+  animation: ticker 42s linear infinite;
+}
+.ticker span{
+  font-size: 11px; font-weight: 650; letter-spacing: .3em;
+  text-transform: uppercase; padding-inline: 28px;
+}
+.ticker span::after{ content: "·"; margin-left: 56px; opacity: .7; }
+@keyframes ticker{ to{ transform: translateX(-50%); } }
+
+/* ============ SECTION HEADERS ============ */
+.section{ padding: clamp(72px, 10vw, 128px) 0; }
+.section-head{
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line-dark);
+  padding-bottom: 14px; margin-bottom: 12px;
+}
+.section-index{ color: rgba(20,18,18,.5); }
+.section-title{
+  font-size: clamp(46px, 8vw, 104px);
+  margin: 10px 0 clamp(36px, 5vw, 56px);
+}
+.section-title.red{ color: var(--rosso); }
+
+/* ============ PROJECTS — GP CARDS ============ */
+.gp-grid{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: clamp(20px, 3vw, 34px);
+}
+
+.gp-card{
+  background: var(--white);
+  border: 1px solid var(--rosso);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  transition: transform .35s cubic-bezier(.2,.7,.2,1), box-shadow .35s;
+}
+.gp-card:hover{
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px -22px rgba(181,14,34,.45);
+}
+
+.gp-head{
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center; gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--rosso);
+}
+.gp-meta{ display: grid; line-height: 1.5; }
+.gp-meta span{ font-size: 9px; font-weight: 650; letter-spacing: .28em;
+  text-transform: uppercase; color: var(--rosso); }
+.gp-meta strong{ font-size: 12px; font-weight: 800; font-stretch: 115%;
+  letter-spacing: .1em; text-transform: uppercase; }
+.gp-meta.right{ text-align: right; }
+.gp-title{
+  color: var(--rosso);
+  font-size: clamp(17px, 2vw, 22px);
+  text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 34ch;
+}
+
+.gp-media{
+  aspect-ratio: 4 / 3;
+  margin: 16px;
+  border-radius: 10px;
+  background:
+    linear-gradient(160deg, #E9E4DB 0%, #DDD6CA 55%, #CFC7B9 100%);
+  display: grid; place-items: center;
+  position: relative;
+  color: rgba(20,18,18,.55);
+}
+/* telemetry crosshair ticks in the media corners */
+.gp-media::before, .gp-media::after{
+  content: ""; position: absolute; width: 14px; height: 14px;
+  border-color: rgba(20,18,18,.4); border-style: solid;
+  z-index: 1;   /* keep the ticks above a project screenshot */
+}
+.gp-media::before{ top: 10px; left: 10px; border-width: 1px 0 0 1px; }
+.gp-media::after{ bottom: 10px; right: 10px; border-width: 0 1px 1px 0; }
+/* project screenshot: an in-flow grid item, so place-items centres it in the
+   4:3 box; capped below the box on both axes so the gradient stays visible as
+   a frame and the image sits inside the corner ticks, never cropped */
+.gp-media img{
+  width: auto; height: auto;
+  max-width: 88%; max-height: 88%;
+  object-fit: contain;
+  border-radius: inherit;
+}
+
+/* one-line project description under the media box */
+.gp-note{ padding: 0 18px 14px; font-size: 13px; line-height: 1.6; color: rgba(20,18,18,.72); }
+
+/* typographic cover for cards that have no screenshot yet */
+.gp-cover{
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  background: var(--carbon); color: var(--paper);
+  border-radius: inherit;
+}
+.gp-cover .display{
+  font-size: clamp(22px, 3vw, 38px); line-height: .95;
+  text-align: center; padding: 0 28px; text-wrap: balance;
+}
+.gp-cover .mono{ position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; color: rgba(245,242,236,.55); }
+.gp-media:has(.gp-cover)::before, .gp-media:has(.gp-cover)::after{ border-color: rgba(245,242,236,.45); }
+
+.gp-cells{
+  margin-top: auto;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--rosso);
+}
+.gp-cells .cell{ border-right-color: var(--rosso); padding: 12px 8px 11px;
+  text-align: center; }   /* a wrapped value centres as one block, not per line */
+.gp-cells .cell-label{ color: var(--rosso); opacity: 1; font-size: 9px; }
+.gp-cells .cell-value{ font-size: 13px; font-stretch: 110%; letter-spacing: .02em; }
+.gp-cells a.cell{ transition: background .2s, color .2s; }
+.gp-cells a.cell:hover{ background: var(--rosso); color: var(--white); }
+.gp-cells a.cell:hover .cell-label{ color: var(--white); }
+
+/* fastest lap: one card only, the project with a first-place result */
+.gp-card.fastest, .gp-card.fastest .gp-head, .gp-card.fastest .gp-cells, .gp-card.fastest .gp-cells .cell{ border-color: #8A2BE2; }
+.gp-card.fastest .gp-title, .gp-card.fastest .gp-meta span, .gp-card.fastest .gp-cells .cell-label{ color: #8A2BE2; }
+.gp-card.fastest .gp-cells a.cell:hover{ background: #8A2BE2; }
+.gp-card.fastest:hover{ box-shadow: 0 18px 40px -22px rgba(138,43,226,.45); }
+
+/* ghost card — duplicate .gp-card and delete this one when adding projects */
+.gp-card.ghost{
+  border: 1px dashed var(--line-dark);
+  background: transparent;
+  min-height: 320px;
+  display: grid; place-items: center;
+  color: rgba(20,18,18,.5);
+}
+.gp-card.ghost:hover{ box-shadow: none; transform: none; border-color: var(--rosso); color: var(--rosso); }
+
+/* ============ QUALI — DARK ABOUT / SKILLS ============ */
+.quali{ background: var(--carbon); color: var(--white); }
+.quali .section-head{ border-color: var(--line-light); }
+.quali .section-index{ color: rgba(255,255,255,.5); }
+
+.quali-poster{
+  border: 1px solid var(--line-light);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  padding: clamp(26px, 4vw, 40px) 0;
+  margin-bottom: clamp(40px, 6vw, 64px);
+  overflow: visible;
+}
+.quali-poster .eyebrow{ text-indent: .32em; opacity: .85; }
+.quali-title{
+  font-size: clamp(56px, 11vw, 148px);
+  width: 110%; margin: 18px 0 18px -5%;
+}
+.quali-title em{ font-style: normal; color: var(--rosso); }
+
+.quali-cols{
+  display: grid; grid-template-columns: 1fr 1.2fr;
+  gap: clamp(28px, 5vw, 64px);
+}
+.quali-cols h3{ margin-bottom: 14px; color: rgba(255,255,255,.85); }
+.quali-cols p{
+  color: rgba(255,255,255,.72); font-size: 14.5px; line-height: 1.8;
+}
+.quali-cols p + p{ margin-top: 12px; }
+
+.skill-group{ border-top: 1px solid var(--line-light); padding: 16px 0 20px; }
+.skill-group:last-child{ border-bottom: 1px solid var(--line-light); }
+.skill-group h4{ font-size: 10px; font-weight: 650; letter-spacing: .3em;
+  text-transform: uppercase; color: var(--rosso); margin-bottom: 12px; }
+.chips{ display: flex; flex-wrap: wrap; gap: 8px; }
+.chip{
+  border: 1px solid var(--line-light);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 11px; font-weight: 600; letter-spacing: .12em;
+  text-transform: uppercase;
+  transition: border-color .2s, background .2s;
+}
+.chip:hover{ border-color: var(--rosso); background: rgba(232,17,45,.12); }
+
+/* ============ CLASSIFICATION — EXPERIENCE ============ */
+.rows{ border-top: 1px solid var(--line-dark); }
+.row{
+  display: grid;
+  grid-template-columns: 84px 1.4fr 1fr auto;
+  align-items: center; gap: clamp(12px, 2vw, 28px);
+  padding: 22px 4px;
+  border-bottom: 1px solid var(--line-dark);
+  transition: background .2s, padding-left .3s;
+}
+.row:hover{ background: var(--white); padding-left: 14px; }
+.row-pos{
+  font-weight: 900; font-stretch: 120%; font-size: 26px;
+  color: var(--rosso); text-transform: uppercase; line-height: 1;
+}
+.row-entry strong{ display: block; font-weight: 800; font-stretch: 110%;
+  font-size: 14px; letter-spacing: .06em; text-transform: uppercase; }
+.row-entry span{ font-size: 12.5px; color: rgba(20,18,18,.65); }
+.row-note{ font-size: 13px; color: rgba(20,18,18,.7); }
+.row-time{ color: rgba(20,18,18,.6); }
+
+/* ============ CONTACT — PIT WALL ============ */
+.contact{ background: var(--rosso); color: var(--white); text-align: center; }
+.contact .eyebrow{ text-indent: .32em; opacity: .9; }
+.contact-title{
+  font-size: clamp(52px, 11vw, 150px);
+  margin: 18px auto 28px;
+}
+.contact-btn{
+  display: inline-block;
+  background: var(--white); color: var(--rosso);
+  border-radius: 999px;
+  padding: 14px 34px;
+  font-size: 12px; font-weight: 800; letter-spacing: .2em;
+  text-transform: uppercase;
+  transition: transform .25s, box-shadow .25s;
+}
+.contact-btn:hover{ transform: translateY(-2px);
+  box-shadow: 0 14px 30px -14px rgba(0,0,0,.45); }
+.contact-mail{ display: block; margin-top: 20px; color: rgba(255,255,255,.85); }
+
+/* ============ FOOTER ============ */
+.footer{
+  background: var(--paper);
+  border-top: 1px solid var(--line-dark);
+  padding: 28px 0 34px;
+}
+.footer-grid{
+  display: flex; flex-wrap: wrap; gap: 16px 32px;
+  align-items: center; justify-content: space-between;
+}
+.footer .mono{ color: rgba(20,18,18,.55); }
+.footer-links{ display: flex; gap: 20px; list-style: none; }
+.footer-links a{ font-size: 11px; font-weight: 650; letter-spacing: .18em;
+  text-transform: uppercase; }
+.footer-links a:hover{ color: var(--rosso); }
+
+/* ============ REVEALS & MOTION ============ */
+.js-reveal .reveal{ opacity: 0; transform: translateY(26px);
+  transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+.js-reveal .reveal.in{ opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce){
+  html{ scroll-behavior: auto; }
+  *, *::before, *::after{ animation: none !important; transition: none !important; }
+  .js-reveal .reveal{ opacity: 1; transform: none; }
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 860px){
+  .gp-grid{ grid-template-columns: 1fr; }
+  .quali-cols{ grid-template-columns: 1fr; }
+  .row{ grid-template-columns: 56px 1fr; grid-auto-rows: auto; row-gap: 6px; }
+  .row-pos{ font-size: 20px; grid-row: span 2; align-self: start; }
+  .row-time{ grid-column: 2; }
+  .row-note{ grid-column: 2; }
+}
+@media (max-width: 640px){
+  .gp-cells{ grid-template-columns: repeat(2, 1fr); }
+  .gp-cells .cell:nth-child(2){ border-right: 0; }
+  .gp-cells .cell:nth-child(-n+2){ border-bottom: 1px solid var(--rosso); }
+}
