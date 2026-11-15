@@ -66,3 +66,65 @@ export function formatTime(value: number): string {
 export function isStale(playback: Playback, now: number, staleMs: number): boolean {
   return playback.fetchedAt !== undefined && now - Date.parse(playback.fetchedAt) > staleMs;
 }
+
+type AttemptResult = { kind: 'success'; data: Playback | null } | { kind: 'failed' } | { kind: 'cancelled' };
+
+/** Fetch one endpoint without leaving an unbounded request after a timeout or unmount. */
+async function attemptPlayback(url: string, signal: AbortSignal, fetchImpl: typeof fetch, timeoutMs: number): Promise<AttemptResult> {
+  if (signal.aborted) return { kind: 'cancelled' };
+  const controller = new AbortController();
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  let rejectInterrupted: ((reason: Error) => void) | undefined;
+  const interrupted = new Promise<never>((_, reject) => { rejectInterrupted = reject; });
+  const onAbort = () => {
+    controller.abort();
+    rejectInterrupted?.(new Error('Request cancelled'));
+  };
+  signal.addEventListener('abort', onAbort, { once: true });
+  timeout = setTimeout(() => {
+    controller.abort();
+    rejectInterrupted?.(new Error('Request timed out'));
+  }, timeoutMs);
+
+  try {
+    const response = await Promise.race([
+      fetchImpl(url, { signal: controller.signal, cache: 'no-store' }),
+      interrupted,
+    ]);
+    if (!response.ok) return { kind: 'failed' };
+    let body: unknown;
+    try {
+      body = await Promise.race([response.json(), interrupted]);
+    } catch {
+      // A successfully returned but malformed document is not a reason to
+      // try another origin. A timeout or unmount is treated separately.
+      if (signal.aborted) return { kind: 'cancelled' };
+      return controller.signal.aborted ? { kind: 'failed' } : { kind: 'success', data: null };
+    }
+    if (signal.aborted) return { kind: 'cancelled' };
+    return { kind: 'success', data: parsePlayback(body) };
+  } catch {
+    return signal.aborted ? { kind: 'cancelled' } : { kind: 'failed' };
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+    signal.removeEventListener('abort', onAbort);
+  }
+}
+
+function sameEndpoint(first: string, second: string): boolean {
+  try { return new URL(first).href === new URL(second).href; } catch { return first === second; }
+}
+
+/** Use the backup only if the primary cannot be reached or returns an HTTP error. */
+export async function fetchPlayback(
+  primary: string,
+  fallback: string | undefined,
+  signal: AbortSignal,
+  { fetchImpl = fetch, timeoutMs = 8_000 }: { fetchImpl?: typeof fetch; timeoutMs?: number } = {},
+): Promise<Playback | null> {
+  const first = await attemptPlayback(primary, signal, fetchImpl, timeoutMs);
+  if (first.kind === 'success') return first.data;
+  if (first.kind === 'cancelled' || signal.aborted || !fallback || sameEndpoint(primary, fallback)) return null;
+  const second = await attemptPlayback(fallback, signal, fetchImpl, timeoutMs);
+  return second.kind === 'success' ? second.data : null;
+}

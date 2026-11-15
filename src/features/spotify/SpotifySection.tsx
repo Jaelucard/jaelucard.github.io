@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Playback } from './playback';
-import { formatTime, isStale, parsePlayback } from './playback';
+import { fetchPlayback, formatTime, isStale } from './playback';
 import spotifyLogo from './spotify-logo-white.svg';
 import './spotify.css';
 
@@ -14,6 +14,7 @@ function usePlayback() {
 
   useEffect(() => {
     const endpoint = import.meta.env.VITE_SPOTIFY_STATUS_URL;
+    const fallback = import.meta.env.VITE_SPOTIFY_FALLBACK_URL;
     if (!endpoint) return;
     let stopped = false;
     let pollTimer: ReturnType<typeof setTimeout>;
@@ -21,21 +22,16 @@ function usePlayback() {
 
     async function update() {
       controller = new AbortController();
-      const timeout = setTimeout(() => controller?.abort(), 10_000);
       try {
-        const response = await fetch(endpoint, { signal: controller.signal, cache: 'no-store' });
-        if (!response.ok) throw new Error('Playback unavailable');
-        const data: unknown = await response.json();
+        const parsed = await fetchPlayback(endpoint, fallback, controller.signal);
         if (!stopped) {
           const currentTime = Date.now();
-          const parsed = parsePlayback(data, currentTime);
           setPlayback(parsed ?? unavailable);
           setNow(currentTime);
         }
       } catch {
         if (!stopped) setPlayback(unavailable);
       } finally {
-        clearTimeout(timeout);
         if (!stopped) pollTimer = setTimeout(update, pollMs);
       }
     }
