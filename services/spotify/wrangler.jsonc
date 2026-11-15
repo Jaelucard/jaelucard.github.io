@@ -1,0 +1,31 @@
+{
+  "name": "portfolio-spotify",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-11-01",
+  "vars": {
+    "SITE_ORIGIN": "https://jarrodlow.com"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SPOTIFY_SESSION",
+        "class_name": "SpotifySession"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "SpotifySession"
+      ]
+    }
+  ],
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "radio.jarrodlow.com",
+      "custom_domain": true
+    }
+  ]
+}
