@@ -169,6 +169,13 @@ img{ max-width: 100%; display: block; }
 /* the ∞ glyph sits at x-height, so scale it up to match the caps/figures;
    line-height compensates so the cell stays the same height as its siblings */
 .cell-value-inf{ font-size: clamp(24px, 4.9cqw, 45px); line-height: .77; }
+.radio-quote-cell{ align-content: center; }
+.radio-quote{
+  font-size: clamp(12px, 2.6cqw, 23px);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.radio-quote-case-sensitive{ text-transform: none; }
 
 /* when the poster frame is narrow, scale the stat strip with it */
 @container (max-width: 620px){
@@ -178,6 +185,8 @@ img{ max-width: 100%; display: block; }
   .cell-label{ letter-spacing: .18em; text-indent: .18em; }
   .cell-value{ font-size: clamp(10px, 3.6cqw, 26px); }
   .cell-value-inf{ font-size: clamp(14px, 5.1cqw, 34px); }
+  .radio-quote-cell{ grid-template-rows: auto; align-items: center; }
+  .radio-quote{ font-size: clamp(10px, 2.6cqw, 16px); }
 }
 
 .poster-desc{

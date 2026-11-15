@@ -41,7 +41,7 @@ public/
 scripts/
   prerender.mjs                      Inserts rendered React markup into dist/index.html
 services/spotify/                    Cloudflare Worker, authorization helper and tests
-tests/                               Frontend playback validation tests
+tests/                               Frontend playback and daily quote tests
 src/
   app/
     App.tsx                          Assembles the page and initializes behavior hooks
@@ -72,6 +72,10 @@ src/
       playback.ts                    Playback validation and time formatting
       spotify.css                    Broadcast styling and decorative synth motion
       spotify-logo-white.svg         Spotify attribution graphic
+    radio-quotes/
+      RadioQuote.tsx                 Daily quote display and midnight refresh
+      quotes.ts                      Radio excerpts, speakers and sources
+      schedule.ts                    Singapore-day rotation and next midnight
   hooks/
     useNavScroll.ts                  Navigation background on scroll
     useReveal.ts                     Scroll reveals and motion fallbacks
@@ -86,6 +90,7 @@ The workflow publishes the contents of `dist/`, including files copied from `pub
 - **Add or edit a project:** update `src/features/projects/projects.ts`. `types.ts` lists the required fields. For an image, place it in `public/assets/projects/` and use an `/assets/projects/...` path, image dimensions and alt text in its `media` entry. A text cover uses `kind: 'cover'` and a subtitle. The grid shows a placeholder when there is an odd number of projects.
 - **Update skills or experience:** edit `src/features/skills/skills.ts` or `src/features/experience/experience.ts`.
 - **Update the introduction or contact details:** edit `Hero.tsx`, `SkillsSection.tsx`, `ContactSection.tsx`, or `Footer.tsx` as appropriate. The about text is in `SkillsSection.tsx`, not the skills data file.
+- **Update the daily radio quotes:** edit `src/features/radio-quotes/quotes.ts`. Quotes rotate in list order at midnight Singapore time; changing the list can change the quote selected for a given day.
 - **Change appearance or layout:** edit `src/styles/global.css`; change a component when its markup needs to change.
 - **Update search or sharing metadata:** edit the title and meta tags in `index.html`. Replace `public/assets/og.png` to change the social preview image.
 

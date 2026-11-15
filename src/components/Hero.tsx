@@ -1,3 +1,5 @@
+import { RadioQuote } from '../features/radio-quotes/RadioQuote';
+
 export function Hero() {
   return (
     <header className="hero" id="top">
@@ -6,7 +8,7 @@ export function Hero() {
 
         <h1 className="poster-title display">JARROD</h1>
 
-        <div className="cells" aria-label="Quick stats">
+        <div className="cells" aria-label="Quick stats and F1 radio quote">
           <div className="cell">
             <span className="cell-label">Seasons</span>
             <span className="cell-value">23</span>
@@ -15,10 +17,7 @@ export function Hero() {
             <span className="cell-label">Current Circuit</span>
             <span className="cell-value">Hangzhou</span>
           </div>
-          <div className="cell">
-            <span className="cell-label">Kaggle</span>
-            <span className="cell-value">P1</span>
-          </div>
+          <RadioQuote />
         </div>
 
         <p className="poster-desc">
