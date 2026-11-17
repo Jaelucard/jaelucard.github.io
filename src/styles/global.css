@@ -74,7 +74,7 @@ img{ max-width: 100%; display: block; }
 
 /* ============ NAV ============ */
 .nav{
-  position: fixed; inset: 0 0 auto 0; z-index: 50;
+  position: fixed; inset: 0 auto auto 0; width: 100vw; z-index: 50;
   display: flex; align-items: center; justify-content: space-between;
   flex-wrap: wrap; row-gap: 8px;
   gap: 16px;
