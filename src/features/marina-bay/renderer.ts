@@ -152,9 +152,10 @@ export function createRenderer(canvas: HTMLCanvasElement) {
 
     const startPoint = sampleTrack(0);
     bg.save(); bg.translate(startPoint.x, startPoint.y); bg.rotate(startPoint.angle);
+    const checkerHeight = ROAD_HALF_WIDTH / 4;
     for (let row = 0; row < 8; row++) for (let col = 0; col < 2; col++) {
       bg.fillStyle = (row + col) % 2 ? '#132126' : '#f3eee0';
-      bg.fillRect(-4 + col * 4, -16 + row * 4, 4, 4);
+      bg.fillRect(-4 + col * 4, -ROAD_HALF_WIDTH + row * checkerHeight, 4, checkerHeight);
     }
     bg.restore();
     text('START / FINISH', startPoint.x - 54, startPoint.y - 2, 12, '#d9d8c6', 'right');

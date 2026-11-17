@@ -103,7 +103,7 @@ Run `npm test` and `npm run build` after changes to check the feature tests, Typ
 
 ## Marina Bay mini racer
 
-The `#marina-bay` section provides a fixed top-down driving game with the full 19-turn Marina Bay route. Its preview is prerendered with the portfolio; the game loads after **Start your lap**.
+The `#marina-bay` section sits directly below the Spotify player and provides a fixed top-down driving game with the full 19-turn Marina Bay route. Its preview is prerendered with the portfolio; the game loads after **Start your lap**.
 
 | Controls | Action |
 | --- | --- |
@@ -115,7 +115,7 @@ The `#marina-bay` section provides a fixed top-down driving game with the full 1
 
 Hold touch buttons together to steer and accelerate. Driving keys apply while the Canvas has focus; leaving the game, hiding the page or scrolling the game off screen pauses the session. The timer begins when the car moves. A valid lap requires all 63 interior checkpoints in order and a forward finish crossing.
 
-All 116 source vertices are preserved and reversed into race direction, with one uniform scale to 4,927 game metres. The community trace and turn labels are approximate; the 32 m arcade road width supports forgiving handling. Source data and the full MIT notice are in [`public/assets/marina-bay/`](public/assets/marina-bay/).
+All 116 source vertices are preserved and reversed into race direction, with one uniform scale to 4,927 game metres. The community trace and turn labels are approximate; the 36 m arcade road width supports forgiving handling. Source data and the full MIT notice are in [`public/assets/marina-bay/`](public/assets/marina-bay/).
 
 Maintain motion/scoring in `src/features/marina-bay/simulation.ts`, route geometry in `track-data.ts` and `track.ts`, drawing in `renderer.ts`, and UI/styling in the feature's React/CSS files. Best laps use a versioned local-storage record in `storage.ts`; update the rules version when scoring changes make earlier records incomparable.
 

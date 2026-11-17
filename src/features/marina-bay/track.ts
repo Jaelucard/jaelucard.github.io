@@ -5,7 +5,7 @@ export type TrackSample = { x: number; y: number; angle: number };
 
 export const OFFICIAL_LENGTH = 4927;
 // Arcade road width is deliberately generous; the complete centreline is preserved.
-export const ROAD_HALF_WIDTH = 16;
+export const ROAD_HALF_WIDTH = 18;
 const sourceLength = SOURCE_POINTS.slice(1).reduce((total, point, i) =>
   total + Math.hypot(point[0] - SOURCE_POINTS[i][0], point[1] - SOURCE_POINTS[i][1]), 0);
 const scale = OFFICIAL_LENGTH / sourceLength;

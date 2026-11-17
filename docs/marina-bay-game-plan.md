@@ -51,7 +51,7 @@ The source filename `sg-2008.geojson` is an identifier; the inspected geometry r
 | Turn count | 19 |
 | Race direction | Anti-clockwise; source coordinate order was reversed during preparation |
 | Projection | Local approximate metres, east as positive x and south as positive y |
-| Arcade road width | 32 game metres, from `ROAD_HALF_WIDTH = 16`; a gameplay choice rather than measured street width |
+| Arcade road width | 36 game metres, from `ROAD_HALF_WIDTH = 18`; a gameplay choice rather than measured street width |
 | Start/finish | Approximate location on the main straight, not a surveyed timing line |
 | Turn anchors | Matched visually to the FIA circuit map; approximate rather than surveyed apexes |
 
@@ -125,7 +125,7 @@ The game publishes HUD snapshots at up to 10 Hz during normal driving, with imme
 The serializable model maintains position, heading, speed, smoothed steering input and race state.
 It uses acceleration, braking, rolling/aerodynamic drag and a forward speed cap of 72 m/s. Reverse speed is capped at 10 m/s.
 Digital steering is smoothed and maximum turn rate reduces at higher speeds. A stationary car does not pivot in place.
-Leaving the 32 m-wide road applies strong slowdown; a soft outer boundary at 31 m from the nearest centreline keeps an excursion recoverable while retaining the car's heading.
+Leaving the 36 m-wide road applies strong slowdown; a soft outer boundary at 33 m from the nearest centreline keeps an excursion recoverable while retaining the car's heading.
 These are arcade parameters. A complete controller-driven lap validates the route and handling constraints; browser input and visual checks separately validate the visitor experience. Record automated and manual coverage distinctly.
 
 - `W` or up arrow: accelerate.
@@ -150,7 +150,7 @@ Pausing stops simulation updates and excludes the paused interval from movement 
 
 The implementation divides the complete route into 64 equal distance intervals: 63 ordered interior gates and the finish gate.
 The 19 numbered turn labels are informational; they are separate from these scoring gates.
-Each finite gate is aligned with its intended road segment and has a half-width of 32 m, covering the permitted soft-boundary excursion plus a 1 m numerical tolerance.
+Each finite gate is aligned with its intended road segment and has a half-width of 34 m, covering the permitted soft-boundary excursion plus a 1 m numerical tolerance.
 The simulation checks the actual movement segment across the gate, requires a forward crossing, accepts only the next expected gate, and confirms the nearest route position is close to that gate's expected distance.
 A nearest-point lookup by itself never grants a checkpoint. Small 1/120-second simulation steps keep ordinary movement much shorter than the roughly 77 m gate spacing.
 
@@ -177,6 +177,7 @@ Label the result as a best on this browser; this is not an authenticated competi
 
 ## 9. SSR, loading and integration
 
+Place the game directly below the Spotify player, before Projects, and keep the Play navigation link in the same section order.
 Preserve the existing `tsc`, Vite client build, Vite SSR build and prerender pipeline.
 Render a useful section shell on the server, then mount the interactive game after an intentional launch action.
 Use a lazy or dynamic import for the interactive module so optional game code is separated from initial portfolio behaviour.

@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, useState } from 'react';
 import type { ReactNode } from 'react';
-import { TRACK, TRACK_VIEW, sampleTrack } from './track';
+import { ROAD_HALF_WIDTH, TRACK, TRACK_VIEW, sampleTrack } from './track';
 import './marina-bay.css';
 
 const MarinaBayGame = lazy(() => import('./MarinaBayGame'));
@@ -31,10 +31,10 @@ function CircuitPreview() {
     <rect x={TRACK_VIEW.x} y={TRACK_VIEW.y} width={TRACK_VIEW.width} height={TRACK_VIEW.height} fill="url(#mb-grid)" />
     <path d="M410 485 Q590 620 1060 710 L1510 800 L1510 1080 L310 1080 Q375 880 420 720Z" fill="url(#mb-water)" />
     <text x="720" y="860" fill="#6c989f" fontSize="26" fontFamily="monospace" letterSpacing="9">MARINA BAY</text>
-    <polyline points={outline} fill="none" stroke="#050d11" strokeWidth="51" strokeLinejoin="round" />
-    <polyline points={outline} fill="none" stroke="#86918d" strokeWidth="37" strokeLinejoin="round" />
-    <polyline points={outline} fill="none" stroke="#df3644" strokeWidth="37" strokeDasharray="13 13" strokeLinejoin="round" />
-    <polyline points={outline} fill="none" stroke="#344045" strokeWidth="31" strokeLinejoin="round" />
+    <polyline points={outline} fill="none" stroke="#050d11" strokeWidth={ROAD_HALF_WIDTH * 2 + 15} strokeLinejoin="round" />
+    <polyline points={outline} fill="none" stroke="#86918d" strokeWidth={ROAD_HALF_WIDTH * 2 + 4} strokeLinejoin="round" />
+    <polyline points={outline} fill="none" stroke="#df3644" strokeWidth={ROAD_HALF_WIDTH * 2 + 4} strokeDasharray="13 13" strokeLinejoin="round" />
+    <polyline points={outline} fill="none" stroke="#344045" strokeWidth={ROAD_HALF_WIDTH * 2} strokeLinejoin="round" />
     <polyline points={outline} fill="none" stroke="#839a9a" strokeWidth="1.4" strokeDasharray="9 17" strokeLinejoin="round" />
     <g transform={`translate(${start.x} ${start.y}) rotate(${start.angle * 180 / Math.PI})`}>
       <rect x="-18" y="-10" width="36" height="20" rx="4" fill="#ee2440" />

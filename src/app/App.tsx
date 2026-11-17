@@ -21,10 +21,10 @@ export function App() {
       <Hero />
       <Ticker />
       <SpotifySection />
+      <MarinaBaySection />
       <ProjectsSection />
       <SkillsSection />
       <ExperienceSection />
-      <MarinaBaySection />
       <ContactSection />
       <Footer />
     </>
