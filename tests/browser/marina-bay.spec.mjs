@@ -155,7 +155,11 @@ for (const width of [390, 320]) {
         expect(bounds.x, 'Navigation link remains on screen').toBeGreaterThanOrEqual(0);
         expect(bounds.x + bounds.width, 'Navigation link remains on screen').toBeLessThanOrEqual(width + 1);
       }
-      expect(layout.page, 'Page should not scroll horizontally').toBeLessThanOrEqual(width + 1);
+      // Decorative portfolio headings intentionally overhang their containers.
+      // Verify actual viewport width and scrolling, not their clipped overflow area.
+      expect(await page.evaluate(() => document.documentElement.clientWidth)).toBe(width);
+      await page.evaluate(() => window.scrollTo({ left: 100, top: window.scrollY, behavior: 'instant' }));
+      expect(await page.evaluate(() => window.scrollX), 'Page should not scroll horizontally').toBe(0);
       expect(layout.game.x).toBeGreaterThanOrEqual(0);
       expect(layout.game.right).toBeLessThanOrEqual(width + 1);
       await capture(page, testInfo, `mobile-${width}-active`);
