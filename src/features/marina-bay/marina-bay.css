@@ -52,12 +52,12 @@
 .mb-timer { font: 500 clamp(27px, 3.2vw, 36px)/1.25 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.06em; display: block; color: #f8f5ec; margin-top: 5px; }
 .mb-lap-records { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-block: 12px; border-block: 1px solid #ffffff16; }
 .mb-lap-records dt { font: 9px var(--font-mono); text-transform: uppercase; color: #a4b5b4; margin-bottom: 6px; letter-spacing: .08em; }
-.mb-lap-records dd { font: 12px var(--font-mono); font-variant-numeric: tabular-nums; color: #d6e0d8; }
+.mb-lap-records dd { font: 12px var(--font-mono); font-variant-numeric: tabular-nums; color: #d6e0d8; white-space: nowrap; }
 .mb-lap-records div:first-child dd { color: #e9ce8e; }
 .mb-speed-line { display: flex; align-items: baseline; gap: 8px; }
 .mb-speed-line strong { font: 500 30px/1 var(--font-mono); font-variant-numeric: tabular-nums; min-width: 3ch; }
 .mb-speed-line > span { font: 9px var(--font-mono); color: #a4b5b4; letter-spacing: .08em; }
-.mb-progress-label { display: flex; justify-content: space-between; font: 9px var(--font-mono); color: #b4c4c0; margin-bottom: 7px; }
+.mb-progress-label { display: flex; justify-content: space-between; gap: 8px; white-space: nowrap; font: 9px var(--font-mono); color: #b4c4c0; margin-bottom: 7px; }
 .mb-progress { width: 100%; height: 3px; border-radius: 2px; background: #2d4447; overflow: hidden; }
 .mb-progress > span { display: block; height: 100%; background: #b4d2b9; transition: width .2s linear; }
 .mb-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -70,7 +70,7 @@
 .mb-pause-overlay p { font-size: 12px; color: #bdc9c3; }
 .mb-touch-controls { display: flex; justify-content: space-between; gap: 12px; padding: 12px 18px; border-top: 1px solid #ffffff16; background: #131d21; }
 .mb-touch-group { display: flex; gap: 8px; }
-.mb-touch-button { border: 1px solid #607475; color: #e5ece4; background: #213238; min-width: 56px; height: 46px; padding-inline: 10px; border-radius: 6px; font: 600 11px var(--font-sans); touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
+.mb-touch-button { border: 1px solid #607475; color: #e5ece4; background: #213238; min-width: 56px; height: 46px; padding-inline: 10px; border-radius: 6px; font: 600 11px var(--font-sans); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; cursor: pointer; }
 .mb-touch-button[data-action="throttle"] { background: #8d2133; border-color: #d7465b; }
 .mb-touch-button:active, .mb-touch-button[data-held="true"] { background: #52706d; border-color: #d4e8d1; }
 .mb-touch-button[data-action="throttle"]:active, .mb-touch-button[data-action="throttle"][data-held="true"] { background: #e8112d; }
@@ -99,10 +99,17 @@
   .mb-circuit-info { font-size: 8px; }
   .mb-circuit-info > span { margin-inline: 5px; }
   .mb-map-caption { left: 15px; bottom: 10px; font-size: 7px; }
-  .mb-telemetry { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
-  .mb-session-status, .mb-actions, .mb-telemetry .mb-message, .mb-telemetry .mb-small { grid-column: 1 / -1; }
-  .mb-lap-records { border-block: 0; padding-block: 4px; }
-  .mb-timer { font-size: 30px; }
+  .mb-telemetry { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px 20px;
+    grid-template-areas: "status status" "timer speed" "records records" "checkpoints checkpoints" "actions actions" "message message" "instructions instructions"; }
+  .mb-session-status { grid-area: status; }
+  .mb-current-lap { grid-area: timer; }
+  .mb-speed-line { grid-area: speed; justify-self: end; align-self: end; padding-bottom: 4px; }
+  .mb-lap-records { grid-area: records; padding-block: 12px; }
+  .mb-checkpoints { grid-area: checkpoints; }
+  .mb-actions { grid-area: actions; }
+  .mb-telemetry .mb-message { grid-area: message; }
+  #mb-driving-controls { grid-area: instructions; }
+  .mb-timer { font-size: clamp(22px, 7vw, 30px); }
   .mb-bottom-bar { padding: 12px 15px; font-size: 9px; }
   .mb-game-hint { bottom: 8px; font-size: 8px; padding: 6px 8px; }
   .mb-touch-help { display: block; text-align: center; margin: 0; padding: 0 15px 12px; font-size: 10px; color: #a4b5b4; background: #131d21; }
