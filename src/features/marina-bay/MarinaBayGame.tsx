@@ -168,6 +168,9 @@ export default function MarinaBayGame() {
     document.addEventListener('visibilitychange', visibility);
     resize();
     publish(true);
+    // The launch button can sit below the map on phones. Bring the driving
+    // surface back into view, clear of the portfolio's fixed navigation.
+    canvas.scrollIntoView({ block: 'center', behavior: 'instant' });
     canvas.focus({ preventScroll: true });
     frameId = requestAnimationFrame(frame);
 
