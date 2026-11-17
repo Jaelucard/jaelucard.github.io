@@ -38,10 +38,13 @@ public/
     favicon.svg                      Browser tab icon
     og.png                           Social sharing preview image
     projects/                        Project images in WebP, PNG and JPEG formats
+    marina-bay/                      Original circuit GeoJSON and MIT source notice
+docs/
+  marina-bay-game-plan.md            Game scope, research, implementation and release record
 scripts/
   prerender.mjs                      Inserts rendered React markup into dist/index.html
 services/spotify/                    Cloudflare Worker, authorization helper and tests
-tests/                               Frontend playback and daily quote tests
+tests/                               Game, frontend playback and daily quote tests
 src/
   app/
     App.tsx                          Assembles the page and initializes behavior hooks
@@ -53,6 +56,7 @@ src/
     Ticker.tsx                       Scrolling text strip
     Footer.tsx                       Footer links, location and current year
   features/
+    marina-bay/                      Full-layout 2D driving game, controls, scoring and renderer
     projects/
       projects.ts                    Project entries and their content
       types.ts                       Project and project-media types
@@ -96,6 +100,26 @@ The workflow publishes the contents of `dist/`, including files copied from `pub
 - **Update search or sharing metadata:** edit the title and meta tags in `index.html`. Replace `public/assets/og.png` to change the social preview image.
 
 Run `npm test` and `npm run build` after changes to check the feature tests, TypeScript and production build.
+
+## Marina Bay mini racer
+
+The `#marina-bay` section provides a fixed top-down driving game with the full 19-turn Marina Bay route. Its preview is prerendered with the portfolio; the game loads after **Start your lap**.
+
+| Controls | Action |
+| --- | --- |
+| `W` / `↑` | Accelerate |
+| `S` / `↓` | Brake, then reverse slowly |
+| `A` / `D`, `←` / `→` | Steer |
+| `P` / `Escape` | Toggle pause/resume with `P`; pause with `Escape` |
+| `R` | Restart the attempt while retaining completed results and the browser best |
+
+Hold touch buttons together to steer and accelerate. Driving keys apply while the Canvas has focus; leaving the game, hiding the page or scrolling the game off screen pauses the session. The timer begins when the car moves. A valid lap requires all 63 interior checkpoints in order and a forward finish crossing.
+
+All 116 source vertices are preserved and reversed into race direction, with one uniform scale to 4,927 game metres. The community trace and turn labels are approximate; the 32 m arcade road width supports forgiving handling. Source data and the full MIT notice are in [`public/assets/marina-bay/`](public/assets/marina-bay/).
+
+Maintain motion/scoring in `src/features/marina-bay/simulation.ts`, route geometry in `track-data.ts` and `track.ts`, drawing in `renderer.ts`, and UI/styling in the feature's React/CSS files. Best laps use a versioned local-storage record in `storage.ts`; update the rules version when scoring changes make earlier records incomparable.
+
+Run `node --test tests/marina-bay-*.test.mjs` for focused geometry, simulation and storage checks, then `npm test` and `npm run build`. See the [complete game plan and release record](docs/marina-bay-game-plan.md) for source attribution, tool/skill research, module responsibilities, validation gates and known limitations. Browser QA and deployment status are recorded there separately from implementation status.
 
 ## Publishing
 
