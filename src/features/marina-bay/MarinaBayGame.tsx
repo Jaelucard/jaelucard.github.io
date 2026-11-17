@@ -68,9 +68,14 @@ export default function MarinaBayGame() {
         let message = game.lastLapValid ? `Lap complete: ${formatLapTime(game.lastLap)}.`
           : 'Lap not recorded. Pass every checkpoint in order before the finish.';
         if (game.bestLap !== null && (savedBest === null || game.bestLap < savedBest)) {
-          const saved = saveBestLap(game.bestLap);
+          const candidate = game.bestLap;
+          const saved = saveBestLap(candidate);
+          const stored = readBestLap();
+          if (stored !== null && stored < candidate) game.bestLap = stored;
           savedBest = game.bestLap;
-          message = `New best: ${formatLapTime(game.bestLap)}.${saved ? ' Saved on this browser.' : ' Storage is unavailable; kept for this session.'}`;
+          message = game.bestLap < candidate
+            ? `Lap complete: ${formatLapTime(game.lastLap)}. Browser best: ${formatLapTime(game.bestLap)}.`
+            : `New best: ${formatLapTime(game.bestLap)}.${saved ? ' Saved on this browser.' : ' Storage is unavailable; kept for this session.'}`;
         }
         setAnnouncement(message);
         force = true;
