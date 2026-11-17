@@ -90,7 +90,8 @@ img{ max-width: 100%; display: block; }
   text-transform: uppercase; letter-spacing: .22em; }
 .nav-brand em{ font-style: normal; color: var(--rosso); }
 .nav-links{ display: flex; align-items: center; flex-wrap: wrap;
-  justify-content: flex-end; gap: clamp(14px, 2.5vw, 30px); list-style: none; }
+  justify-content: flex-end; gap: clamp(14px, 2.5vw, 30px); list-style: none;
+  min-width: 0; max-width: 100%; }
 .nav-links a{
   font-size: 11px; font-weight: 650; text-transform: uppercase;
   letter-spacing: .18em; padding: 6px 2px;
@@ -478,6 +479,9 @@ img{ max-width: 100%; display: block; }
   .row-note{ grid-column: 2; }
 }
 @media (max-width: 640px){
+  .nav-links{ width: 100%; justify-content: space-between; gap: 8px; }
+  .nav-links a{ font-size: 10px; letter-spacing: .1em; }
+  .nav-cta{ padding: 6px 10px !important; }
   .gp-cells{ grid-template-columns: repeat(2, 1fr); }
   .gp-cells .cell:nth-child(2){ border-right: 0; }
   .gp-cells .cell:nth-child(-n+2){ border-bottom: 1px solid var(--rosso); }
