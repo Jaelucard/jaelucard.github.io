@@ -188,6 +188,7 @@ test('development: an automated driver completes the entire circuit and the best
   const bestText = await best.textContent();
   await section.getByRole('button', { name: 'Resume lap', exact: true }).click();
   await capture(page, testInfo, 'automated-complete-lap');
-  await openGame(page, 'http://127.0.0.1:5173/#marina-bay');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await section.getByRole('button', { name: /Start your lap/ }).click();
   await expect(page.locator('#marina-bay .mb-lap-records > div').first().locator('dd')).toHaveText(bestText);
 });

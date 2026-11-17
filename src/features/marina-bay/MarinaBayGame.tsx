@@ -263,11 +263,11 @@ export default function MarinaBayGame() {
       <p className="mb-touch-help">Hold accelerate and a steering button together to turn.</p>
       <aside className="mb-pit-wall mb-telemetry" aria-label="Lap information">
         <div className="mb-session-status" data-paused={paused}><span>{paused ? 'SESSION PAUSED' : hud.lapStarted ? 'ON TRACK' : 'READY TO ROLL'}</span><span>LAP {hud.laps + 1}</span></div>
-        <div><span className="mb-timer-label">Current lap</span><output className="mb-timer" aria-live="off">{formatLapTime(hud.elapsed)}</output></div>
+        <div className="mb-current-lap"><span className="mb-timer-label">Current lap</span><output className="mb-timer" aria-live="off">{formatLapTime(hud.elapsed)}</output></div>
         <dl className="mb-lap-records"><div><dt>Browser best</dt><dd>{formatLapTime(hud.bestLap)}</dd></div>
           <div><dt>Last lap</dt><dd>{formatLapTime(hud.lastLap)}{hud.lastLapValid === false && <span className="mb-small"> (invalid)</span>}</dd></div></dl>
         <div className="mb-speed-line"><strong>{Math.round(Math.abs(hud.speed) * 3.6)}</strong><span>KM/H{hud.speed < -0.1 ? ' · R' : ''}</span></div>
-        <div><div className="mb-progress-label"><span>CHECKPOINTS</span><span>{hud.checkpointIndex} / {CHECKPOINT_COUNT - 1}</span></div>
+        <div className="mb-checkpoints"><div className="mb-progress-label"><span>CHECKPOINTS</span><span>{hud.checkpointIndex} / {CHECKPOINT_COUNT - 1}</span></div>
           <div className="mb-progress" role="progressbar" aria-label="Lap checkpoints" aria-valuemin={0}
             aria-valuemax={CHECKPOINT_COUNT - 1} aria-valuenow={hud.checkpointIndex}><span style={{ width: `${progress * 100}%` }} /></div></div>
         <div className="mb-actions"><button type="button" className="mb-button" onClick={() => paused ? controlsRef.current?.resume() : controlsRef.current?.pause()}>{paused ? 'Resume' : 'Pause'} <kbd>P</kbd></button>
