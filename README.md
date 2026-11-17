@@ -121,6 +121,8 @@ Maintain motion/scoring in `src/features/marina-bay/simulation.ts`, route geomet
 
 Run `node --test tests/marina-bay-*.test.mjs` for focused geometry, simulation and storage checks, then `npm test` and `npm run build`. See the [complete game plan and release record](docs/marina-bay-game-plan.md) for source attribution, tool/skill research, module responsibilities, validation gates and known limitations. Browser QA and deployment status are recorded there separately from implementation status.
 
+`npm run test:browser` runs the Chromium desktop and mobile suite after a production build. Install its browser with `npx playwright install chromium` on a machine that supports browser execution. The pull-request workflow in `.github/workflows/browser-checks.yml` installs Chromium automatically and retains screenshots, a report and failure traces. Playwright is a development dependency and is not included in the website bundle.
+
 ## Publishing
 
 GitHub Pages uses **GitHub Actions** as its publishing source. A push to `main` runs `.github/workflows/deploy.yml`, which installs the locked dependencies, builds the site, and deploys `dist/`. The workflow can also be run manually from GitHub Actions. Keep the custom domain configured in the repository's Pages settings.
