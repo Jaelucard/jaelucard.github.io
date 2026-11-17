@@ -30,7 +30,8 @@ async function openGame(page, url = '/#marina-bay') {
 
 async function capture(page, testInfo, name) {
   const path = testInfo.outputPath(`${name}.png`);
-  await page.locator('#marina-bay .mb-shell').screenshot({ path, animations: 'disabled' });
+  if (page.viewportSize().width < 700) await page.screenshot({ path, animations: 'disabled' });
+  else await page.locator('#marina-bay .mb-shell').screenshot({ path, animations: 'disabled' });
   await testInfo.attach(name, { path, contentType: 'image/png' });
 }
 
@@ -105,6 +106,10 @@ for (const width of [390, 320]) {
       const steering = heldButton(page, 'right');
       await expect(accelerator).toBeInViewport();
       await expect(steering).toBeInViewport();
+      const canvasBounds = await canvas.boundingBox();
+      const navigationBounds = await page.locator('#nav').boundingBox();
+      expect(canvasBounds.y, 'Fixed navigation must not cover the circuit').toBeGreaterThanOrEqual(navigationBounds.y + navigationBounds.height);
+      expect(canvasBounds.y + canvasBounds.height, 'Full circuit is visible').toBeLessThanOrEqual(844);
       const centre = async (locator, id) => {
         const box = await locator.boundingBox();
         expect(box).not.toBeNull();
