@@ -13,7 +13,7 @@ Visitors should understand the controls, start driving and attempt a timed lap w
 - Source assessment and architecture selection: complete.
 - Implementation: complete in `src/features/marina-bay/`, including the full-route preview, lazy-loaded game, controls, scoring and local persistence.
 - Geometry review: complete against the retained upstream GeoJSON and FIA 2025 circuit map. All 116 coordinates, including closure, are retained.
-- Automated checks, browser playtesting and release verification: final acceptance remains pending unless observed results are recorded in section 15. Implementation completion does not mean these release gates are complete.
+- Automated validation: 81 unit/regression checks and five Chromium browser scenarios pass. The browser checks cover the production build, desktop controls and phone touch emulation, with a separate development-mode complete-lap and persistence check. See section 15 for evidence and limits.
 
 ## 2. Product scope
 
@@ -219,27 +219,27 @@ Ensure tabbing out, pausing and returning to the portfolio are predictable witho
 | Phase | Work | Acceptance gate | Status |
 | --- | --- | --- | --- |
 | 1. Preserve source | Import full geometry, record provenance and check direction | 116 coordinates, 19 ordered anchors, closed loop and matching outline | Implemented; full geometry and direction reviewed |
-| 2. Build simulation | Motion, input actions, race states and directional gates | Deterministic controls and lap rules pass focused tests | Implemented; automated acceptance suite authored |
-| 3. Draw playfield | Fixed view, cached circuit and readable car | Full route remains legible at desktop and narrow widths | Implemented; browser visual acceptance pending |
-| 4. Integrate UI | Launch, HUD, pause, restart, touch and persistence | Complete keyboard and touch sessions work with the surrounding site | Implemented; browser interaction acceptance pending |
-| 5. Verify build | Existing tests, TypeScript, client build, SSR and prerender | Required repository checks pass without hydration/browser-global failures | Final test/build results to be recorded below |
-| 6. Playtest | Full lap, edge cases, resizing, focus loss and screenshots | Observed playable lap and credible behaviour across tested environments | Pending observed browser evidence |
-| 7. Release | Review final diff, deploy through existing workflow and inspect live page | Successful build/deployment and live launch, input and lap smoke check | Pending deployment and live verification |
+| 2. Build simulation | Motion, input actions, race states and directional gates | Deterministic controls and lap rules pass focused tests | Complete; 13 simulation tests pass |
+| 3. Draw playfield | Fixed view, cached circuit and readable car | Full route remains legible at desktop and narrow widths | Complete; desktop and phone screenshots reviewed |
+| 4. Integrate UI | Launch, HUD, pause, restart, touch and persistence | Complete keyboard and touch sessions work with the surrounding site | Complete; keyboard, focus, pause, restart and multi-touch checks pass |
+| 5. Verify build | Existing tests, TypeScript, client build, SSR and prerender | Required repository checks pass without hydration/browser-global failures | Complete; 81 tests, TypeScript, client build, SSR and prerender pass |
+| 6. Playtest | Full lap, edge cases, resizing, focus loss and screenshots | Observed playable lap and credible behaviour across tested environments | Complete for Chromium desktop and phone emulation; physical-device and other-browser coverage remain future checks |
+| 7. Release | Review final diff, deploy through existing workflow and inspect live page | Successful build/deployment and live launch/input smoke check | Release through PR #5 and the existing Pages workflow; final live verification accompanies delivery |
 
-## 13. Verification checklist
+## 13. Verified behaviour and remaining coverage
 
-- [x] Geometry retains all 116 supplied points and the correct anti-clockwise route; the 19-turn layout was visually compared with the FIA map.
-- [ ] Acceleration, braking and both steering directions work; the car can complete every tight corner.
-- [ ] Ordered-gate tests reject missing turns, reverse crossings, immediate finish crossings and invalid recovery jumps.
-- [ ] Pause/resume excludes paused time; restart clears the lap; backgrounding clears inputs and stops progress.
-- [ ] Storage tests cover a valid best, slower laps, malformed data, wrong schema and unavailable storage.
-- [ ] Existing `npm test` and `npm run build` succeed, including the SSR/prerender stages.
-- [ ] Desktop browser playtesting covers launch, driving inputs, restart, resize and focus changes; capture representative screenshots. Report complete-lap automation separately from any manual lap.
-- [ ] Touch or touch emulation confirms simultaneous inputs, release/cancel handling, usable targets and absence of accidental page scrolling while driving.
-- [ ] Check a narrow phone viewport and a wider layout; inspect cropped labels, overlapping controls and car visibility.
-- [ ] Review keyboard navigation, visible focus, reduced motion, Canvas fallback and readable status announcements.
-- [ ] Inspect console errors, animation-loop cleanup, optional chunk loading and performance during the busiest visible state.
-- [ ] Record which browsers/devices were actually tested; emulation alone does not establish physical-device compatibility.
+- [x] All 116 route coordinates and all 19 anchors are preserved in race order, with a full-loop and projection integrity suite.
+- [x] Acceleration, braking, reverse, steering and frame-rate-independent timing pass the simulation tests. An automated driver physically traverses every checkpoint without teleporting the car.
+- [x] Missing checkpoints, reverse finish crossings and invalid attempts do not create a personal best. Recoverable wide lines pass their intended gates.
+- [x] Production browser inputs accelerate and steer the car. Arrow keys do not scroll the page while driving; they work normally after focus leaves the game.
+- [x] Pause freezes the timer, restart clears the attempt, and scrolling the canvas offscreen pauses even when other widget content is still visible.
+- [x] Simultaneous real browser touch/pointer events, cancellation and release work at 390 px and 320 px. The map and controls are visible together after launch.
+- [x] Saved bests survive an actual browser reload. Malformed, incompatible, impossible or unavailable storage records are covered by unit tests.
+- [x] Existing repository tests and the TypeScript/client/SSR/prerender build pass. No uncaught page exceptions occurred in the browser suite.
+- [x] Desktop and phone screenshots were reviewed. Lap readouts remain on one line, and the fixed navigation leaves the circuit clear.
+- [x] The browser suite uses reduced-motion preferences, visible focus and labelled DOM controls. The development hook is absent from the production build.
+- [ ] Physical iOS/Android devices and Safari/Firefox have not been tested in this release.
+- [ ] A complete manual lap and a measured performance benchmark on representative consumer hardware have not been performed. Automated lap completion does not establish either.
 
 ## 14. Risks, attribution and release safeguards
 
@@ -259,20 +259,28 @@ Retain the baseline identifier and final implementation commit identifiers in th
 
 ## 15. Verification and release record
 
-The implementation is complete, with release gates deliberately recorded separately. Replace pending entries with observed evidence before declaring deployment or browser acceptance complete:
-
-| Item | Result |
+| Item | Observed result |
 | --- | --- |
-| Final feature paths and geometry provenance | Complete in `src/features/marina-bay/`; original GeoJSON and MIT notice retained under `public/assets/marina-bay/`; pinned source and all 116 vertices reviewed |
-| Automated test coverage | Geometry, wrap/projection, simulation, complete-route button controller, invalid/reverse finish, restart, stale time deltas and storage suites implemented; latest complete run to be recorded by release owner |
-| Production build | Final TypeScript, client, SSR and prerender outcome pending release-owner record |
-| Complete-lap result | Automated button controller completes all 64 gates in 104.16 simulated seconds with no off-road frames; manual complete-lap playthrough not yet performed |
-| Desktop browsers and device/viewport coverage | Pending observed browser evidence |
-| Touch/device coverage | Input implementation complete; actual tested devices/emulations and results pending |
-| Bundle size and measured performance | Pending production measurements |
-| Screenshot evidence | Pending browser capture |
-| Implementation commit and deployment result | Pending release and live verification |
-| Known limitations | Community trace and turn anchors are approximate; uniform 4,927 m game scale and 32 m road width are arcade adaptations; decorative scenery is illustrative; best times belong to this browser and are not authenticated competition results |
+| Geometry | All 116 source vertices, full closure, uniform proportions, correct race direction and 19 reviewed anchors pass integrity checks |
+| Unit/regression suite | 81 passing checks: 13 simulation, five storage and five geometry tests, plus the existing portfolio/Spotify tests |
+| Production build | TypeScript, Vite client build, SSR build and prerender pass |
+| Browser suite | Five passing Chromium scenarios: production keyboard/focus/pause/reset, offscreen pause, 390 px touch, 320 px touch, and complete-lap persistence |
+| Automated full lap | 01:44.163, every gate traversed, zero off-road frames; driven with throttle/brake/steering actions and deterministic time advancement |
+| Desktop coverage | Chromium on the GitHub-hosted Linux runner, 1440 × 1000 viewport |
+| Touch coverage | Chromium phone emulation at 390 × 844 and 320 × 844 with simultaneous touch/pointer events; physical-device testing is not claimed |
+| Gameplay bundle | 17.86 kB JavaScript, 7.00 kB gzip, loaded after Start; the static preview, route data and styles also contribute to the initial site assets |
+| Performance | Static scenery is cached, HUD updates at up to 10 Hz, drawing pauses offscreen, and device pixel ratio is capped at 2; frame-rate benchmarking on consumer hardware remains unmeasured |
+| Release | [PR #5](https://github.com/Jaelucard/jaelucard.github.io/pull/5), using the existing [Pages workflow](https://github.com/Jaelucard/jaelucard.github.io/actions/workflows/deploy.yml) and `#marina-bay` entry point |
+| Baseline | `3885f742b65d9a546bab99de808e16c72e6a2ab1`; original feature commit `1fc520e58a050d690c4569b1ddf9d2efc9ea7320` |
+| Limitations | Community geometry and turn anchors are approximate; road width, car size, scenery and handling are arcade adaptations. Browser bests are local records, with no global leaderboard |
+
+The final tested application commit is `920ef2f9db90116501ab60f751682675f9b71585`, verified by [passing browser run 44127452989](https://github.com/Jaelucard/jaelucard.github.io/actions/runs/44127452989). The browser checks and screenshots are retained in the [Browser checks workflow](https://github.com/Jaelucard/jaelucard.github.io/actions/workflows/browser-checks.yml). The suite runs on pull requests and can be launched manually. Its full-lap automation uses the development hook; production tests use the normal keyboard and touch controls.
+
+Representative screenshots from the tested build:
+
+![Desktop gameplay](images/marina-bay-desktop.png)
+
+[Phone gameplay at 390 px](images/marina-bay-mobile.png)
 
 ## 16. Maintenance workflow
 
@@ -283,4 +291,4 @@ The implementation is complete, with release gates deliberately recorded separat
 - Use `marina-bay.css` for feature styling and responsive layout. A change in dimensions must be checked at narrow and desktop widths while the whole route remains visible.
 - Run `node --test tests/marina-bay-*.test.mjs` for focused checks, followed by the required `npm test` and `npm run build` repository gates.
 - During `npm run dev`, `window.__MARINA_BAY_GAME__` exposes `snapshot()`, `setInput()` and deterministic `advance(seconds)` helpers for debugging. The hook is guarded by `import.meta.env.DEV`; production validation should exercise normal controls.
-- Record final test/build results, actual browser coverage and deployment evidence in section 15 when those steps finish.
+- Keep section 15 current when handling, source data, browser coverage or deployment configuration changes. The PR workflow stores screenshots and reports for review.
