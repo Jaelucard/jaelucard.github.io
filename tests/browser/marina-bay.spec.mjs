@@ -141,6 +141,11 @@ for (const width of [390, 320]) {
       }
       const layout = await page.evaluate(() => ({ width: innerWidth, page: document.documentElement.scrollWidth,
         game: document.querySelector('#marina-bay .mb-shell').getBoundingClientRect().toJSON() }));
+      for (const link of await page.locator('#nav a').all()) {
+        const bounds = await link.boundingBox();
+        expect(bounds.x, 'Navigation link remains on screen').toBeGreaterThanOrEqual(0);
+        expect(bounds.x + bounds.width, 'Navigation link remains on screen').toBeLessThanOrEqual(width + 1);
+      }
       expect(layout.page, 'Page should not scroll horizontally').toBeLessThanOrEqual(layout.width + 1);
       expect(layout.game.x).toBeGreaterThanOrEqual(0);
       expect(layout.game.right).toBeLessThanOrEqual(layout.width + 1);
