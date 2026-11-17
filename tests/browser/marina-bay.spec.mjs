@@ -94,11 +94,15 @@ test('production: an offscreen canvas pauses while the rest of the widget remain
   await page.waitForTimeout(250);
   await expect(timer).toHaveText(stopped);
   await expect(heldButton(page, 'throttle')).toHaveAttribute('data-held', 'false');
+  await section.locator('.mb-actions').getByRole('button', { name: /^Resume/ }).click();
+  await expect(canvas).toBeInViewport({ ratio: 0.99 });
+  await expect(status).toHaveAttribute('data-paused', 'false');
+  await expect(canvas).toBeFocused();
 });
 
 for (const width of [390, 320]) {
   test.describe(`production touch at ${width}px`, () => {
-    test.use({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
+    test.use({ viewport: { width, height: 844 }, screen: { width, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
     test('simultaneous pedals and steering, cancellation, and overflow', async ({ page, context }, testInfo) => {
       const { canvas } = await openGame(page);
       await canvas.scrollIntoViewIfNeeded();
@@ -151,9 +155,9 @@ for (const width of [390, 320]) {
         expect(bounds.x, 'Navigation link remains on screen').toBeGreaterThanOrEqual(0);
         expect(bounds.x + bounds.width, 'Navigation link remains on screen').toBeLessThanOrEqual(width + 1);
       }
-      expect(layout.page, 'Page should not scroll horizontally').toBeLessThanOrEqual(layout.width + 1);
+      expect(layout.page, 'Page should not scroll horizontally').toBeLessThanOrEqual(width + 1);
       expect(layout.game.x).toBeGreaterThanOrEqual(0);
-      expect(layout.game.right).toBeLessThanOrEqual(layout.width + 1);
+      expect(layout.game.right).toBeLessThanOrEqual(width + 1);
       await capture(page, testInfo, `mobile-${width}-active`);
     });
   });

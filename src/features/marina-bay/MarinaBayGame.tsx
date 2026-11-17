@@ -110,6 +110,7 @@ export default function MarinaBayGame() {
     function resume(reason = 'Back on track. Hold W to accelerate.') {
       if (disposed || document.hidden) return;
       clearInput();
+      canvas?.scrollIntoView({ block: 'center', behavior: 'instant' });
       canvas?.focus({ preventScroll: true });
       if (!running) {
         running = true;
