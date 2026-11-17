@@ -141,6 +141,11 @@ for (const width of [390, 320]) {
       }
       const layout = await page.evaluate(() => ({ width: innerWidth, page: document.documentElement.scrollWidth,
         game: document.querySelector('#marina-bay .mb-shell').getBoundingClientRect().toJSON() }));
+      await testInfo.attach('phone-layout', { contentType: 'application/json', body: JSON.stringify(await page.evaluate(() => ({
+        innerWidth, clientWidth: document.documentElement.clientWidth, visualWidth: visualViewport?.width,
+        navigation: document.querySelector('#nav').getBoundingClientRect().toJSON(),
+        links: [...document.querySelectorAll('#nav a')].map((link) => ({ text: link.textContent, bounds: link.getBoundingClientRect().toJSON() })),
+      })), null, 2) });
       for (const link of await page.locator('#nav a').all()) {
         const bounds = await link.boundingBox();
         expect(bounds.x, 'Navigation link remains on screen').toBeGreaterThanOrEqual(0);
