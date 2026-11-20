@@ -13,7 +13,7 @@ npm test
 npm run build
 ```
 
-The test suite uses fictional Spotify responses and mock Durable Object storage. A build without `VITE_SPOTIFY_STATUS_URL` displays an unavailable state and does not connect to Spotify. To test the frontend against a local service, set `VITE_SPOTIFY_STATUS_URL` to that service's public status URL before running Vite. Never put Spotify credentials in a `VITE_` variable: its value is included in browser code.
+The test suite uses fictional Spotify responses and mock Durable Object storage. A build without `NEXT_PUBLIC_SPOTIFY_STATUS_URL` displays an unavailable state. To test the frontend against a local service, set `NEXT_PUBLIC_SPOTIFY_STATUS_URL` to its public status URL before starting the Next.js dev server. Variables prefixed with `NEXT_PUBLIC_` are bundled into browser code. Keep Spotify credentials in Cloudflare Worker secrets.
 
 ## Setup for a real account
 
@@ -36,7 +36,7 @@ These steps change external account settings or deploy a Worker. Run them only w
    ```
 
    Enter the verified Cloudflare account ID and the exact name of the Worker you deployed, then the Spotify client ID and client secret when prompted. Confirm the account and Worker identity before the helper uploads any secrets. The helper hides secret entry, listens only on `127.0.0.1`, validates the OAuth state, and sends the resulting credentials and a fresh generation marker to `wrangler secret bulk` via standard input. It does not write them to a file. **The secret update creates a new Worker version.** Do not paste credentials, authorization codes, or callback URLs into chat or commit them.
-5. Set the GitHub Actions repository variable `SPOTIFY_STATUS_URL` to `https://radio.jarrodlow.com/now-playing` and `SPOTIFY_FALLBACK_URL` to the Worker's `workers.dev` URL ending in `/now-playing`, then publish the website change through the repository's authorized deployment process. The Pages workflow passes these non-secret URLs to the Vite build as `VITE_SPOTIFY_STATUS_URL` and `VITE_SPOTIFY_FALLBACK_URL`. The frontend uses the fallback only when the primary endpoint cannot be reached or returns an HTTP error; valid offline and unavailable states are not retried.
+5. Set the GitHub Actions repository variable `SPOTIFY_STATUS_URL` to `https://radio.jarrodlow.com/now-playing` and `SPOTIFY_FALLBACK_URL` to the Worker's `workers.dev` URL ending in `/now-playing`, then publish the website change through the repository's authorized deployment process. The Pages workflow passes these public URLs to Next.js as `NEXT_PUBLIC_SPOTIFY_STATUS_URL` and `NEXT_PUBLIC_SPOTIFY_FALLBACK_URL`. The frontend uses the fallback when the primary endpoint cannot be reached or returns an HTTP error.
 6. Check the deployed endpoint and website against your Spotify playback. Browser visitors need no Spotify login to view the public state.
 
 The Worker expects the secrets `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN` and `SPOTIFY_CREDENTIAL_GENERATION`. The helper updates them together. The Durable Object stores a rotated refresh token privately and uses the generation marker to replace it after reauthorization. Spotify refresh tokens expire after six months; rerun the helper to authorize again. See [Spotify's refresh-token documentation](https://developer.spotify.com/documentation/web-api/tutorials/refreshing-tokens).

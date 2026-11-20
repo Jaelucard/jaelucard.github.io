@@ -1,9 +1,10 @@
+import { inView } from 'motion';
 import { useEffect } from 'react';
 
 /** Reveal page sections as they enter the viewport, respecting reduced motion. */
 export function useReveal() {
   useEffect(() => {
-    const targets = document.querySelectorAll<HTMLElement>('.reveal');
+    const targets = Array.from(document.querySelectorAll<HTMLElement>('.reveal'));
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     if (reducedMotion || !('IntersectionObserver' in window)) {
@@ -18,16 +19,8 @@ export function useReveal() {
     });
     document.documentElement.classList.add('js-reveal');
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('in');
-          observer.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.01, rootMargin: '0px 0px -32px 0px' });
-
-    targets.forEach((target) => observer.observe(target));
-    return () => observer.disconnect();
+    return inView(targets, (target) => {
+      target.classList.add('in');
+    }, { amount: 0.01, margin: '0px 0px -32px 0px' });
   }, []);
 }

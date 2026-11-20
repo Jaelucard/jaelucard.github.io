@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { radioQuotes } from './quotes';
 import { dailyIndex, nextSingaporeMidnight } from './schedule';
 
-export function RadioQuote() {
+export function RadioQuote({ fixedIndex }: { fixedIndex?: number }) {
   // The static HTML and first browser render match, even across midnight.
   const [index, setIndex] = useState<number | null>(null);
 
   useEffect(() => {
+    if (fixedIndex !== undefined) return;
+
     let timer: ReturnType<typeof setTimeout>;
 
     function refresh() {
@@ -28,9 +30,10 @@ export function RadioQuote() {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('pageshow', refresh);
     };
-  }, []);
+  }, [fixedIndex]);
 
-  const quote = index === null ? null : radioQuotes[index];
+  const activeIndex = fixedIndex ?? index;
+  const quote = activeIndex === null ? null : radioQuotes[activeIndex];
 
   return (
     <div className="cell radio-quote-cell" aria-live="polite">

@@ -291,5 +291,5 @@ Representative screenshots from the tested build:
 - Use `renderer.ts` for the active Canvas view and `MarinaBaySection.tsx` for the static SVG preview. Keep their route, road width and start position consistent.
 - Use `marina-bay.css` for feature styling and responsive layout. A change in dimensions must be checked at narrow and desktop widths while the whole route remains visible.
 - Run `node --test tests/marina-bay-*.test.mjs` for focused checks, followed by the required `npm test` and `npm run build` repository gates.
-- During `npm run dev`, `window.__MARINA_BAY_GAME__` exposes `snapshot()`, `setInput()` and deterministic `advance(seconds)` helpers for debugging. The hook is guarded by `import.meta.env.DEV`; production validation should exercise normal controls.
+- During `npm run dev`, `window.__MARINA_BAY_GAME__` exposes `snapshot()`, `setInput()`, deterministic `advance(seconds)` and route geometry helpers for debugging. The hook is guarded by `process.env.NODE_ENV === 'development'`. Production validation should exercise normal controls.
 - Keep section 15 current when handling, source data, browser coverage or deployment configuration changes. The PR workflow stores screenshots and reports for review.

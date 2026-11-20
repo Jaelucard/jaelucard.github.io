@@ -13,8 +13,8 @@ function usePlayback() {
   const [now, setNow] = useState(0);
 
   useEffect(() => {
-    const endpoint = import.meta.env.VITE_SPOTIFY_STATUS_URL;
-    const fallback = import.meta.env.VITE_SPOTIFY_FALLBACK_URL;
+    const endpoint = process.env.NEXT_PUBLIC_SPOTIFY_STATUS_URL;
+    const fallback = process.env.NEXT_PUBLIC_SPOTIFY_FALLBACK_URL;
     if (!endpoint) return;
     return startPlaybackPolling(
       (signal) => fetchPlayback(endpoint, fallback, signal),
@@ -105,7 +105,7 @@ export function SpotifySection() {
               <span className="spotify-standby-session mono">
                 {status === 'offline' ? 'Standby' : 'Unavailable'}
               </span>
-              <img className="spotify-standby-logo" src={spotifyLogo} alt="Spotify" />
+              <img className="spotify-standby-logo" src={spotifyLogo.src} alt="Spotify" />
             </div>
           </div>
         ) : (
@@ -190,7 +190,7 @@ export function SpotifySection() {
               </div>
               <div className="spotify-source">
                 <span>Source</span>
-                <img src={spotifyLogo} alt="Spotify" />
+            <img src={spotifyLogo.src} alt="Spotify" />
               </div>
               <a
                 className="spotify-open"

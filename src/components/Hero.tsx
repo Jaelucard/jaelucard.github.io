@@ -1,9 +1,9 @@
 import { RadioQuote } from '../features/radio-quotes/RadioQuote';
 
-export function Hero() {
+export function Hero({ quoteIndex, preview = false }: { quoteIndex?: number; preview?: boolean }) {
   return (
-    <header className="hero" id="top">
-      <div className="poster reveal">
+    <header className="hero" id={preview ? undefined : 'top'}>
+      <div className={preview ? 'poster' : 'poster reveal'}>
         <p className="eyebrow poster-eyebrow">AI Engineer · Systems Builder</p>
 
         <h1 className="poster-title display">JARROD</h1>
@@ -17,7 +17,7 @@ export function Hero() {
             <span className="cell-label">Current Circuit</span>
             <span className="cell-value">Hangzhou</span>
           </div>
-          <RadioQuote />
+          <RadioQuote fixedIndex={quoteIndex} />
         </div>
 
         <p className="poster-desc">
@@ -27,7 +27,7 @@ export function Hero() {
         </p>
       </div>
 
-      <a className="hero-scroll mono" href="#projects">Scroll — lights out ↓</a>
+      {!preview && <a className="hero-scroll mono" href="#projects">Scroll — lights out ↓</a>}
     </header>
   );
 }

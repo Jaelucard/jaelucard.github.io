@@ -184,8 +184,8 @@ test('development: an automated driver completes the entire circuit and the best
   const { section } = await openGame(page, 'http://127.0.0.1:5173/#marina-bay');
   await expect.poll(() => page.evaluate(() => typeof window.__MARINA_BAY_GAME__)).toBe('object');
   const result = await page.evaluate(async () => {
-    const { sampleTrack, projectToTrack } = await import('/src/features/marina-bay/track.ts');
     const driver = window.__MARINA_BAY_GAME__;
+    const { sampleTrack, projectToTrack } = driver;
     const angle = (value) => Math.atan2(Math.sin(value), Math.cos(value));
     const checkpoints = new Set([0]);
     const route = [];

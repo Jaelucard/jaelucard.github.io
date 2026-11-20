@@ -4,6 +4,7 @@ import { createRenderer } from './renderer';
 import { CHECKPOINT_COUNT, INPUT_IDLE, SIMULATION_STEP, createGame, formatLapTime, resetGame, updateGame } from './simulation';
 import type { GameState, InputState } from './simulation';
 import { readBestLap, saveBestLap } from './storage';
+import { projectToTrack, sampleTrack } from './track';
 
 type Action = keyof InputState;
 type Controller = {
@@ -13,6 +14,8 @@ type Controller = {
   press(action: Action, pointer: number, down: boolean): void;
 };
 type DebugController = {
+  projectToTrack: typeof projectToTrack;
+  sampleTrack: typeof sampleTrack;
   snapshot(): GameState & { paused: boolean };
   /** Advance seconds with a fixed timestep while normal animation is paused. */
   advance(seconds: number): void;
@@ -185,9 +188,11 @@ export default function MarinaBayGame() {
     frameId = requestAnimationFrame(frame);
 
     let debug: DebugController | undefined;
-    if (import.meta.env.DEV) {
+    if (process.env.NODE_ENV === 'development') {
       let debugInput: InputState = { ...INPUT_IDLE };
       debug = {
+        projectToTrack,
+        sampleTrack,
         snapshot: () => ({ ...game, paused: !running }),
         setInput(value) { debugInput = { ...INPUT_IDLE, ...value }; },
         advance(seconds) {

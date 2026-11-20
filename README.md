@@ -1,6 +1,6 @@
 # Jarrod Low's portfolio
 
-Personal portfolio at [jarrodlow.com](https://jarrodlow.com), inspired by Scuderia Ferrari race-weekend graphics. Built with React, TypeScript and Vite.
+Personal portfolio at [jarrodlow.com](https://jarrodlow.com), inspired by Scuderia Ferrari race-weekend graphics. Built with Next.js, React and TypeScript.
 
 ## Getting started
 
@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite. To check and preview the production build:
+Open `http://127.0.0.1:5173`. To check and preview the production build:
 
 ```sh
 npm test
@@ -19,21 +19,21 @@ npm run build
 npm run preview
 ```
 
-The build checks TypeScript, creates the client files, and pre-renders the page into `dist/index.html`. React hydrates that HTML in the browser to enable interactive behavior. `dist/` is generated and should not be edited directly.
+Next.js checks TypeScript and exports the static site to `out/`. The preview command serves that directory at `http://127.0.0.1:4173`.
 
 ## File guide
 
 ```text
-index.html                           Page shell, metadata, fonts and app root
 package.json                         Dependencies and development/build scripts
 package-lock.json                    Locked dependency versions for npm ci
 .gitignore                           Excludes dependencies and generated builds
 tsconfig.json                        TypeScript compiler settings
-vite.config.ts                       Vite configuration and React plugin
+next.config.ts                       Next.js static export configuration
 .github/workflows/deploy.yml         GitHub Pages build and deployment workflow
 CNAME                                Repository-root custom-domain file
 public/
   CNAME                              Custom-domain file copied into the build
+  .nojekyll                          Allows GitHub Pages to serve the _next assets
   assets/
     favicon.svg                      Browser tab icon (vector path)
     og.png                           Social sharing preview image
@@ -42,14 +42,16 @@ public/
 docs/
   marina-bay-game-plan.md            Game scope, research, implementation and release record
 scripts/
-  prerender.mjs                      Inserts rendered React markup into dist/index.html
+  preview.mjs                        Local server for the static export
 services/spotify/                    Cloudflare Worker, authorization helper and tests
 tests/                               Game, frontend playback and daily quote tests
 src/
   app/
-    App.tsx                          Assembles the page, landmarks and project detail panel
-    main.tsx                         Browser entry point; loads global styles and hydrates the app
-    entry-server.tsx                 Renders the app to HTML for the production build
+    layout.tsx                       Site metadata, global styles and intro gate
+    page.tsx                         Portfolio page and deployed intro asset availability
+    App.tsx                          Portfolio sections, detail panel and intro controls
+  config/
+    intro.ts                         Intro timing, media contract and pre-paint gate
   components/
     Navigation.tsx                   Top navigation, active scroll-spy and mobile menu drawer
     Hero.tsx                         Introduction, headline and quick stats
@@ -58,6 +60,7 @@ src/
     classification.css               Classification boards, experience disclosure and detail panel styles
     Footer.tsx                       Footer links, location and founding year
   features/
+    launch-intro/                    First-visit cinematic, fallback and video-to-Hero handoff
     marina-bay/                      Full-layout 2D driving game, controls, scoring and renderer
     projects/
       projects.ts                    Project entries and their content
@@ -90,8 +93,6 @@ src/
     global.css                       Design tokens, site styles and responsive rules
 ```
 
-The workflow publishes the contents of `dist/`, including files copied from `public/`. GitHub Pages stores the custom domain in its settings when publishing through Actions; keep those settings configured for `jarrodlow.com`.
-
 ## Common updates
 
 - **Add or edit a project:** update `src/features/projects/projects.ts`. `types.ts` lists the required fields. For an image, place a WebP file in `public/assets/projects/` and use an `/assets/projects/...` path, image dimensions and alt text in its `media` entry. A text cover uses `kind: 'cover'` and a subtitle.
@@ -99,9 +100,15 @@ The workflow publishes the contents of `dist/`, including files copied from `pub
 - **Update the introduction or contact details:** edit `Hero.tsx`, `SkillsSection.tsx`, `ContactSection.tsx`, or `Footer.tsx` as appropriate. The about text is in `SkillsSection.tsx`, not the skills data file.
 - **Update the daily radio quotes:** edit `src/features/radio-quotes/quotes.ts`. Quotes rotate in list order at midnight Singapore time; changing the list can change the quote selected for a given day.
 - **Change appearance or layout:** edit `src/styles/global.css`; change a component when its markup needs to change.
-- **Update search or sharing metadata:** edit the title and meta tags in `index.html`. Replace `public/assets/og.png` to change the social preview image.
+- **Update search or sharing metadata:** edit `src/app/layout.tsx`. Replace `public/assets/og.png` to change the social preview image.
 
 Run `npm test` and `npm run build` after changes to check the feature tests, TypeScript and production build.
+
+## Cockpit launch intro
+
+Use `/?intro=1` to replay the first-visit sequence. Use `/?capture=hero` to capture the clean Hero for the pit panel at 1920 × 1080 on desktop, or at 360 × 640 with device pixel ratio 2 for a 720 × 1280 phone capture. Capture mode hides the navigation and scroll cue.
+
+The build selects each viewport's render when its WebM, MP4 and WebP poster are present in `public/media/`. The required filenames and the handoff time are in `src/config/intro.ts`. With no render for a viewport, the portfolio plays the built-in animated sequence.
 
 ## Marina Bay mini racer
 
@@ -127,9 +134,7 @@ Run `node --test tests/marina-bay-*.test.mjs` for focused geometry, simulation a
 
 ## Publishing
 
-GitHub Pages uses **GitHub Actions** as its publishing source. A push to `main` runs `.github/workflows/deploy.yml`, which installs the locked dependencies, builds the site, and deploys `dist/`. The workflow can also be run manually from GitHub Actions. Keep the custom domain configured in the repository's Pages settings.
-
-The source files cannot be published directly from the repository root as a branch-based Pages site: Vite must build them first.
+GitHub Pages uses **GitHub Actions** as its publishing source. A push to `main` runs `.github/workflows/deploy.yml`, which installs the locked dependencies, checks the site and deploys the `out/` export. The workflow can also run manually from GitHub Actions. Keep `jarrodlow.com` configured in the repository's Pages settings.
 
 ## Spotify Radio Check
 
