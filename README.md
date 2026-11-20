@@ -35,9 +35,9 @@ CNAME                                Repository-root custom-domain file
 public/
   CNAME                              Custom-domain file copied into the build
   assets/
-    favicon.svg                      Browser tab icon
+    favicon.svg                      Browser tab icon (vector path)
     og.png                           Social sharing preview image
-    projects/                        Project images in WebP, PNG and JPEG formats
+    projects/                        Project images in WebP format
     marina-bay/                      Original circuit GeoJSON and MIT source notice
 docs/
   marina-bay-game-plan.md            Game scope, research, implementation and release record
@@ -47,42 +47,44 @@ services/spotify/                    Cloudflare Worker, authorization helper and
 tests/                               Game, frontend playback and daily quote tests
 src/
   app/
-    App.tsx                          Assembles the page and initializes behavior hooks
-    main.tsx                         Browser entry point; renders or hydrates the app
+    App.tsx                          Assembles the page, landmarks and project detail panel
+    main.tsx                         Browser entry point; loads global styles and hydrates the app
     entry-server.tsx                 Renders the app to HTML for the production build
   components/
-    Navigation.tsx                   Top navigation and section links
+    Navigation.tsx                   Top navigation, active scroll-spy and mobile menu drawer
     Hero.tsx                         Introduction, headline and quick stats
-    Ticker.tsx                       Scrolling text strip
-    Footer.tsx                       Footer links, location and current year
+    Ticker.tsx                       Seamless scrolling text strip
+    DetailPanel.tsx                  Slide-over project details drawer
+    classification.css               Classification boards, experience disclosure and detail panel styles
+    Footer.tsx                       Footer links, location and founding year
   features/
     marina-bay/                      Full-layout 2D driving game, controls, scoring and renderer
     projects/
       projects.ts                    Project entries and their content
       types.ts                       Project and project-media types
-      ProjectCard.tsx                Reusable project card layout
-      ProjectsSection.tsx            Project grid and placeholder card
+      ProjectRow.tsx                 Reusable project classification row
+      ProjectsSection.tsx            Projects classification board
     skills/
       skills.ts                      Skill groups and their entries
       SkillsSection.tsx              About text and skills section layout
     experience/
       experience.ts                  Experience entries and their type
-      ExperienceRow.tsx              Reusable experience row
-      ExperienceSection.tsx          Experience section layout
+      ExperienceRow.tsx              Inline expandable experience row
+      ExperienceSection.tsx          Experience classification board
     contact/
       ContactSection.tsx             Contact text, email and availability
     spotify/
-      SpotifySection.tsx            Broadcast tracker and interaction
+      SpotifySection.tsx             Compact standby bar when off air; broadcast card when active
       playback.ts                    Playback validation and time formatting
-      polling.ts                     Automatic playback checks and page-return refresh
-      spotify.css                    Broadcast styling and decorative synth motion
+      polling.ts                     Visibility-aware adaptive playback polling
+      spotify.css                    Standby bar, broadcast styling and decorative synth motion
       spotify-logo-white.svg         Spotify attribution graphic
     radio-quotes/
       RadioQuote.tsx                 Daily quote display and midnight refresh
       quotes.ts                      Radio excerpts, speakers and sources
       schedule.ts                    Singapore-day rotation and next midnight
   hooks/
-    useNavScroll.ts                  Navigation background on scroll
+    useNavScroll.ts                  Navigation scroll state and active-section scroll-spy
     useReveal.ts                     Scroll reveals and motion fallbacks
   styles/
     global.css                       Design tokens, site styles and responsive rules
@@ -92,7 +94,7 @@ The workflow publishes the contents of `dist/`, including files copied from `pub
 
 ## Common updates
 
-- **Add or edit a project:** update `src/features/projects/projects.ts`. `types.ts` lists the required fields. For an image, place it in `public/assets/projects/` and use an `/assets/projects/...` path, image dimensions and alt text in its `media` entry. A text cover uses `kind: 'cover'` and a subtitle. The grid shows a placeholder when there is an odd number of projects.
+- **Add or edit a project:** update `src/features/projects/projects.ts`. `types.ts` lists the required fields. For an image, place a WebP file in `public/assets/projects/` and use an `/assets/projects/...` path, image dimensions and alt text in its `media` entry. A text cover uses `kind: 'cover'` and a subtitle.
 - **Update skills or experience:** edit `src/features/skills/skills.ts` or `src/features/experience/experience.ts`.
 - **Update the introduction or contact details:** edit `Hero.tsx`, `SkillsSection.tsx`, `ContactSection.tsx`, or `Footer.tsx` as appropriate. The about text is in `SkillsSection.tsx`, not the skills data file.
 - **Update the daily radio quotes:** edit `src/features/radio-quotes/quotes.ts`. Quotes rotate in list order at midnight Singapore time; changing the list can change the quote selected for a given day.

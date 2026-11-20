@@ -20,7 +20,7 @@ function browser(t) {
   return { document, window };
 }
 
-test('a mounted tracker picks up a new track on the next scheduled check', async (t) => {
+test('a mounted tracker picks up a new track on the next active scheduled check (10s)', async (t) => {
   browser(t);
   t.mock.timers.enable({ apis: ['setTimeout'] });
   let current = { status: 'playing', track: { title: 'Track A' } };
@@ -29,12 +29,60 @@ test('a mounted tracker picks up a new track on the next scheduled check', async
   await flush();
   assert.deepEqual(shown, ['Track A']);
   current = { status: 'playing', track: { title: 'Track B' } };
-  t.mock.timers.tick(4_999);
+  t.mock.timers.tick(9_999);
   await flush();
   assert.deepEqual(shown, ['Track A']);
   t.mock.timers.tick(1);
   await flush();
   assert.deepEqual(shown, ['Track A', 'Track B']);
+  stop();
+});
+
+test('idle states poll at the slower 30s cadence and speed up once playing resumes', async (t) => {
+  browser(t);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let current = { status: 'offline' };
+  const statuses = [];
+  const stop = startPlaybackPolling(async () => current, (playback) => statuses.push(playback?.status ?? 'unavailable'));
+  await flush();
+  assert.deepEqual(statuses, ['offline']);
+
+  current = { status: 'playing', track: { title: 'Track A' } };
+  t.mock.timers.tick(29_999);
+  await flush();
+  assert.deepEqual(statuses, ['offline']);
+  t.mock.timers.tick(1);
+  await flush();
+  assert.deepEqual(statuses, ['offline', 'playing']);
+
+  current = { status: 'offline' };
+  t.mock.timers.tick(10_000);
+  await flush();
+  assert.deepEqual(statuses, ['offline', 'playing', 'offline']);
+  stop();
+});
+
+test('polling pauses while the tab is hidden and refreshes immediately when visible again', async (t) => {
+  const { document } = browser(t);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let calls = 0;
+  const stop = startPlaybackPolling(async () => {
+    calls++;
+    return { status: 'playing', track: { title: `Track ${calls}` } };
+  }, () => {});
+  await flush();
+  assert.equal(calls, 1);
+
+  document.visibilityState = 'hidden';
+  document.dispatchEvent(new Event('visibilitychange'));
+  t.mock.timers.tick(120_000);
+  await flush();
+  assert.equal(calls, 1);
+
+  document.visibilityState = 'visible';
+  document.dispatchEvent(new Event('visibilitychange'));
+  await flush();
+  assert.equal(calls, 2);
   stop();
 });
 
@@ -90,7 +138,7 @@ test('cleanup aborts an in-flight request and prevents updates and later checks'
   assert.equal(signal.aborted, true);
   resolveRequest({ status: 'offline' });
   await flush();
-  t.mock.timers.tick(30_000);
+  t.mock.timers.tick(60_000);
   document.dispatchEvent(new Event('visibilitychange'));
   window.dispatchEvent(new Event('pageshow'));
   await flush();
@@ -109,7 +157,7 @@ test('a failed request reports unavailable and still schedules another check', a
     return { status: 'offline' };
   }, (playback) => shown.push(playback?.status ?? 'unavailable'));
   await flush();
-  t.mock.timers.tick(5_000);
+  t.mock.timers.tick(30_000);
   await flush();
   assert.deepEqual(shown, ['unavailable', 'offline']);
   stop();

@@ -36,6 +36,7 @@ export function SkillsSection() {
           </div>
 
           <div className="reveal">
+            <h3 className="eyebrow">Skills</h3>
             {skillGroups.map((group) => (
               <div className="skill-group" key={group.title}>
                 <h4>{group.title}</h4>

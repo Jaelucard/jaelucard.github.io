@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { ExperienceRow } from './ExperienceRow';
 import { experience } from './experience';
-import type { Selection } from '../../components/DetailPanel';
 
-export function ExperienceSection({ onOpen, selected }: { onOpen: (selection: Selection, trigger: HTMLButtonElement) => void; selected: Selection | null }) {
+export function ExperienceSection() {
+  const [openPosition, setOpenPosition] = useState<string | null>(null);
+
   return (
     <section className="section" id="experience">
       <div className="wrap">
@@ -12,7 +14,17 @@ export function ExperienceSection({ onOpen, selected }: { onOpen: (selection: Se
         </div>
         <h2 className="section-title display">Experience</h2>
         <div className="classification-list">
-          {experience.map((entry) => <ExperienceRow key={entry.position} entry={entry} selected={selected?.kind === 'experience' && selected.item.position === entry.position} onOpen={(trigger) => onOpen({ kind: 'experience', item: entry }, trigger)} />)}
+          {experience.map((entry) => {
+            const expanded = openPosition === entry.position;
+            return (
+              <ExperienceRow
+                key={entry.position}
+                entry={entry}
+                expanded={expanded}
+                onToggle={() => setOpenPosition((current) => (current === entry.position ? null : entry.position))}
+              />
+            );
+          })}
         </div>
       </div>
     </section>

@@ -80,6 +80,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       for (let col = 0; col < 17; col++) {
         const x = col * 92 - 45;
         const y = row * 91 - 70;
+        // Keep the top-left coordinate caption clear of decorative buildings.
+        if (x < 260 && y < -20) continue;
         if (projectToTrack(x + 24, y + 18).distance < 70 || bg.isPointInPath(water,
           ratio * ((x + 24) * scale + offsetX), ratio * ((y + 18) * scale + offsetY))) continue;
         if ((row + col) % 4 === 0) {
@@ -158,7 +160,8 @@ export function createRenderer(canvas: HTMLCanvasElement) {
       bg.fillRect(-4 + col * 4, -ROAD_HALF_WIDTH + row * checkerHeight, 4, checkerHeight);
     }
     bg.restore();
-    text('START / FINISH', startPoint.x - 54, startPoint.y - 2, 12, '#d9d8c6', 'right');
+    text('START', 1312, startPoint.y - 8, 11, '#d9d8c6', 'center');
+    text('FINISH', 1312, startPoint.y + 8, 11, '#b9cac5', 'center');
   }
 
   function resize() {

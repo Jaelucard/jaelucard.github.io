@@ -7,6 +7,24 @@ const MarinaBayGame = lazy(() => import('./MarinaBayGame'));
 const outline = TRACK.points.map((point) => `${point.x},${point.y}`).join(' ');
 const start = sampleTrack(0);
 
+function SingaporeFlag() {
+  return (
+    <svg className="mb-flag" viewBox="0 0 27 18" width="27" height="18" aria-hidden="true">
+      <rect width="27" height="9" fill="#E8112D" />
+      <rect y="9" width="27" height="9" fill="#F5F2EC" />
+      <circle cx="7.4" cy="4.5" r="3.1" fill="#FFFFFF" />
+      <circle cx="8.6" cy="4.5" r="2.75" fill="#E8112D" />
+      <g fill="#FFFFFF">
+        <circle cx="10.8" cy="2.6" r="0.6" />
+        <circle cx="12.5" cy="3.8" r="0.6" />
+        <circle cx="11.8" cy="5.8" r="0.6" />
+        <circle cx="9.8" cy="5.8" r="0.6" />
+        <circle cx="9.1" cy="3.8" r="0.6" />
+      </g>
+    </svg>
+  );
+}
+
 class GameBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
@@ -41,7 +59,8 @@ function CircuitPreview() {
       <rect x="4" y="-7" width="8" height="14" rx="2" fill="#fff0df" />
     </g>
     <circle cx={start.x} cy={start.y} r="35" fill="none" stroke="#f0e8dc" strokeWidth="2" opacity=".6" />
-    <text x="1320" y="355" textAnchor="end" fill="#f0e8dc" fontSize="17" fontFamily="monospace" letterSpacing="2">START / FINISH</text>
+    <text x="1312" y="344" textAnchor="middle" fill="#f0e8dc" fontSize="14" fontFamily="monospace" letterSpacing="2">START</text>
+    <text x="1312" y="362" textAnchor="middle" fill="#b9cac5" fontSize="14" fontFamily="monospace" letterSpacing="2">FINISH</text>
     <g stroke="#6d9291" fill="none" opacity=".6"><circle cx="1267" cy="550" r="44" strokeWidth="3" /><circle cx="1267" cy="550" r="6" strokeWidth="3" /><path d="M1267 506V594M1223 550H1311M1236 519L1298 581M1298 519L1236 581M1267 550L1250 604M1267 550L1284 604" strokeWidth="2" /></g>
     <text x="0" y="-65" fill="#a7b5b2" fontSize="16" fontFamily="monospace" letterSpacing="3">01°17′ N / 103°51′ E</text>
     <text x="1430" y="1008" textAnchor="end" fill="#7b9395" fontSize="15" fontFamily="monospace" letterSpacing="3">SINGAPORE AFTER DARK</text>
@@ -58,8 +77,16 @@ function Briefing({ loading, onStart }: { loading?: boolean; onStart?: () => voi
       <button type="button" className="mb-button mb-button-primary" onClick={onStart} disabled={loading}>
         {loading ? 'Opening the circuit…' : 'Start your lap'}<span aria-hidden="true">↗</span>
       </button>
-      <div className="mb-control-summary"><span><kbd>W</kbd> Accelerate</span><span><kbd>A</kbd><kbd>D</kbd> Steer</span><span><kbd>S</kbd> Brake / reverse</span></div>
-      <p className="mb-small">Arrow keys work too. Touch controls appear when you start.</p>
+      <div className="mb-control-summary mb-controls-keyboard">
+        <span><kbd>W</kbd> Accelerate</span>
+        <span><kbd>A</kbd><kbd>D</kbd> Steer</span>
+        <span><kbd>S</kbd> Brake / reverse</span>
+      </div>
+      <div className="mb-control-summary mb-controls-touch">
+        <span>Hold <strong>Accelerate</strong> + <strong>← / →</strong> together to steer through corners.</span>
+      </div>
+      <p className="mb-small mb-small-keyboard">Arrow keys work too. On-screen controls appear when you start.</p>
+      <p className="mb-small mb-small-touch">Multi-touch pedals and steering appear as soon as the circuit opens.</p>
     </aside>
   </div>;
 }
@@ -71,7 +98,14 @@ export function MarinaBaySection() {
       <div className="section-head"><p className="eyebrow">Off the clock</p><span className="mono section-index">Extra lap</span></div>
       <div className="mb-heading"><h2 id="mb-title" className="display section-title">One more <span>lap.</span></h2><p>A short break in Singapore.<br />A full lap of Marina Bay.</p></div>
       <div className="mb-shell">
-        <div className="mb-topbar"><div className="mb-event"><span className="mb-flag" aria-hidden="true"><span>☾</span></span><strong>MARINA BAY</strong><span className="mb-tag">ARCADE CLUB</span></div><span className="mb-circuit-info">4.927 KM <span>/</span> 19 TURNS</span></div>
+        <div className="mb-topbar">
+          <div className="mb-event">
+            <SingaporeFlag />
+            <strong>MARINA BAY</strong>
+            <span className="mb-tag">ARCADE CLUB</span>
+          </div>
+          <span className="mb-circuit-info">4.927 KM <span aria-hidden="true">/</span> 19 TURNS</span>
+        </div>
         {opened ? <GameBoundary><Suspense fallback={<Briefing loading />}><MarinaBayGame /></Suspense></GameBoundary> : <Briefing onStart={() => setOpened(true)} />}
         <div className="mb-bottom-bar"><span>Full circuit layout. Forgiving arcade handling.</span><a href="https://github.com/bacinger/f1-circuits" target="_blank" rel="noopener noreferrer">Circuit data: F1 Circuits <span aria-hidden="true">↗</span></a></div>
       </div>

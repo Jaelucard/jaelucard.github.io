@@ -150,10 +150,22 @@ for (const width of [390, 320]) {
         navigation: document.querySelector('#nav').getBoundingClientRect().toJSON(),
         links: [...document.querySelectorAll('#nav a')].map((link) => ({ text: link.textContent, bounds: link.getBoundingClientRect().toJSON() })),
       })), null, 2) });
-      for (const link of await page.locator('#nav a').all()) {
-        const bounds = await link.boundingBox();
-        expect(bounds.x, 'Navigation link remains on screen').toBeGreaterThanOrEqual(0);
-        expect(bounds.x + bounds.width, 'Navigation link remains on screen').toBeLessThanOrEqual(width + 1);
+      for (const control of await page.locator('#nav a:visible, #nav button:visible').all()) {
+        const bounds = await control.boundingBox();
+        expect(bounds, 'Visible navigation control has bounds').not.toBeNull();
+        expect(bounds.x, 'Navigation control remains on screen').toBeGreaterThanOrEqual(0);
+        expect(bounds.x + bounds.width, 'Navigation control remains on screen').toBeLessThanOrEqual(width + 1);
+      }
+      const menuToggle = page.locator('#nav .nav-toggle');
+      if (await menuToggle.isVisible()) {
+        await menuToggle.click();
+        for (const link of await page.locator('#nav-menu a:visible').all()) {
+          const bounds = await link.boundingBox();
+          expect(bounds, 'Mobile drawer link has bounds').not.toBeNull();
+          expect(bounds.x, 'Mobile drawer link remains on screen').toBeGreaterThanOrEqual(0);
+          expect(bounds.x + bounds.width, 'Mobile drawer link remains on screen').toBeLessThanOrEqual(width + 1);
+        }
+        await menuToggle.click();
       }
       // Decorative portfolio headings intentionally overhang their containers.
       // Verify actual viewport width and scrolling, not their clipped overflow area.

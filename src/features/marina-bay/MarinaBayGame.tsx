@@ -107,10 +107,20 @@ export default function MarinaBayGame() {
       renderer.draw(game);
       publish(true);
     }
+    function scrollCircuitIntoView() {
+      const shell = canvas?.closest('.mb-shell');
+      if (shell && window.innerWidth >= 700) {
+        const navHeight = document.getElementById('nav')?.getBoundingClientRect().height ?? 58;
+        const targetTop = shell.getBoundingClientRect().top + window.scrollY - navHeight - 16;
+        window.scrollTo({ top: Math.max(0, targetTop), behavior: 'instant' });
+      } else {
+        canvas?.scrollIntoView({ block: 'center', behavior: 'instant' });
+      }
+    }
     function resume(reason = 'Back on track. Hold W to accelerate.') {
       if (disposed || document.hidden) return;
       clearInput();
-      canvas?.scrollIntoView({ block: 'center', behavior: 'instant' });
+      scrollCircuitIntoView();
       canvas?.focus({ preventScroll: true });
       if (!running) {
         running = true;
@@ -169,9 +179,8 @@ export default function MarinaBayGame() {
     document.addEventListener('visibilitychange', visibility);
     resize();
     publish(true);
-    // The launch button can sit below the map on phones. Bring the driving
-    // surface back into view, clear of the portfolio's fixed navigation.
-    canvas.scrollIntoView({ block: 'center', behavior: 'instant' });
+    // Keep the driving surface clear of the fixed navigation on desktop and phones.
+    scrollCircuitIntoView();
     canvas.focus({ preventScroll: true });
     frameId = requestAnimationFrame(frame);
 
@@ -256,7 +265,12 @@ export default function MarinaBayGame() {
           aria-describedby="mb-driving-controls" onPointerDown={() => canvasRef.current?.focus({ preventScroll: true })}>
           Full Marina Bay circuit driving game. Use the controls below to accelerate, brake and steer.
         </canvas>
-        {!hud.lapStarted && !paused && <p className="mb-game-hint">Hold W to accelerate · A / D to steer</p>}
+        {!hud.lapStarted && !paused && (
+          <p className="mb-game-hint">
+            <span className="mb-hint-keyboard">Hold W to accelerate · A / D to steer</span>
+            <span className="mb-hint-touch">Hold Accelerate + ← / →</span>
+          </p>
+        )}
         {paused && <div className="mb-pause-overlay"><strong>In the pits.</strong><p>Your lap is paused.</p>
           <button type="button" className="mb-button mb-button-primary" onClick={() => controlsRef.current?.resume()}>Resume lap</button></div>}
       </div>

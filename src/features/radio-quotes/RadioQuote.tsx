@@ -34,10 +34,19 @@ export function RadioQuote() {
 
   return (
     <div className="cell radio-quote-cell" aria-live="polite">
-      {quote && (
-        <span className={`cell-value radio-quote${'preserveCase' in quote && quote.preserveCase ? ' radio-quote-case-sensitive' : ''}`} aria-label={`F1 radio quote: ${quote.text}, ${quote.speaker}`} title={quote.speaker}>
-          “{quote.text}”
-        </span>
+      <span className="cell-label">Team Radio</span>
+      {quote ? (
+        <>
+          <span
+            className={`cell-value radio-quote${'preserveCase' in quote && quote.preserveCase ? ' radio-quote-case-sensitive' : ''}`}
+            aria-label={`F1 radio quote: ${quote.text}, ${quote.speaker}`}
+          >
+            “{quote.text}”
+          </span>
+          <span className="radio-speaker mono">— {quote.speaker}</span>
+        </>
+      ) : (
+        <span className="cell-value radio-quote radio-quote-placeholder" aria-hidden="true">&nbsp;</span>
       )}
     </div>
   );
