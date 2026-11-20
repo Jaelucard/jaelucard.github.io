@@ -241,121 +241,6 @@ img{ max-width: 100%; display: block; }
 }
 .section-title.red{ color: var(--rosso); }
 
-/* ============ PROJECTS — GP CARDS ============ */
-.gp-grid{
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: clamp(20px, 3vw, 34px);
-}
-
-.gp-card{
-  background: var(--white);
-  border: 1px solid var(--rosso);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  display: flex; flex-direction: column;
-  transition: transform .35s cubic-bezier(.2,.7,.2,1), box-shadow .35s;
-}
-.gp-card:hover{
-  transform: translateY(-4px);
-  box-shadow: 0 18px 40px -22px rgba(181,14,34,.45);
-}
-
-.gp-head{
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center; gap: 10px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--rosso);
-}
-.gp-meta{ display: grid; line-height: 1.5; }
-.gp-meta span{ font-size: 9px; font-weight: 650; letter-spacing: .28em;
-  text-transform: uppercase; color: var(--rosso); }
-.gp-meta strong{ font-size: 12px; font-weight: 800; font-stretch: 115%;
-  letter-spacing: .1em; text-transform: uppercase; }
-.gp-meta.right{ text-align: right; }
-.gp-title{
-  color: var(--rosso);
-  font-size: clamp(17px, 2vw, 22px);
-  text-align: center;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 34ch;
-}
-
-.gp-media{
-  aspect-ratio: 4 / 3;
-  margin: 16px;
-  border-radius: 10px;
-  background:
-    linear-gradient(160deg, #E9E4DB 0%, #DDD6CA 55%, #CFC7B9 100%);
-  display: grid; place-items: center;
-  position: relative;
-  color: rgba(20,18,18,.55);
-}
-/* telemetry crosshair ticks in the media corners */
-.gp-media::before, .gp-media::after{
-  content: ""; position: absolute; width: 14px; height: 14px;
-  border-color: rgba(20,18,18,.4); border-style: solid;
-  z-index: 1;   /* keep the ticks above a project screenshot */
-}
-.gp-media::before{ top: 10px; left: 10px; border-width: 1px 0 0 1px; }
-.gp-media::after{ bottom: 10px; right: 10px; border-width: 0 1px 1px 0; }
-/* project screenshot: an in-flow grid item, so place-items centres it in the
-   4:3 box; capped below the box on both axes so the gradient stays visible as
-   a frame and the image sits inside the corner ticks, never cropped */
-.gp-media img{
-  width: auto; height: auto;
-  max-width: 88%; max-height: 88%;
-  object-fit: contain;
-  border-radius: inherit;
-}
-
-/* one-line project description under the media box */
-.gp-note{ padding: 0 18px 14px; font-size: 13px; line-height: 1.6; color: rgba(20,18,18,.72); }
-
-/* typographic cover for cards that have no screenshot yet */
-.gp-cover{
-  position: absolute; inset: 0;
-  display: grid; place-items: center;
-  background: var(--carbon); color: var(--paper);
-  border-radius: inherit;
-}
-.gp-cover .display{
-  font-size: clamp(22px, 3vw, 38px); line-height: .95;
-  text-align: center; padding: 0 28px; text-wrap: balance;
-}
-.gp-cover .mono{ position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; color: rgba(245,242,236,.55); }
-.gp-media:has(.gp-cover)::before, .gp-media:has(.gp-cover)::after{ border-color: rgba(245,242,236,.45); }
-
-.gp-cells{
-  margin-top: auto;
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  border-top: 1px solid var(--rosso);
-}
-.gp-cells .cell{ border-right-color: var(--rosso); padding: 12px 8px 11px;
-  text-align: center; }   /* a wrapped value centres as one block, not per line */
-.gp-cells .cell-label{ color: var(--rosso); opacity: 1; font-size: 9px; }
-.gp-cells .cell-value{ font-size: 13px; font-stretch: 110%; letter-spacing: .02em; }
-.gp-cells a.cell{ transition: background .2s, color .2s; }
-.gp-cells a.cell:hover{ background: var(--rosso); color: var(--white); }
-.gp-cells a.cell:hover .cell-label{ color: var(--white); }
-
-/* fastest lap: one card only, the project with a first-place result */
-.gp-card.fastest, .gp-card.fastest .gp-head, .gp-card.fastest .gp-cells, .gp-card.fastest .gp-cells .cell{ border-color: #8A2BE2; }
-.gp-card.fastest .gp-title, .gp-card.fastest .gp-meta span, .gp-card.fastest .gp-cells .cell-label{ color: #8A2BE2; }
-.gp-card.fastest .gp-cells a.cell:hover{ background: #8A2BE2; }
-.gp-card.fastest:hover{ box-shadow: 0 18px 40px -22px rgba(138,43,226,.45); }
-
-/* ghost card — duplicate .gp-card and delete this one when adding projects */
-.gp-card.ghost{
-  border: 1px dashed var(--line-dark);
-  background: transparent;
-  min-height: 320px;
-  display: grid; place-items: center;
-  color: rgba(20,18,18,.5);
-}
-.gp-card.ghost:hover{ box-shadow: none; transform: none; border-color: var(--rosso); color: var(--rosso); }
-
 /* ============ QUALI — DARK ABOUT / SKILLS ============ */
 .quali{ background: var(--carbon); color: var(--white); }
 .quali .section-head{ border-color: var(--line-light); }
@@ -400,27 +285,6 @@ img{ max-width: 100%; display: block; }
   transition: border-color .2s, background .2s;
 }
 .chip:hover{ border-color: var(--rosso); background: rgba(232,17,45,.12); }
-
-/* ============ CLASSIFICATION — EXPERIENCE ============ */
-.rows{ border-top: 1px solid var(--line-dark); }
-.row{
-  display: grid;
-  grid-template-columns: 84px 1.4fr 1fr auto;
-  align-items: center; gap: clamp(12px, 2vw, 28px);
-  padding: 22px 4px;
-  border-bottom: 1px solid var(--line-dark);
-  transition: background .2s, padding-left .3s;
-}
-.row:hover{ background: var(--white); padding-left: 14px; }
-.row-pos{
-  font-weight: 900; font-stretch: 120%; font-size: 26px;
-  color: var(--rosso); text-transform: uppercase; line-height: 1;
-}
-.row-entry strong{ display: block; font-weight: 800; font-stretch: 110%;
-  font-size: 14px; letter-spacing: .06em; text-transform: uppercase; }
-.row-entry span{ font-size: 12.5px; color: rgba(20,18,18,.65); }
-.row-note{ font-size: 13px; color: rgba(20,18,18,.7); }
-.row-time{ color: rgba(20,18,18,.6); }
 
 /* ============ CONTACT — PIT WALL ============ */
 .contact{ background: var(--rosso); color: var(--white); text-align: center; }
@@ -471,18 +335,10 @@ img{ max-width: 100%; display: block; }
 
 /* ============ RESPONSIVE ============ */
 @media (max-width: 860px){
-  .gp-grid{ grid-template-columns: 1fr; }
   .quali-cols{ grid-template-columns: 1fr; }
-  .row{ grid-template-columns: 56px 1fr; grid-auto-rows: auto; row-gap: 6px; }
-  .row-pos{ font-size: 20px; grid-row: span 2; align-self: start; }
-  .row-time{ grid-column: 2; }
-  .row-note{ grid-column: 2; }
 }
 @media (max-width: 640px){
   .nav-links{ width: 100%; justify-content: space-between; gap: 8px; }
   .nav-links a{ font-size: 10px; letter-spacing: .1em; }
   .nav-cta{ padding: 6px 10px !important; }
-  .gp-cells{ grid-template-columns: repeat(2, 1fr); }
-  .gp-cells .cell:nth-child(2){ border-right: 0; }
-  .gp-cells .cell:nth-child(-n+2){ border-bottom: 1px solid var(--rosso); }
 }

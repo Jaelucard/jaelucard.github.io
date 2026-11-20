@@ -1,7 +1,8 @@
-import { ProjectCard } from './ProjectCard';
+import { ProjectRow } from './ProjectRow';
 import { projects } from './projects';
+import type { Selection } from '../../components/DetailPanel';
 
-export function ProjectsSection() {
+export function ProjectsSection({ onOpen, selected }: { onOpen: (selection: Selection, trigger: HTMLButtonElement) => void; selected: Selection | null }) {
   return (
     <section className="section" id="projects">
       <div className="wrap">
@@ -10,11 +11,8 @@ export function ProjectsSection() {
           <p className="mono section-index">SEC · 01</p>
         </div>
         <h2 className="section-title display red">Projects</h2>
-        <div className="gp-grid">
-          {projects.map((project) => <ProjectCard key={project.id} project={project} />)}
-          {projects.length % 2 === 1 && (
-            <article className="gp-card ghost reveal"><span className="mono">[ + next round ]</span></article>
-          )}
+        <div className="classification-list">
+          {projects.map((project) => <ProjectRow key={project.id} project={project} selected={selected?.kind === 'project' && selected.item.id === project.id} onOpen={(trigger) => onOpen({ kind: 'project', item: project }, trigger)} />)}
         </div>
       </div>
     </section>
