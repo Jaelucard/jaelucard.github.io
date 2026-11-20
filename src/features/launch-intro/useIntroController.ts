@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { INTRO_CONFIG, type IntroMedia } from '../../config/intro';
+import { INTRO_CONFIG, INTRO_VIDEOS, type IntroMedia, type IntroVariant, type IntroVideo } from '../../config/intro';
 
-type Variant = keyof typeof INTRO_CONFIG.media;
 type Phase = 'loading' | 'playing' | 'handoff' | 'settle';
-type Run = { variant: Variant; mode: 'video' | 'placeholder'; phase: Phase; skipped: boolean };
+type Run = { variant: IntroVariant; video: IntroVideo | null; phase: Phase; skipped: boolean };
 
 const reducedMotion = '(prefers-reduced-motion: reduce)';
 
@@ -18,8 +17,8 @@ export function useIntroController(media: IntroMedia) {
 
   const start = useCallback(() => {
     const variant = matchMedia(`(max-width: ${INTRO_CONFIG.mobileBreakpointPx}px)`).matches ? 'mobile' : 'desktop';
-    const mode = media[variant] ? 'video' : 'placeholder';
-    setRun({ variant, mode, phase: mode === 'video' ? 'loading' : 'playing', skipped: false });
+    const video = media[variant];
+    setRun({ variant, video, phase: video ? 'loading' : 'playing', skipped: false });
   }, [media]);
 
   useLayoutEffect(() => {
@@ -29,7 +28,8 @@ export function useIntroController(media: IntroMedia) {
   }, [start]);
 
   const phase = run?.phase;
-  const mode = run?.mode;
+  const videoConfig = run?.video ? INTRO_VIDEOS[run.video] : null;
+  const handoffFadeMs = (videoConfig ?? INTRO_VIDEOS.legacy).handoffFadeMs;
   const skipped = run?.skipped ?? false;
   const blocked = Boolean(phase && phase !== 'settle');
 
@@ -48,6 +48,7 @@ export function useIntroController(media: IntroMedia) {
   }, [blocked]);
 
   const handoff = useCallback((skip = false) => {
+    if (skip || overlayRef.current?.contains(document.activeElement)) focusMain.current = true;
     setRun((current) => current && (current.phase === 'loading' || current.phase === 'playing')
       ? { ...current, phase: 'handoff', skipped: skip }
       : current);
@@ -56,14 +57,14 @@ export function useIntroController(media: IntroMedia) {
   const skip = useCallback(() => handoff(true), [handoff]);
 
   const abort = useCallback(() => {
-    focusMain.current = overlayRef.current?.contains(document.activeElement) ?? false;
+    if (overlayRef.current?.contains(document.activeElement)) focusMain.current = true;
     setRun(null);
   }, []);
 
   const onVideoError = useCallback(() => {
     if (process.env.NODE_ENV === 'development') {
       setRun((current) => current && (current.phase === 'loading' || current.phase === 'playing')
-        ? { ...current, mode: 'placeholder', phase: 'playing' }
+        ? { ...current, video: null, phase: 'playing' }
         : current);
       return;
     }
@@ -82,23 +83,26 @@ export function useIntroController(media: IntroMedia) {
 
   useEffect(() => {
     if (phase !== 'playing') return;
-    const timer = mode === 'placeholder'
-      ? window.setTimeout(handoff, INTRO_CONFIG.handoffTimeSec * 1000)
-      : window.setTimeout(abort, INTRO_CONFIG.durationSec * 1000 + INTRO_CONFIG.loadTimeoutMs);
+    const timer = videoConfig
+      ? window.setTimeout(abort, videoConfig.durationSec * 1000 + INTRO_CONFIG.loadTimeoutMs)
+      : window.setTimeout(handoff, INTRO_VIDEOS.legacy.handoffTimeSec * 1000);
     return () => window.clearTimeout(timer);
-  }, [abort, handoff, mode, phase]);
+  }, [abort, handoff, phase, videoConfig]);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (mode !== 'video' || !video) return;
+    if (!videoConfig || !video) return;
 
     let active = true;
     let frame = 0;
+    const handoffTimeSec = videoConfig.handoffTimeSec;
     const onFrame: VideoFrameRequestCallback = (_now, { mediaTime }) => {
-      if (mediaTime >= INTRO_CONFIG.handoffTimeSec) handoff();
+      if (handoffTimeSec !== null && mediaTime >= handoffTimeSec) handoff();
       else if (active) frame = video.requestVideoFrameCallback(onFrame);
     };
-    if ('requestVideoFrameCallback' in video) frame = video.requestVideoFrameCallback(onFrame);
+    if (handoffTimeSec !== null && 'requestVideoFrameCallback' in video) {
+      frame = video.requestVideoFrameCallback(onFrame);
+    }
 
     video.play().catch((error: DOMException) => {
       if (!active) return;
@@ -109,23 +113,22 @@ export function useIntroController(media: IntroMedia) {
       active = false;
       if (frame) video.cancelVideoFrameCallback(frame);
     };
-  }, [abort, handoff, mode, onVideoError]);
+  }, [abort, handoff, onVideoError, videoConfig]);
 
   useEffect(() => {
     if (phase !== 'handoff') return;
-    focusMain.current = skipped || Boolean(overlayRef.current?.contains(document.activeElement));
     try { localStorage.setItem(INTRO_CONFIG.storageKey, 'true'); } catch { /* Storage is optional. */ }
     const timer = window.setTimeout(() => {
       setRun((current) => current && !skipped ? { ...current, phase: 'settle' } : null);
-    }, skipped ? INTRO_CONFIG.skipFadeMs : INTRO_CONFIG.handoffFadeMs);
+    }, skipped ? INTRO_CONFIG.skipFadeMs : handoffFadeMs);
     return () => window.clearTimeout(timer);
-  }, [phase, skipped]);
+  }, [handoffFadeMs, phase, skipped]);
 
   useEffect(() => {
     if (phase !== 'settle') return;
-    const timer = window.setTimeout(() => setRun(null), INTRO_CONFIG.heroSettleMs - INTRO_CONFIG.handoffFadeMs);
+    const timer = window.setTimeout(() => setRun(null), INTRO_CONFIG.heroSettleMs - handoffFadeMs);
     return () => window.clearTimeout(timer);
-  }, [phase]);
+  }, [handoffFadeMs, phase]);
 
   useEffect(() => {
     if (!blocked) return;
@@ -135,7 +138,12 @@ export function useIntroController(media: IntroMedia) {
         skip();
       } else if (event.key === 'Tab') {
         event.preventDefault();
-        overlayRef.current?.querySelector('button')?.focus();
+        const buttons = Array.from(overlayRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? []);
+        const index = buttons.findIndex((button) => button === document.activeElement);
+        const next = index < 0
+          ? (event.shiftKey ? buttons.length - 1 : 0)
+          : (index + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length;
+        buttons[next]?.focus();
       }
     }
     const preference = matchMedia(reducedMotion);
@@ -173,5 +181,5 @@ export function useIntroController(media: IntroMedia) {
     setReplayPending(true);
   }
 
-  return { run, capture, blocked, videoRef, overlayRef, mainRef, onPlaying, onVideoError, handoff, skip, replay };
+  return { run, capture, blocked, handoffFadeMs, videoRef, overlayRef, mainRef, onPlaying, onVideoError, handoff, skip, replay };
 }

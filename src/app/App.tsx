@@ -19,7 +19,7 @@ import { SkillsSection } from '../features/skills/SkillsSection';
 import { SpotifySection } from '../features/spotify/SpotifySection';
 import { useReveal } from '../hooks/useReveal';
 
-const emptyIntroMedia = { desktop: false, mobile: false };
+const emptyIntroMedia = { desktop: null, mobile: null };
 
 export function App({ introMedia = emptyIntroMedia }: { introMedia?: IntroMedia }) {
   useReveal();
@@ -33,12 +33,12 @@ export function App({ introMedia = emptyIntroMedia }: { introMedia?: IntroMedia 
   }
 
   const phase = intro.run?.skipped ? 'skip' : intro.run?.phase;
-  const matchesRecordedHero = intro.run?.mode === 'video' && !intro.run.skipped;
+  const matchesRecordedHero = intro.run?.video === 'legacy' && !intro.run.skipped;
   const quoteIndex = intro.capture || matchesRecordedHero ? INTRO_CONFIG.captureQuoteIndex : undefined;
 
   return (
     <>
-      <div className="portfolio-content" inert={intro.blocked} data-launch-phase={phase}>
+      <div className="portfolio-content" inert={intro.blocked} data-launch-phase={phase} data-launch-video={intro.run?.video}>
         <a className="skip-link" href="#main">Skip to content</a>
         <Navigation />
         <Hero quoteIndex={quoteIndex} />

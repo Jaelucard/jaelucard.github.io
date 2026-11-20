@@ -1,19 +1,30 @@
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Hero } from '../../components/Hero';
-import { INTRO_CONFIG } from '../../config/intro';
+import { INTRO_CONFIG, INTRO_VIDEOS, WHEEL_SCREEN } from '../../config/intro';
 import { IntroPlaceholder } from './IntroPlaceholder';
+import { WheelScreen } from './WheelScreen';
 import type { useIntroController } from './useIntroController';
 import './launch-intro.css';
 
 export function LaunchIntro({ intro }: { intro: ReturnType<typeof useIntroController> }) {
+  const [soundOn, setSoundOn] = useState(false);
   const run = intro.run;
   if (!run) return null;
 
-  const media = INTRO_CONFIG.media[run.variant];
+  const videoConfig = run.video ? INTRO_VIDEOS[run.video] : null;
+  const media = videoConfig?.media[run.variant];
+  const handoffTimeSec = videoConfig?.handoffTimeSec;
   const style = {
     '--intro-skip-delay': `${INTRO_CONFIG.skipRevealDelayMs}ms`,
-    '--intro-fade-duration': `${run.skipped ? INTRO_CONFIG.skipFadeMs : INTRO_CONFIG.handoffFadeMs}ms`,
+    '--intro-fade-duration': `${run.skipped ? INTRO_CONFIG.skipFadeMs : intro.handoffFadeMs}ms`,
   } as CSSProperties;
+
+  function toggleSound() {
+    const video = intro.videoRef.current;
+    if (!video) return;
+    video.muted = !video.muted;
+    setSoundOn(!video.muted);
+  }
 
   return (
     <section
@@ -25,23 +36,26 @@ export function LaunchIntro({ intro }: { intro: ReturnType<typeof useIntroContro
       tabIndex={-1}
       style={style}
     >
-      {run.mode === 'video' ? (
+      {media ? (
         <video
           ref={intro.videoRef}
           className="launch-intro-video"
           aria-hidden="true"
           autoPlay
-          muted
+          muted={!soundOn}
           playsInline
           preload="auto"
           poster={media.poster}
           onPlaying={intro.onPlaying}
           onEnded={() => intro.handoff()}
+          onVolumeChange={({ currentTarget: video }) => setSoundOn(!video.muted)}
           onError={(event) => {
             if (run.phase !== 'handoff' && event.target === event.currentTarget) intro.onVideoError();
           }}
           onTimeUpdate={({ currentTarget: video }) => {
-            if (!video.requestVideoFrameCallback && video.currentTime >= INTRO_CONFIG.handoffTimeSec) intro.handoff();
+            if (handoffTimeSec != null && !video.requestVideoFrameCallback && video.currentTime >= handoffTimeSec) {
+              intro.handoff();
+            }
           }}
         >
           <source src={media.webm} type="video/webm" />
@@ -54,9 +68,19 @@ export function LaunchIntro({ intro }: { intro: ReturnType<typeof useIntroContro
           </div>
         </IntroPlaceholder>
       )}
-      <button className="launch-intro-skip mono" type="button" onClick={intro.skip}>
-        Skip intro <span aria-hidden="true">→</span>
-      </button>
+      {run.video === 'singaporeWheel' && (
+        <WheelScreen track={WHEEL_SCREEN[run.variant]} videoRef={intro.videoRef} />
+      )}
+      <div className="launch-intro-controls">
+        <button className="launch-intro-control mono" type="button" onClick={intro.skip} disabled={run.phase === 'handoff'}>
+          Skip intro <span aria-hidden="true">→</span>
+        </button>
+        {videoConfig?.sound && (
+          <button className="launch-intro-control mono" type="button" onClick={toggleSound} disabled={run.phase === 'handoff'}>
+            {soundOn ? 'Sound off' : 'Sound on'}
+          </button>
+        )}
+      </div>
     </section>
   );
 }

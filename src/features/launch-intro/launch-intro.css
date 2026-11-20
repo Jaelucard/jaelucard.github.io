@@ -45,6 +45,25 @@ html[data-capture='hero'] .poster.reveal {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transform-origin: 0 0;
+}
+
+.launch-wheel-projection {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform-origin: 0 0;
+}
+
+.launch-wheel-preview {
+  width: 100%;
+  border-top: 4px solid var(--rosso);
+  background: var(--paper);
+  overflow: hidden;
 }
 
 .launch-intro-hero-preview {
@@ -53,10 +72,16 @@ html[data-capture='hero'] .poster.reveal {
   min-height: 100%;
 }
 
-.launch-intro-skip {
+.launch-intro-controls {
   position: absolute;
   right: max(24px, env(safe-area-inset-right));
   bottom: max(24px, env(safe-area-inset-bottom));
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+
+.launch-intro-control {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -70,15 +95,15 @@ html[data-capture='hero'] .poster.reveal {
   animation: launch-skip-appear 160ms var(--intro-skip-delay) both;
 }
 
-.launch-intro-skip:focus-visible {
+.launch-intro-control:focus-visible {
   animation: none;
   outline-color: var(--white);
   outline-offset: 4px;
 }
 
-.launch-intro-skip:hover { background: var(--rosso-deep); }
+.launch-intro-control:hover { background: var(--rosso-deep); }
 
-.launch-intro[data-phase='handoff'] .launch-intro-skip {
+.launch-intro[data-phase='handoff'] .launch-intro-controls {
   opacity: 0;
   pointer-events: none;
   animation: none;
@@ -88,7 +113,7 @@ html[data-capture='hero'] .poster.reveal {
   visibility: hidden;
 }
 
-.portfolio-content:is([data-launch-phase='handoff'], [data-launch-phase='settle']) > .hero {
+.portfolio-content:not([data-launch-video='singaporeWheel']):is([data-launch-phase='handoff'], [data-launch-phase='settle']) > .hero {
   animation: launch-hero-settle 380ms cubic-bezier(.16, 1, .3, 1) both;
 }
 
