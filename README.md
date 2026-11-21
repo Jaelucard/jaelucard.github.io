@@ -106,7 +106,7 @@ Run `npm test` and `npm run build` after changes to check the feature tests, Typ
 
 ## Cockpit launch intro
 
-Use `/?intro=1` to replay the first-visit sequence. Use `/?capture=hero` to capture the clean Hero for the pit panel at 1920 × 1080 on desktop, or at 360 × 640 with device pixel ratio 2 for a 720 × 1280 phone capture. Capture mode hides the navigation and scroll cue.
+The cockpit intro plays on homepage visits and reloads, with a fade from the neutral gear display into the Hero. Use `/?intro=1` or the footer's **Replay intro** button to replay it. The automatic intro respects reduced motion, Save-Data, anchor links and browser history restoration. Use `/?capture=hero` for a clean Hero capture without the navigation or scroll cue.
 
 The build selects each viewport's render when its WebM, MP4 and WebP poster are present in `public/media/`. The required filenames and the handoff time are in `src/config/intro.ts`. With no render for a viewport, the portfolio plays the built-in animated sequence.
 

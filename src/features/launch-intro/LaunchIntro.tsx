@@ -1,8 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import { Hero } from '../../components/Hero';
-import { INTRO_CONFIG, INTRO_VIDEOS, WHEEL_SCREEN } from '../../config/intro';
+import { INTRO_CONFIG, INTRO_VIDEOS } from '../../config/intro';
 import { IntroPlaceholder } from './IntroPlaceholder';
-import { WheelScreen } from './WheelScreen';
 import type { useIntroController } from './useIntroController';
 import './launch-intro.css';
 
@@ -33,6 +32,7 @@ export function LaunchIntro({ intro }: { intro: ReturnType<typeof useIntroContro
       aria-label="F1 cockpit launch animation"
       className="launch-intro"
       data-phase={run.phase}
+      data-transition={run.video === 'singaporeNeutral' && !run.skipped ? 'neutral' : undefined}
       tabIndex={-1}
       style={style}
     >
@@ -67,9 +67,6 @@ export function LaunchIntro({ intro }: { intro: ReturnType<typeof useIntroContro
             <Hero preview />
           </div>
         </IntroPlaceholder>
-      )}
-      {run.video === 'singaporeWheel' && (
-        <WheelScreen track={WHEEL_SCREEN[run.variant]} videoRef={intro.videoRef} />
       )}
       <div className="launch-intro-controls">
         <button className="launch-intro-control mono" type="button" onClick={intro.skip} disabled={run.phase === 'handoff'}>

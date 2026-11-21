@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import '../components/classification.css';
 import { INTRO_CONFIG, type IntroMedia } from '../config/intro';
 import { DetailPanel } from '../components/DetailPanel';
@@ -38,7 +38,13 @@ export function App({ introMedia = emptyIntroMedia }: { introMedia?: IntroMedia 
 
   return (
     <>
-      <div className="portfolio-content" inert={intro.blocked} data-launch-phase={phase} data-launch-video={intro.run?.video}>
+      <div
+        className="portfolio-content"
+        inert={intro.blocked}
+        data-launch-phase={phase}
+        data-launch-video={intro.run?.video}
+        style={{ '--intro-fade-duration': `${intro.handoffFadeMs}ms` } as CSSProperties}
+      >
         <a className="skip-link" href="#main">Skip to content</a>
         <Navigation />
         <Hero quoteIndex={quoteIndex} />

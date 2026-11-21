@@ -4,7 +4,7 @@ import { INTRO_VIDEOS, type IntroVariant, type IntroVideo } from '../config/intr
 import { App } from './App';
 
 function findIntroVideo(viewport: IntroVariant): IntroVideo | null {
-  for (const version of ['singaporeWheel', 'legacy'] as const) {
+  for (const version of ['singaporeNeutral', 'legacy'] as const) {
     const files = Object.values(INTRO_VIDEOS[version].media[viewport]);
     if (files.every((file) => existsSync(join(process.cwd(), 'public', file)))) return version;
   }

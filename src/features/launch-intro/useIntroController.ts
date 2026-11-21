@@ -117,9 +117,10 @@ export function useIntroController(media: IntroMedia) {
 
   useEffect(() => {
     if (phase !== 'handoff') return;
-    try { localStorage.setItem(INTRO_CONFIG.storageKey, 'true'); } catch { /* Storage is optional. */ }
     const timer = window.setTimeout(() => {
-      setRun((current) => current && !skipped ? { ...current, phase: 'settle' } : null);
+      setRun((current) => current && !skipped && handoffFadeMs < INTRO_CONFIG.heroSettleMs
+        ? { ...current, phase: 'settle' }
+        : null);
     }, skipped ? INTRO_CONFIG.skipFadeMs : handoffFadeMs);
     return () => window.clearTimeout(timer);
   }, [handoffFadeMs, phase, skipped]);

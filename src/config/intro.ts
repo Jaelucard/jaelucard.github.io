@@ -1,19 +1,19 @@
 export const INTRO_VIDEOS = {
-  singaporeWheel: {
+  singaporeNeutral: {
     fps: 24,
     durationSec: 5.5,
     handoffTimeSec: null,
-    handoffFadeMs: 0,
+    handoffFadeMs: 1400,
     sound: true,
     media: {
       desktop: {
-        webm: '/media/singapore-wheel-720p-intro-desktop.webm',
-        mp4: '/media/singapore-wheel-720p-intro-desktop.mp4',
+        webm: '/media/singapore-neutral-720p-intro-desktop.webm',
+        mp4: '/media/singapore-neutral-720p-intro-desktop.mp4',
         poster: '/media/singapore-wheel-720p-intro-poster-desktop.webp',
       },
       mobile: {
-        webm: '/media/singapore-wheel-720p-intro-mobile.webm',
-        mp4: '/media/singapore-wheel-720p-intro-mobile.mp4',
+        webm: '/media/singapore-neutral-720p-intro-mobile.webm',
+        mp4: '/media/singapore-neutral-720p-intro-mobile.mp4',
         poster: '/media/singapore-wheel-720p-intro-poster-mobile.webp',
       },
     },
@@ -39,32 +39,7 @@ export const INTRO_VIDEOS = {
   },
 } as const;
 
-export type IntroPoint = readonly [x: number, y: number];
-export type IntroQuad = readonly [topLeft: IntroPoint, topRight: IntroPoint, bottomRight: IntroPoint, bottomLeft: IntroPoint];
-export type WheelScreenTrack = Readonly<{
-  width: number;
-  height: number;
-  corners: IntroQuad;
-}>;
-
-export const WHEEL_SCREEN = {
-  appearSec: 3.75,
-  zoomSec: 4.35,
-  fullSec: 5.42,
-  desktop: {
-    width: 1280,
-    height: 720,
-    corners: [[548, 418], [724, 418], [725, 485], [548, 485]],
-  },
-  mobile: {
-    width: 720,
-    height: 1280,
-    corners: [[268, 713], [455, 713], [455, 789], [268, 789]],
-  },
-} as const satisfies Record<IntroVariant, WheelScreenTrack> & { appearSec: number; zoomSec: number; fullSec: number };
-
 export const INTRO_CONFIG = {
-  storageKey: 'jarrod_f1_intro_seen_v1',
   heroSettleMs: 380,
   skipFadeMs: 220,
   skipRevealDelayMs: 400,
@@ -74,7 +49,7 @@ export const INTRO_CONFIG = {
 } as const;
 
 export type IntroVideo = keyof typeof INTRO_VIDEOS;
-export type IntroVariant = keyof typeof INTRO_VIDEOS.singaporeWheel.media;
+export type IntroVariant = keyof typeof INTRO_VIDEOS.singaporeNeutral.media;
 export type IntroMedia = Readonly<Record<IntroVariant, IntroVideo | null>>;
 
 // Runs before hydration so the first paint is either the curtain or the portfolio.
@@ -87,8 +62,8 @@ export const INTRO_BOOT_SCRIPT = `(() => {
   }
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   if (query.get('intro') !== '1') {
-    if (navigator.connection?.saveData || location.hash) return;
-    try { if (localStorage.getItem(${JSON.stringify(INTRO_CONFIG.storageKey)})) return; } catch {}
+    const navigation = performance.getEntriesByType('navigation')[0];
+    if (navigator.connection?.saveData || location.hash || navigation?.type === 'back_forward') return;
   }
   root.dataset.intro = 'pending';
   setTimeout(() => {

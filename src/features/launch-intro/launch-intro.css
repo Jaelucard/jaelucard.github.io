@@ -40,30 +40,20 @@ html[data-capture='hero'] .poster.reveal {
   animation: launch-intro-fade var(--intro-fade-duration) ease-out both;
 }
 
+.launch-intro[data-phase='handoff'][data-transition='neutral'] {
+  animation-name: launch-neutral-dissolve;
+  animation-timing-function: ease-in-out;
+}
+
+.launch-intro[data-phase='handoff'][data-transition='neutral'] .launch-intro-video {
+  animation: launch-neutral-dim var(--intro-fade-duration) ease-in-out both;
+}
+
 .launch-intro-video {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform-origin: 0 0;
-}
-
-.launch-wheel-projection {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1;
-  opacity: 0;
-  overflow: hidden;
-  pointer-events: none;
-  transform-origin: 0 0;
-}
-
-.launch-wheel-preview {
-  width: 100%;
-  border-top: 4px solid var(--rosso);
-  background: var(--paper);
-  overflow: hidden;
 }
 
 .launch-intro-hero-preview {
@@ -113,8 +103,12 @@ html[data-capture='hero'] .poster.reveal {
   visibility: hidden;
 }
 
-.portfolio-content:not([data-launch-video='singaporeWheel']):is([data-launch-phase='handoff'], [data-launch-phase='settle']) > .hero {
+.portfolio-content:not([data-launch-video='singaporeNeutral']):is([data-launch-phase='handoff'], [data-launch-phase='settle']) > .hero {
   animation: launch-hero-settle 380ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.portfolio-content[data-launch-video='singaporeNeutral'][data-launch-phase='handoff'] > .hero {
+  animation: launch-neutral-resolve var(--intro-fade-duration) ease-out both;
 }
 
 .portfolio-content:is([data-launch-phase='handoff'], [data-launch-phase='settle']) .hero-scroll {
@@ -151,6 +145,18 @@ html[data-capture='hero'] .poster.reveal {
 .footer-links:has(.footer-replay) { flex-wrap: wrap; }
 
 @keyframes launch-intro-fade { to { opacity: 0; } }
+@keyframes launch-neutral-dim {
+  0% { opacity: 1; }
+  34%, 100% { opacity: 0; }
+}
+@keyframes launch-neutral-dissolve {
+  0%, 24% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes launch-neutral-resolve {
+  0%, 24% { filter: blur(8px); transform: translateY(8px) scale(1.015); }
+  100% { filter: blur(0); transform: none; }
+}
 @keyframes launch-skip-appear { from { opacity: 0; } }
 @keyframes launch-hero-settle { from { opacity: .94; transform: scale(1.04); } }
 @keyframes launch-nav-in { from { opacity: 0; transform: translateY(-12px); } }
